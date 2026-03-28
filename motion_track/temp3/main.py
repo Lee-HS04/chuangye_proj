@@ -1,4 +1,4 @@
-# main.py hello
+# main.py
 import time
 import cv2
 import streamlit as st
