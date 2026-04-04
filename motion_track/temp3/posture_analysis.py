@@ -7,29 +7,43 @@ import cv2
 
 def calculate_angle(a, b, c):
     try:
-        ax, ay = a
-        bx, by = b
-        cx, cy = c
+        if len(a) == 3:
+            ax, ay, az = a
+            bx, by, bz = b
+            cx, cy, cz = c
 
-        ab = (ax - bx, ay - by)
-        cb = (cx - bx, cy - by)
+            ab = (ax - bx, ay - by, az - bz)
+            cb = (cx - bx, cy - by, cz - bz)
 
-        dot = ab[0]*cb[0] + ab[1]*cb[1]
-        mag_ab = math.sqrt(ab[0]**2 + ab[1]**2)
-        mag_cb = math.sqrt(cb[0]**2 + cb[1]**2)
+            dot = ab[0]*cb[0] + ab[1]*cb[1] + ab[2]*cb[2]
+            mag_ab = math.sqrt(ab[0]**2 + ab[1]**2 + ab[2]**2)
+            mag_cb = math.sqrt(cb[0]**2 + cb[1]**2 + cb[2]**2)
+        else:
+            ax, ay = a
+            bx, by = b
+            cx, cy = c
+
+            ab = (ax - bx, ay - by)
+            cb = (cx - bx, cy - by)
+
+            dot = ab[0]*cb[0] + ab[1]*cb[1]
+            mag_ab = math.sqrt(ab[0]**2 + ab[1]**2)
+            mag_cb = math.sqrt(cb[0]**2 + cb[1]**2)
 
         if mag_ab * mag_cb == 0:
             return None
 
-        angle = math.degrees(math.acos(dot / (mag_ab * mag_cb)))
-        return angle
+        cos_val = dot / (mag_ab * mag_cb)
+        cos_val = max(min(cos_val, 1.0), -1.0)
+        return math.degrees(math.acos(cos_val))
     except:
         return None
-
 
 def get_distance(p1, p2):
     if p1 is None or p2 is None:
         return None
+    if len(p1) == 3:
+        return math.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 + (p1[2]-p2[2])**2)
     return math.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
 
 
@@ -37,32 +51,41 @@ def get_distance(p1, p2):
 # Feature Extraction
 # ==============================
 
-def extract_features(keypoints):
+def extract_features(keypoints_3d):
 
     def kp(i):
-        return keypoints[i] if i < len(keypoints) else None
+        return keypoints_3d[i] if i < len(keypoints_3d) else None
 
     features = {}
 
-    features["left_knee"] = calculate_angle(kp(11), kp(13), kp(15))
-    features["right_knee"] = calculate_angle(kp(12), kp(14), kp(16))
+    # SPM Indices: L_Hip=1, L_Knee=4, L_Ankle=7, R_Hip=2, R_Knee=5, R_Ankle=8
+    # L_Shoulder=16, L_Elbow=18, R_Shoulder=17, R_Elbow=19
+    features["left_knee"] = calculate_angle(kp(1), kp(4), kp(7))
+    features["right_knee"] = calculate_angle(kp(2), kp(5), kp(8))
 
-    features["left_arm_vertical"] = calculate_angle(
-        kp(7), kp(5), (kp(5)[0], kp(5)[1] - 100)
-    ) if kp(5) else None
+    if kp(16) is not None:
+        # vertical point directly below shoulder (y + 1 since y is down in camera space)
+        features["left_arm_vertical"] = calculate_angle(
+            kp(18), kp(16), (kp(16)[0], kp(16)[1] + 1.0, kp(16)[2])
+        )
+    else:
+        features["left_arm_vertical"] = None
 
-    features["right_arm_vertical"] = calculate_angle(
-        kp(8), kp(6), (kp(6)[0], kp(6)[1] - 100)
-    ) if kp(6) else None
+    if kp(17) is not None:
+        features["right_arm_vertical"] = calculate_angle(
+            kp(19), kp(17), (kp(17)[0], kp(17)[1] + 1.0, kp(17)[2])
+        )
+    else:
+        features["right_arm_vertical"] = None
 
-    if kp(5) and kp(11):
-        dx = kp(5)[0] - kp(11)[0]
-        dy = kp(5)[1] - kp(11)[1]
+    if kp(16) and kp(1):
+        dx = kp(16)[0] - kp(1)[0]
+        dy = kp(16)[1] - kp(1)[1]
         features["body_tilt"] = math.degrees(math.atan2(dy, dx))
     else:
         features["body_tilt"] = None
 
-    features["jump_feet"] = get_distance(kp(15), kp(16))
+    features["jump_feet"] = get_distance(kp(7), kp(8))
 
     return features
 
@@ -72,38 +95,32 @@ def extract_features(keypoints):
 # ==============================
 
 def load_rules(file_path):
+    """
+    Parses rules.txt in format:
+        Exercise|feature|min|max
+    Returns a nested dict:
+        { exercise_name: { feature: (min, max) } }
+    """
     rules = {}
-    current_rule = None
-
     with open(file_path, "r", encoding="utf-8") as f:
         for raw_line in f:
             line = raw_line.strip()
-
-            if not line:
+            if not line or line.startswith("#"):
                 continue
 
-            if ":" not in line:
-                current_rule = line
-                rules[current_rule] = {}
-                continue
-
-            try:
-                part, values = line.split(":", 1)
-                part = part.strip()
-                values = values.strip().replace("\r", "")
-
-                if not values or "-" not in values:
-                    continue
-
-                min_val, max_val = values.split("-", 1)
-
-                rules[current_rule][part] = (
-                    float(min_val.strip()),
-                    float(max_val.strip())
-                )
-
-            except:
-                print(f"Skipping bad line: {line}")
+            parts = line.split("|")
+            if len(parts) >= 4:
+                exercise_name = parts[0].strip()
+                feature = parts[1].strip()
+                try:
+                    min_val = float(parts[2].strip())
+                    max_val = float(parts[3].strip())
+                    
+                    if exercise_name not in rules:
+                        rules[exercise_name] = {}
+                    rules[exercise_name][feature] = (min_val, max_val)
+                except ValueError:
+                    print(f"Skipping bad float conversion on line: {line}")
 
     return rules
 
@@ -150,12 +167,12 @@ def evaluate_multiple_rules(features, rules, selected_rules):
 # ==============================
 
 JOINT_MAP = {
-    "left_knee": [13],
-    "right_knee": [14],
-    "left_arm_vertical": [5, 7],
-    "right_arm_vertical": [6, 8],
-    "body_tilt": [5, 11],
-    "jump_feet": [15, 16]
+    "left_knee": [4],
+    "right_knee": [5],
+    "left_arm_vertical": [16, 18],
+    "right_arm_vertical": [17, 19],
+    "body_tilt": [16, 1],
+    "jump_feet": [7, 8]
 }
 
 

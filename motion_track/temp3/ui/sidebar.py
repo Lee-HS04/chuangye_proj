@@ -166,6 +166,8 @@
 import streamlit as st
 
 # ── Utility: load rules from current rules.txt ──────────────────────────────
+import os
+
 def load_rule_groups(filepath):
     """
     Parses rules.txt in format:
@@ -174,7 +176,13 @@ def load_rule_groups(filepath):
         dict: { exercise_name: [feature1, feature2, ...] }
     """
     groups = {}
-    with open(filepath, "r") as f:
+    
+    # Make filepath absolute relative to the temp3 root directory
+    if not os.path.isabs(filepath):
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        filepath = os.path.join(base_dir, filepath)
+        
+    with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
@@ -250,6 +258,12 @@ def setup_sidebar(rules_all, selected_rules):
     def sync_from_number():
         st.session_state["floor_y"] = st.session_state["_floor_number"]
 
+    # Synchronize widget state blocks to match the source of truth BEFORE drawing widgets
+    if "_floor_number" in st.session_state and st.session_state["_floor_number"] != st.session_state["floor_y"]:
+        st.session_state["_floor_number"] = st.session_state["floor_y"]
+    if "_floor_slider" in st.session_state and st.session_state["_floor_slider"] != st.session_state["floor_y"]:
+        st.session_state["_floor_slider"] = st.session_state["floor_y"]
+
     col_down, col_val, col_up = st.sidebar.columns([1, 2, 1])
     col_down.button("▼", on_click=nudge_floor, args=(-5,))
     col_up.button("▲", on_click=nudge_floor, args=(+5,))
@@ -258,7 +272,6 @@ def setup_sidebar(rules_all, selected_rules):
         "Y",
         min_value=0,
         max_value=1080,
-        value=st.session_state["floor_y"],
         step=1,
         key="_floor_number",
         on_change=sync_from_number,
@@ -269,7 +282,6 @@ def setup_sidebar(rules_all, selected_rules):
         "Fine-tune floor",
         0,
         1080,
-        value=st.session_state["floor_y"],
         key="_floor_slider",
         on_change=sync_from_slider,
         label_visibility="collapsed",

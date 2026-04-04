@@ -46,19 +46,24 @@ class SmartRepCounter:
 
 
 # ────────────── Process Frame ──────────────
-def process_frame(frame, keypoints, selected_rules, rules_all, floor_y,
+def process_frame(frame, keypoints, keypoints_3d, selected_rules, rules_all, floor_y,
                   cmj_counter, sls_counter, sway_tracker):
 
     display_frame = frame.copy()
 
-    if keypoints is None:
+    if keypoints is None or keypoints_3d is None:
         cv2.line(display_frame, (0, floor_y), (display_frame.shape[1], floor_y), (255, 255, 0), 2)
         return cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB)
 
-    features = extract_features(keypoints)
+    features = extract_features(keypoints_3d)
 
     # ────────────── Derived Features ──────────────
-    if len(keypoints) > 16 and keypoints[15] and keypoints[16]:
+    def valid_pt(arr):
+        if arr is None: return False
+        if hasattr(arr, 'size'): return arr.size > 0
+        return len(arr) > 0
+
+    if len(keypoints) > 16 and valid_pt(keypoints[15]) and valid_pt(keypoints[16]):
         features["jump_feet"] = floor_y - min(keypoints[15][1], keypoints[16][1])
 
     # if len(keypoints) > 12 and keypoints[11] and keypoints[12]:
@@ -70,7 +75,7 @@ def process_frame(frame, keypoints, selected_rules, rules_all, floor_y,
 
     # ────────────── Mid-Hip (Balance) ──────────────
     mid_hip = None
-    if len(keypoints) > 12 and keypoints[11] is not None and keypoints[12] is not None:
+    if len(keypoints) > 12 and valid_pt(keypoints[11]) and valid_pt(keypoints[12]):
         left_hip = keypoints[11]
         right_hip = keypoints[12]
 

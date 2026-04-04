@@ -1,4 +1,5 @@
 # main.py
+import os
 import time
 import cv2
 import streamlit as st
@@ -9,7 +10,8 @@ from ui.video_controls import video_controls
 from ui.video_upload import handle_video_upload
 from ui.frame_display import process_frame
 from core.counters import RepCounter, SwayTracker
-from body_tracking import get_keypoints
+from body_tracking import process_video_gvhmr, project_3d_to_2d, smpl_to_coco17
+from remote_ssh_pipeline import process_video_on_remote
 from posture_analysis import load_rules
 
 # ────────────── Page Config ──────────────
@@ -22,7 +24,9 @@ for k, v in DEFAULTS.items():
         st.session_state[k] = v
 
 # ────────────── Load Rules ──────────────
-rules_all = load_rules("assets/rules.txt")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RULES_PATH = os.path.join(BASE_DIR, "assets", "rules.txt")
+rules_all = load_rules(RULES_PATH)
 default_rules = list(rules_all.keys())[:3]
 
 # ────────────── Sidebar ──────────────
@@ -32,6 +36,18 @@ selected_rules, source_option, run_webcam, exercise_name = setup_sidebar(rules_a
 # ────────────── Video Upload ──────────────
 if source_option == "Upload MP4 Video":
     handle_video_upload()
+    
+    cap_path = st.session_state.get("cap_path")
+    if cap_path:
+        if st.session_state.get("gvhmr_path") != cap_path:
+            with st.spinner("Processing video remotely on SSH GPU Server... This usually takes ~1 minute. Please wait..."):
+                gvhmr_results = process_video_on_remote(cap_path) # Uses GPU server now!
+                st.session_state["gvhmr_results"] = gvhmr_results
+                st.session_state["gvhmr_path"] = cap_path
+            
+            if gvhmr_results is None:
+                st.error("⚠️ GVHMR processing failed. No 3D tracking data was generated. Please check the PowerShell terminal window for exact error logs (e.g., failed to connect to SSH, missing dependencies).")
+
 
 # ────────────── Persistent Counters / Trackers ──────────────
 if "cmj_counter" not in st.session_state:
@@ -50,6 +66,26 @@ sls_counter     = st.session_state["sls_counter"]
 balance_tracker = st.session_state["balance_tracker"]
 
 
+def draw_skeleton(frame, keypoints_2d):
+    if not keypoints_2d:
+        return frame
+    
+    edges = [
+        (0,1),(0,2),(1,3),(2,4),
+        (5,7),(7,9),(6,8),(8,10),
+        (5,6), (5,11),(6,12), (11,12),
+        (11,13),(13,15), (12,14),(14,16)
+    ]
+    for pt in keypoints_2d:
+        if pt is not None:
+            cv2.circle(frame, (int(pt[0]), int(pt[1])), 5, (0, 255, 0), -1)
+            
+    for p1, p2 in edges:
+        kp1, kp2 = keypoints_2d[p1], keypoints_2d[p2]
+        if kp1 is not None and kp2 is not None:
+             cv2.line(frame, (int(kp1[0]), int(kp1[1])), (int(kp2[0]), int(kp2[1])), (0, 0, 255), 2)
+    return frame
+
 # ────────────── Helper: annotate + push one frame ──────────────
 def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
     """
@@ -65,18 +101,39 @@ def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
     if frame.shape[1] > 800:
         scale = 800 / frame.shape[1]
         frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
+    else:
+        scale = 1.0
 
-    keypoints, annotated = get_keypoints(frame)
-    if annotated is not None:
-        frame = annotated
+    keypoints_3d = None
+    keypoints_2d = None
+    annotated = frame.copy()
+
+    gvhmr_results = st.session_state.get("gvhmr_results")
+    if gvhmr_results is not None:
+        num_frames = len(gvhmr_results["joints_3d_global"])
+        idx_bounded = min(idx, num_frames - 1)
+        
+        smpl_global = gvhmr_results["joints_3d_global"][idx_bounded]
+        smpl_incam = gvhmr_results["joints_3d_incam"][idx_bounded]
+        
+        K = gvhmr_results["K_fullimg"][idx_bounded] if gvhmr_results["K_fullimg"].ndim == 3 else gvhmr_results["K_fullimg"]
+        
+        keypoints_3d = smpl_to_coco17(smpl_global)
+        joints_2d = project_3d_to_2d(smpl_incam, K)
+        keypoints_2d = smpl_to_coco17(joints_2d)
+        
+        if scale != 1.0:
+            keypoints_2d = [(int(pt[0]*scale), int(pt[1]*scale)) if pt is not None else None for pt in keypoints_2d]
+
+        annotated = draw_skeleton(annotated, keypoints_2d)
 
     frame_placeholder.image(
         process_frame(
-            frame, keypoints, selected_rules, rules_all,
+            annotated, keypoints_2d, keypoints_3d, selected_rules, rules_all,
             st.session_state["floor_y"],
             cmj_counter, sls_counter, balance_tracker,
         ),
-        use_container_width=True,
+        width="stretch",
     )
     return True
 
@@ -141,33 +198,8 @@ if source_option == "Upload MP4 Video" and st.session_state.get("cap_path"):
 
 # ────────────── Webcam ──────────────
 elif source_option == "Webcam" and run_webcam:
-    frame_area = st.empty()
-    stop_btn   = st.button("⏹ Stop Webcam")
-    cap        = cv2.VideoCapture(0)
-
-    while cap.isOpened() and not stop_btn:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        if frame.shape[1] > 800:
-            scale = 800 / frame.shape[1]
-            frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
-
-        keypoints, annotated = get_keypoints(frame)
-        if annotated is not None:
-            frame = annotated
-
-        frame_area.image(
-            process_frame(
-                frame, keypoints, selected_rules, rules_all,
-                st.session_state["floor_y"],
-                cmj_counter, sls_counter, balance_tracker,
-            ),
-            use_container_width=True,
-        )
-
-    cap.release()
+    st.error("GVHMR requires whole-video batch processing. Webcam mode is not available with GVHMR at this time.")
+    st.stop()
 
 elif source_option == "Webcam" and not run_webcam:
     st.info("Enable **Start Webcam** in the sidebar to begin.")
