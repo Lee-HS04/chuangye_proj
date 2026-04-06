@@ -1,6 +1,6 @@
 # core/posture.py
 import cv2
-from core.utils import calculate_angle
+from core.utils import calculate_angle, calculate_frontal_projection_angle
 
 def extract_features(keypoints):
     features = {}
@@ -15,9 +15,9 @@ def extract_features(keypoints):
 
     # FPPA example
     if all(valid_pt(keypoints[i]) for i in [11,13,15]):
-        features["FPPA_left"] = calculate_angle(keypoints[13], keypoints[11], keypoints[15])
+        features["FPPA_left"] = calculate_frontal_projection_angle(keypoints[11], keypoints[13], keypoints[15])
     if all(valid_pt(keypoints[i]) for i in [12,14,16]):
-        features["FPPA_right"] = calculate_angle(keypoints[14], keypoints[12], keypoints[16])
+        features["FPPA_right"] = calculate_frontal_projection_angle(keypoints[12], keypoints[14], keypoints[16])
     if valid_pt(keypoints[11]) and valid_pt(keypoints[12]):
         mid_hip = ((keypoints[11][0]+keypoints[12][0])/2, (keypoints[11][1]+keypoints[12][1])/2)
         features["mid_hip"] = mid_hip
