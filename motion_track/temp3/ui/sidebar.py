@@ -273,7 +273,7 @@ def setup_sidebar(rules_all, selected_rules):
 
     def nudge_floor(delta):
         st.session_state["floor_y"] = max(
-            0, min(1080, st.session_state["floor_y"] + delta)
+            0, min(3000, st.session_state["floor_y"] + delta)
         )
 
     def sync_from_slider():
@@ -295,7 +295,7 @@ def setup_sidebar(rules_all, selected_rules):
     col_val.number_input(
         "Y",
         min_value=0,
-        max_value=1080,
+        max_value=3000,
         step=1,
         key="_floor_number",
         on_change=sync_from_number,
@@ -305,7 +305,7 @@ def setup_sidebar(rules_all, selected_rules):
     st.sidebar.slider(
         "Fine-tune floor",
         0,
-        1080,
+        3000,
         key="_floor_slider",
         on_change=sync_from_slider,
         label_visibility="collapsed",

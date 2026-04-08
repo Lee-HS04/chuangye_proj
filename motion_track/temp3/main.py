@@ -9,7 +9,7 @@ from ui.sidebar import setup_sidebar
 from ui.video_controls import video_controls
 from ui.video_upload import handle_video_upload
 from ui.frame_display import process_frame
-from core.counters import RepCounter, SwayTracker
+from core.counters import R2PScorer, RepCounter, SwayTracker, extract_features, CMJTracker, calculate_fppa
 from body_tracking import process_video_gvhmr, project_3d_to_2d, smpl_to_coco17
 from remote_ssh_pipeline import process_video_on_remote
 from posture_analysis import load_rules
@@ -100,6 +100,7 @@ def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
     if not ret:
         return False
 
+    # Resize for display if too large
     if frame.shape[1] > 800:
         scale = 800 / frame.shape[1]
         frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
@@ -110,6 +111,7 @@ def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
     keypoints_2d = None
     annotated = frame.copy()
 
+    # Ensure GVHMR results exist
     gvhmr_results = st.session_state.get("gvhmr_results")
     if gvhmr_results is not None:
         num_frames = len(gvhmr_results["joints_3d_global"])
@@ -129,15 +131,79 @@ def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
 
         annotated = draw_skeleton(annotated, keypoints_2d)
 
+    # ────────────── Ensure R2PScorer exists ──────────────
+    if "r2p_scorer" not in st.session_state:
+        from core.counters import R2PScorer
+        st.session_state["r2p_scorer"] = R2PScorer()
+
+    # ────────────── Render frame with posture scoring ──────────────
     frame_placeholder.image(
         process_frame(
-            annotated, keypoints_2d, keypoints_3d, selected_rules, rules_all,
+            annotated,
+            keypoints_2d,
+            keypoints_3d,
+            selected_rules,
+            rules_all,
             st.session_state["floor_y"],
-            cmj_counter, sls_counter, balance_tracker,
+            cmj_counter,
+            sls_counter,
+            balance_tracker,
+            st.session_state["r2p_scorer"],  # pass the R2PScorer here
         ),
         width="stretch",
     )
+
     return True
+
+# def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
+#     """
+#     Read frame at current frame_index, annotate it, push to placeholder.
+#     Returns False if the frame could not be read.
+#     """
+#     idx = int(st.session_state["frame_index"])
+#     cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+#     ret, frame = cap.read()
+#     if not ret:
+#         return False
+
+#     if frame.shape[1] > 800:
+#         scale = 800 / frame.shape[1]
+#         frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
+#     else:
+#         scale = 1.0
+
+#     keypoints_3d = None
+#     keypoints_2d = None
+#     annotated = frame.copy()
+
+#     gvhmr_results = st.session_state.get("gvhmr_results")
+#     if gvhmr_results is not None:
+#         num_frames = len(gvhmr_results["joints_3d_global"])
+#         idx_bounded = min(idx, num_frames - 1)
+        
+#         smpl_global = gvhmr_results["joints_3d_global"][idx_bounded]
+#         smpl_incam = gvhmr_results["joints_3d_incam"][idx_bounded]
+        
+#         K = gvhmr_results["K_fullimg"][idx_bounded] if gvhmr_results["K_fullimg"].ndim == 3 else gvhmr_results["K_fullimg"]
+        
+#         keypoints_3d = smpl_to_coco17(smpl_global)
+#         joints_2d = project_3d_to_2d(smpl_incam, K)
+#         keypoints_2d = smpl_to_coco17(joints_2d)
+        
+#         if scale != 1.0:
+#             keypoints_2d = [(int(pt[0]*scale), int(pt[1]*scale)) if pt is not None else None for pt in keypoints_2d]
+
+#         annotated = draw_skeleton(annotated, keypoints_2d)
+
+#     frame_placeholder.image(
+#         process_frame(
+#             annotated, keypoints_2d, keypoints_3d, selected_rules, rules_all,
+#             st.session_state["floor_y"],
+#             cmj_counter, sls_counter, balance_tracker,
+#         ),
+#         width="stretch",
+#     )
+#     return True
 
 
 # ────────────── MP4 Playback ──────────────
