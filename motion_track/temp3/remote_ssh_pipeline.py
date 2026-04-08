@@ -15,7 +15,7 @@ def get_ssh_client():
     ssh.connect(REMOTE_IP, port=REMOTE_PORT, username=USERNAME, password=PASSWORD)
     return ssh
 
-def process_video_on_remote(video_path, output_dir="temp_gvhmr_output"):
+def process_video_on_remote(video_path, output_dir="temp_gvhmr_output", f_mm=None):
     os.makedirs(output_dir, exist_ok=True)
     video_filename = os.path.basename(video_path)
     video_base = os.path.splitext(video_filename)[0]
@@ -82,11 +82,14 @@ print('Done decoding.')
         return None
 
     # Command uses bash -lc and explicit source to load conda, activates it, runs demo, and runs decoder!
+    
+    f_mm_arg = f"--f_mm {f_mm}" if f_mm is not None else ""
+    
     cmd = (
         f"bash -lc \"source ~/miniconda3/etc/profile.d/conda.sh 2>/dev/null || source ~/anaconda3/etc/profile.d/conda.sh 2>/dev/null; "
         f"conda activate gvhmr && "
         f"cd /home/ai/GVHMR && "
-        f"CUDA_VISIBLE_DEVICES=0 python tools/demo/demo.py --video '{remote_video_path}' --output_root '{remote_output_dir}' -s && "
+        f"CUDA_VISIBLE_DEVICES=0 python tools/demo/demo.py --video '{remote_video_path}' --output_root '{remote_output_dir}' -s {f_mm_arg} && "
         f"CUDA_VISIBLE_DEVICES=0 python {remote_decoder_path} && "
         f"rm -f {remote_decoder_path}\""
     )

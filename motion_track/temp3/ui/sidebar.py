@@ -237,6 +237,30 @@ def setup_sidebar(rules_all, selected_rules):
         ["Webcam", "Upload MP4 Video"],
         label_visibility="collapsed",
     )
+    
+    # Camera Lens setting to help GVHMR
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🔍 Camera Lens (Focal Length)")
+    lens_type = st.sidebar.selectbox(
+        "For better 3D tracking, what kind of lens was this video shot on?",
+        [
+            "Standard / 1x (24mm)", 
+            "Ultra Wide / 0.5x (13mm)", 
+            "Telephoto / 2x (48mm)", 
+            "Telephoto / 3x (77mm)",
+            "Default / Unknown"
+        ]
+    )
+    
+    # Map selection to mm integer
+    f_mm_map = {
+        "Ultra Wide / 0.5x (13mm)": 13,
+        "Standard / 1x (24mm)": 24,
+        "Telephoto / 2x (48mm)": 48,
+        "Telephoto / 3x (77mm)": 77,
+        "Default / Unknown": None
+    }
+    st.session_state["camera_f_mm"] = f_mm_map[lens_type]
 
     # -----------------------------
     # Floor controls

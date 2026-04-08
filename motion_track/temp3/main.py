@@ -39,11 +39,13 @@ if source_option == "Upload MP4 Video":
     
     cap_path = st.session_state.get("cap_path")
     if cap_path:
-        if st.session_state.get("gvhmr_path") != cap_path:
+        f_mm = st.session_state.get("camera_f_mm", 24)
+        if st.session_state.get("gvhmr_path") != cap_path or st.session_state.get("gvhmr_f_mm") != f_mm:
             with st.spinner("Processing video remotely on SSH GPU Server... This usually takes ~1 minute. Please wait..."):
-                gvhmr_results = process_video_on_remote(cap_path) # Uses GPU server now!
+                gvhmr_results = process_video_on_remote(cap_path, f_mm=f_mm) # Uses GPU server now!
                 st.session_state["gvhmr_results"] = gvhmr_results
                 st.session_state["gvhmr_path"] = cap_path
+                st.session_state["gvhmr_f_mm"] = f_mm
             
             if gvhmr_results is None:
                 st.error("⚠️ GVHMR processing failed. No 3D tracking data was generated. Please check the PowerShell terminal window for exact error logs (e.g., failed to connect to SSH, missing dependencies).")
