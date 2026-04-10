@@ -3,11 +3,12 @@ import scp
 import os
 import torch
 import numpy as np
+import time
 
 REMOTE_IP = "101.6.162.37"
 REMOTE_PORT = 62222
 USERNAME = "ai"
-PASSWORD = "CS26S02"  # Note: normally should be stored securely, but this is user-provided
+PASSWORD = "cs26sR2P"  # Note: normally should be stored securely, but this is user-provided
 
 def get_ssh_client():
     ssh = paramiko.SSHClient()
@@ -33,6 +34,7 @@ def process_video_on_remote(video_path, output_dir="temp_gvhmr_output", f_mm=Non
         return None
 
     print(f"Uploading video {video_filename} to remote...")
+    upload_start = time.time()
     try:
         ssh.exec_command(f"mkdir -p {remote_video_dir} {remote_output_dir}")
         ssh.exec_command(f"rm -f '{remote_video_path}'")
@@ -42,8 +44,11 @@ def process_video_on_remote(video_path, output_dir="temp_gvhmr_output", f_mm=Non
         print(f"Failed to copy video: {e}")
         ssh.close()
         return None
+    upload_end = time.time()
+    print(f"Upload complete in {upload_end - upload_start:.2f} seconds.")
         
     print("Running GVHMR on remote GPU (this will take a while)...")
+    processing_start = time.time()
     
     # We create a tiny python script remotely to do the decoding there, 
     # since the server already has the SMPL weight files installed!
@@ -102,8 +107,11 @@ print('Done decoding.')
         print(stderr.read().decode())
         ssh.close()
         return None
+    processing_end = time.time()
+    print(f"Remote GVHMR processing complete in {processing_end - processing_start:.2f} seconds.")
         
     print("Processing complete. Downloading 3D parameters...")
+    download_start = time.time()
     local_result_pt = os.path.join(output_dir, f"{video_base}_hmr4d_results.pt")
     try:
         with scp.SCPClient(ssh.get_transport()) as scp_client:
@@ -112,6 +120,8 @@ print('Done decoding.')
         print(f"Failed to download results: {e}")
         ssh.close()
         return None
+    download_end = time.time()
+    print(f"Download complete in {download_end - download_start:.2f} seconds.")
         
     ssh.close()
     

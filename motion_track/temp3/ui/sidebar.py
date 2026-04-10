@@ -238,6 +238,13 @@ def setup_sidebar(rules_all, selected_rules):
         label_visibility="collapsed",
     )
     
+    st.sidebar.markdown("---")
+    st.session_state["show_skeleton"] = st.sidebar.checkbox(
+        "🦴 Show Skeleton Overlay", 
+        value=True, 
+        help="Turn off to speed up video playback"
+    )
+
     # Camera Lens setting to help GVHMR
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🔍 Camera Lens (Focal Length)")

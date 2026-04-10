@@ -10,7 +10,7 @@ from ui.video_controls import video_controls
 from ui.video_upload import handle_video_upload
 from ui.frame_display import process_frame
 from core.counters import R2PScorer, RepCounter, SwayTracker, extract_features, CMJTracker, calculate_fppa
-from body_tracking import process_video_gvhmr, project_3d_to_2d, smpl_to_coco17
+from body_tracking import process_video_gvhmr, project_3d_to_2d, smpl_to_coco17, get_yolo26_keypoints
 from remote_ssh_pipeline import process_video_on_remote
 from posture_analysis import load_rules
 
@@ -40,15 +40,26 @@ if source_option == "Upload MP4 Video":
     cap_path = st.session_state.get("cap_path")
     if cap_path:
         f_mm = st.session_state.get("camera_f_mm", 24)
-        if st.session_state.get("gvhmr_path") != cap_path or st.session_state.get("gvhmr_f_mm") != f_mm:
-            with st.spinner("Processing video remotely on SSH GPU Server... This usually takes ~1 minute. Please wait..."):
-                gvhmr_results = process_video_on_remote(cap_path, f_mm=f_mm) # Uses GPU server now!
-                st.session_state["gvhmr_results"] = gvhmr_results
-                st.session_state["gvhmr_path"] = cap_path
-                st.session_state["gvhmr_f_mm"] = f_mm
-            
-            if gvhmr_results is None:
-                st.error("⚠️ GVHMR processing failed. No 3D tracking data was generated. Please check the PowerShell terminal window for exact error logs (e.g., failed to connect to SSH, missing dependencies).")
+        
+        # Conditionally skip GVHMR processing for Balance/Frontal tests
+        # To temporarily disable YOLO and test GVHMR, set use_yolo26 = False
+        use_yolo26 = exercise_name in ["SLS", "Balance", "Proper Squat"] 
+        st.session_state["use_yolo26"] = use_yolo26
+        
+        if not use_yolo26:
+            if st.session_state.get("gvhmr_path") != cap_path or st.session_state.get("gvhmr_f_mm") != f_mm:
+                with st.spinner("Processing video remotely on SSH GPU Server... This usually takes ~1 minute. Please wait..."):
+                    gvhmr_results = process_video_on_remote(cap_path, f_mm=f_mm) # Uses GPU server now!
+                    st.session_state["gvhmr_results"] = gvhmr_results
+                    st.session_state["gvhmr_path"] = cap_path
+                    st.session_state["gvhmr_f_mm"] = f_mm
+                
+                if gvhmr_results is None:
+                    st.error("⚠️ GVHMR processing failed. No 3D tracking data was generated.")
+        else:
+            # Tell the system we are using local YOLO
+            st.session_state["gvhmr_results"] = None
+            st.info("⚡ Real-time YOLO26 selected for frontal balance tests. Bypassing GVHMR SSH processing.")
 
 
 # ────────────── Persistent Counters / Trackers ──────────────
@@ -95,6 +106,10 @@ def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
     Returns False if the frame could not be read.
     """
     idx = int(st.session_state["frame_index"])
+    
+    # Start timer for frame processing
+    frame_perf_start = time.perf_counter()
+    
     cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
     ret, frame = cap.read()
     if not ret:
@@ -113,7 +128,29 @@ def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
 
     # Ensure GVHMR results exist
     gvhmr_results = st.session_state.get("gvhmr_results")
-    if gvhmr_results is not None:
+    use_yolo26 = st.session_state.get("use_yolo26", False)
+    
+    if use_yolo26:
+        # Frontal balance test -> Use Local YOLO26
+        # Get 2D (x,y) keypoints directly
+        keypoints_2d_raw = get_yolo26_keypoints(frame)
+        
+        # In YOLO 2D tests, our 3D logic simply utilizes X,Y in calculate_frontal_projection_angle()
+        # So we can pass the exact same 2D data as 3D (math logic applies indices [0] and [1]).
+        # Add a dummy Z dimension (0.0) so the rest of the 3D-oriented system doesn't crash on len().
+        keypoints_3d = [(pt[0], pt[1], 0.0) if pt else None for pt in keypoints_2d_raw]
+        
+        # Scale for display
+        if scale != 1.0:
+            keypoints_2d = [(int(pt[0]*scale), int(pt[1]*scale)) if pt is not None else None for pt in keypoints_2d_raw]
+        else:
+            keypoints_2d = [(int(pt[0]), int(pt[1])) if pt is not None else None for pt in keypoints_2d_raw]
+            
+        if st.session_state.get("show_skeleton", True):
+            annotated = draw_skeleton(annotated, keypoints_2d)
+
+    elif gvhmr_results is not None:
+        # Standard Profile -> Use Remote GVHMR
         num_frames = len(gvhmr_results["joints_3d_global"])
         idx_bounded = min(idx, num_frames - 1)
         
@@ -127,9 +164,12 @@ def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
         keypoints_2d = smpl_to_coco17(joints_2d)
         
         if scale != 1.0:
-            keypoints_2d = [(int(pt[0]*scale), int(pt[1]*scale)) if pt is not None else None for pt in keypoints_2d]
+            keypoints_2d_scaled = [(int(pt[0]*scale), int(pt[1]*scale)) if pt is not None else None for pt in keypoints_2d]
+            keypoints_2d = keypoints_2d_scaled
 
-        annotated = draw_skeleton(annotated, keypoints_2d)
+        # ONLY DRAW THE SKELETON IF THE TOGGLE IS CHECKED:
+        if st.session_state.get("show_skeleton", True):
+            annotated = draw_skeleton(annotated, keypoints_2d)
 
     # ────────────── Ensure R2PScorer exists ──────────────
     if "r2p_scorer" not in st.session_state:
@@ -137,19 +177,30 @@ def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
         st.session_state["r2p_scorer"] = R2PScorer()
 
     # ────────────── Render frame with posture scoring ──────────────
+    processed_image = process_frame(
+        annotated,
+        keypoints_2d,
+        keypoints_3d,
+        selected_rules,
+        rules_all,
+        st.session_state["floor_y"],
+        cmj_counter,
+        sls_counter,
+        balance_tracker,
+        st.session_state["r2p_scorer"],
+    )
+    
+    frame_perf_end = time.perf_counter()
+    latency_ms = (frame_perf_end - frame_perf_start) * 1000
+    
+    # Annotate processing time directly onto the image
+    cv2.putText(processed_image, f"Local Render: {latency_ms:.1f}ms", (10, processed_image.shape[0] - 20), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 3)
+    cv2.putText(processed_image, f"Local Render: {latency_ms:.1f}ms", (10, processed_image.shape[0] - 20), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+
     frame_placeholder.image(
-        process_frame(
-            annotated,
-            keypoints_2d,
-            keypoints_3d,
-            selected_rules,
-            rules_all,
-            st.session_state["floor_y"],
-            cmj_counter,
-            sls_counter,
-            balance_tracker,
-            st.session_state["r2p_scorer"],  # pass the R2PScorer here
-        ),
+        processed_image,
         width="stretch",
     )
 

@@ -118,3 +118,40 @@ def project_3d_to_2d(joints_3d_incam, K_fullimg):
         y = x2d[1] / z
         projected.append((int(x), int(y)))
     return projected
+
+# -----------------------------
+# YOLO26 Override For Balances
+# -----------------------------
+_yolo_model = None
+
+def get_yolo26_keypoints(frame):
+    """
+    Skipping GVHMR for Balance / Frontal exercises and using YOLO for immediate 2D X/Y estimation.
+    We try to load 'yolov26-pose.pt' as requested, with 'yolov8n-pose.pt' as the fallback 
+    if the fictional/newer weights aren't downloaded yet.
+    """
+    global _yolo_model
+    if _yolo_model is None:
+        from ultralytics import YOLO
+        import ultralytics
+        import os
+        print(f"Ultralytics version: {ultralytics.__version__}")
+        try: 
+            print("Using yolo26 model")
+            _yolo_model = YOLO("yolo26n-pose.pt")
+        except:
+            print("Failed to load yolo26, falling back to yolov8n")
+            _yolo_model = YOLO("yolov8n-pose.pt")
+        
+    results = _yolo_model(frame, verbose=False)
+    if len(results) > 0 and len(results[0].keypoints) > 0:
+        kp = results[0].keypoints.xy.cpu().numpy()[0] # shape: (17, 2)
+        coco_17 = []
+        for point in kp:
+            # YOLO returns exactly 0.0 if a keypoint isn't found
+            if point[0] == 0.0 and point[1] == 0.0:
+                coco_17.append(None)
+            else:
+                coco_17.append((float(point[0]), float(point[1])))
+        return coco_17
+    return [None] * 17
