@@ -43,7 +43,8 @@ if source_option == "Upload MP4 Video":
         
         # Conditionally skip GVHMR processing for Balance/Frontal tests
         # To temporarily disable YOLO and test GVHMR, set use_yolo26 = False
-        use_yolo26 = exercise_name in ["SLS", "Balance", "Proper Squat"] 
+        use_yolo26 = exercise_name in ["SLS", "Balance"] 
+        # use_yolo26 = False # Uncomment this line to force GVHMR mapping for all exercises
         st.session_state["use_yolo26"] = use_yolo26
         
         if not use_yolo26:
@@ -123,87 +124,25 @@ sls_counter = st.session_state["sls_counter"]
 balance_tracker = st.session_state["balance_tracker"]
 r2p_scorer = st.session_state["r2p_scorer"]
 
-
-
-
-# ────────────── Helper: Draw Skeleton ──────────────
 def draw_skeleton(frame, keypoints_2d):
     if not keypoints_2d:
         return frame
+    
     edges = [
         (0,1),(0,2),(1,3),(2,4),
         (5,7),(7,9),(6,8),(8,10),
-        (5,6),(5,11),(6,12),(11,12),
-        (11,13),(13,15),(12,14),(14,16)
+        (5,6), (5,11),(6,12), (11,12),
+        (11,13),(13,15), (12,14),(14,16)
     ]
     for pt in keypoints_2d:
         if pt is not None:
             cv2.circle(frame, (int(pt[0]), int(pt[1])), 5, (0, 255, 0), -1)
+            
     for p1, p2 in edges:
         kp1, kp2 = keypoints_2d[p1], keypoints_2d[p2]
         if kp1 is not None and kp2 is not None:
-            cv2.line(frame, (int(kp1[0]), int(kp1[1])), (int(kp2[0]), int(kp2[1])), (0, 0, 255), 2)
+             cv2.line(frame, (int(kp1[0]), int(kp1[1])), (int(kp2[0]), int(kp2[1])), (0, 0, 255), 2)
     return frame
-
-# ────────────── Helper: Render One Frame ──────────────
-def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
-    idx = int(st.session_state["frame_index"])
-    cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
-    ret, frame = cap.read()
-    if not ret:
-        return False
-
-    # Resize if too large
-    scale = 1.0
-    if frame.shape[1] > 800:
-        scale = 800 / frame.shape[1]
-        frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
-
-    annotated = frame.copy()
-    keypoints_3d = None
-    keypoints_2d = None
-
-    gvhmr_results = st.session_state.get("gvhmr_results")
-    if gvhmr_results:
-        num_frames = len(gvhmr_results["joints_3d_global"])
-        idx_bounded = min(idx, num_frames - 1)
-        smpl_global = gvhmr_results["joints_3d_global"][idx_bounded]
-        smpl_incam  = gvhmr_results["joints_3d_incam"][idx_bounded]
-        K = gvhmr_results["K_fullimg"][idx_bounded] if gvhmr_results["K_fullimg"].ndim == 3 else gvhmr_results["K_fullimg"]
-
-        keypoints_3d = smpl_to_coco17(smpl_global)
-        joints_2d = project_3d_to_2d(smpl_incam, K)
-        keypoints_2d = smpl_to_coco17(joints_2d)
-
-        if scale != 1.0:
-            keypoints_2d = [(int(pt[0]*scale), int(pt[1]*scale)) if pt is not None else None for pt in keypoints_2d]
-
-        annotated = draw_skeleton(annotated, keypoints_2d)
-
-    # Push processed frame to Streamlit
-    frame_placeholder.image(
-        process_frame(
-            annotated,
-            keypoints_2d,
-            keypoints_3d,
-            selected_rules,
-            rules_all,
-            st.session_state["floor_y"],
-            cmj_counter,
-            sls_counter,
-            balance_tracker,
-            r2p_scorer,
-        ),
-        width="stretch",
-    )
-    return True
-
-
-
-
-
-
-
 
 # ────────────── Helper: annotate + push one frame ──────────────
 def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
