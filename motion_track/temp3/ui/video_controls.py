@@ -1,5 +1,5 @@
 import streamlit as st
-
+from core.counters import R2PScorer, RepCounter, SwayTracker, extract_features, CMJTracker, calculate_fppa
 
 def video_controls(total_frames: int, fps: float) -> None:
     """
@@ -14,6 +14,9 @@ def video_controls(total_frames: int, fps: float) -> None:
     def _go_start():
         st.session_state["frame_index"] = 0
         st.session_state["playing"] = False
+#reset trackers history
+        st.session_state["sway_tracker"].reset()
+
 
     with c1:
         st.button("⏮", key="start_btn", on_click=_go_start)

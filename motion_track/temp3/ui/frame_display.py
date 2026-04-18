@@ -69,6 +69,7 @@ def process_frame(
     # ==========================================================
     # UPDATE TRACKERS
     # ==========================================================
+    sway_tracker = st.session_state["sway_tracker"]
     sway_tracker.update(features["mid_hip"])
 
     sway_velocity = sway_tracker.get_sway_velocity()

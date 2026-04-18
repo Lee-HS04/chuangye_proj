@@ -8,12 +8,13 @@ import time
 REMOTE_IP = "101.6.162.37"
 REMOTE_PORT = 62222
 USERNAME = "ai"
-PASSWORD = "cs26sR2P"  # Note: normally should be stored securely, but this is user-provided
+SSH_KEY_PATH = os.path.expanduser(r"C:\Users\GanJX\.ssh\id_ed25519")  # Update this if your private key is named differently or located elsewhere
+# PASSWORD = "cs26sR2P"  # Note: normally should be stored securely, but this is user-provided
 
 def get_ssh_client():
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(REMOTE_IP, port=REMOTE_PORT, username=USERNAME, password=PASSWORD)
+    ssh.connect(REMOTE_IP, port=REMOTE_PORT, username=USERNAME, key_filename=SSH_KEY_PATH)
     return ssh
 
 def process_video_on_remote(video_path, output_dir="temp_gvhmr_output", f_mm=None):

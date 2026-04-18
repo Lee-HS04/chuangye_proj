@@ -214,46 +214,91 @@ class RepCounter:
 # ============================================================
 # SWAY TRACKER
 # ============================================================
+import numpy as np
+from collections import deque
+
+
 class SwayTracker:
-    def __init__(self, window_size=50, fps=30):
-        self.positions = deque(maxlen=window_size)
-        self.sway_velocity = 0
-        self.cv = 0
+    def __init__(self, fps=30, threshold=0.0):
+        self.positions = deque(maxlen=2)
+
+        # ✅ FULL HISTORY (no maxlen)
+        self.vel_history = []
+
         self.fps = fps
+        self.threshold = threshold
+
+        self.sway_velocity = 0.0
+        self.cv = 0.0
 
     def update(self, mid_hip):
         if mid_hip is None:
             return
 
-        mid_hip = tuple(float(v) for v in mid_hip)
-        self.positions.append(mid_hip)
+        v = np.array(mid_hip, dtype=float)
 
-        if len(self.positions) > 1:
-            pos_list = list(self.positions)
+        if v.shape[0] < 3:
+            return
 
-            displacements = [
-                np.linalg.norm(
-                    np.array(pos_list[i + 1]) - np.array(pos_list[i])
-                ) * self.fps
-                for i in range(len(pos_list) - 1)
-            ]
+        self.positions.append(v)
 
-            floor = 5.0  # ignore very small displacements
-            mean_disp = max(np.mean(displacements), floor)
-            std_disp = np.std(displacements)
-            self.cv = (std_disp / mean_disp * 100)
+        if len(self.positions) < 2:
+            return
 
+        p1, p2 = self.positions[-2], self.positions[-1]
 
-            # self.sway_velocity = np.mean(displacements)
+        # ----------------------------
+        # 3D displacement
+        # ----------------------------
+        diff = p2 - p1
 
-            # mean_disp = np.mean(displacements)
-            # std_disp = np.std(displacements)
+        dist = np.sqrt(
+            diff[0]**2 +
+            diff[1]**2 +
+            diff[2]**2
+        )
 
-            # self.cv = (std_disp / mean_disp * 100) if mean_disp > 0 else 0
+        if dist < self.threshold:
+            dist = 0.0
 
+        velocity = dist * self.fps
+
+        # ----------------------------
+        # SMOOTH VELOCITY (IMPORTANT)
+        # ----------------------------
+        alpha_v = 0.9
+
+        if not hasattr(self, "vel_ema"):
+            self.vel_ema = velocity
         else:
-            self.sway_velocity = 0
-            self.cv = 0
+            self.vel_ema = alpha_v * self.vel_ema + (1 - alpha_v) * velocity
+
+        # store smoothed velocity instead of raw
+        self.vel_history.append(self.vel_ema)
+
+        # ----------------------------
+        # mean sway velocity (full video)
+        # ----------------------------
+        self.sway_velocity = float(np.mean(self.vel_history))
+
+        # ----------------------------
+        # CV over ENTIRE VIDEO
+        # ----------------------------
+        if len(self.vel_history) > 5:
+            v = np.array(self.vel_history)
+
+            mean_v = np.mean(v)
+            std_v = np.std(v)
+
+            if mean_v > 1e-6:
+                self.cv = (std_v / mean_v) * 100
+            else:
+                self.cv = 0.0
+        else:
+            self.cv = 0.0
+            
+# # debug vsway and cv
+#         print(f"V_sway: {self.sway_velocity:.6f}, CV: {self.cv:.2f}")
 
     def get_sway_velocity(self):
         return self.sway_velocity
@@ -261,6 +306,15 @@ class SwayTracker:
     def get_cv(self):
         return self.cv
 
+    def reset(self):
+        self.positions.clear()
+        self.vel_history.clear()
+        self.sway_velocity = 0.0
+        self.cv = 0.0
+
+        # IMPORTANT: reset EMA state
+        if hasattr(self, "vel_ema"):
+            del self.vel_ema
 
 # ============================================================
 # FPPA CALCULATION
@@ -362,7 +416,7 @@ class CMJTracker:
 # ============================================================
 # FEATURE EXTRACTION FROM TRACKER OUTPUT
 # ============================================================
-def extract_features(tracker_output, baseline_feet_y=None):
+def extract_features(tracker_output, baseline_feet_y=None, prev_mid_hip=None):
     """
     Accepts tracker dictionary:
 
@@ -389,14 +443,40 @@ def extract_features(tracker_output, baseline_feet_y=None):
 
     try:
         # ---------------- MID HIP ----------------
+        # left_hip = joints[11]
+        # right_hip = joints[12]
+
+        # features["mid_hip"] = (
+        #     (left_hip[0] + right_hip[0]) / 2,
+        #     (left_hip[1] + right_hip[1]) / 2,
+        #     (left_hip[2] + right_hip[2]) / 2,
+        # )
+# ---------------- MID HIP ----------------
         left_hip = joints[11]
         right_hip = joints[12]
 
-        features["mid_hip"] = (
+        alpha = 1
+
+        raw_mid_hip = np.array([
             (left_hip[0] + right_hip[0]) / 2,
             (left_hip[1] + right_hip[1]) / 2,
             (left_hip[2] + right_hip[2]) / 2,
-        )
+        ], dtype=float)
+
+        # ---------------- SMOOTHING ----------------
+        if prev_mid_hip is None:
+            mid_hip = raw_mid_hip
+        else:
+            mid_hip = alpha * raw_mid_hip + (1 - alpha) * prev_mid_hip
+
+        features["mid_hip"] = tuple(mid_hip)
+
+        # ---------------- FPPA ----------------
+        features["sls_fppa"] = calculate_fppa(joints)
+
+
+
+
 
         # ---------------- FPPA ----------------
         features["sls_fppa"] = calculate_fppa(joints)
