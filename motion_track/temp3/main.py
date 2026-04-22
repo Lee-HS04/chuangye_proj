@@ -9,7 +9,7 @@ from ui.sidebar import setup_sidebar
 from ui.video_controls import video_controls
 from ui.video_upload import handle_video_upload
 from ui.frame_display import process_frame
-from core.counters import R2PScorer, RepCounter, SwayTracker, extract_features, CMJTracker, calculate_fppa
+from core.counters import R2PScorer, SLSDetector, SwayTracker, extract_features, CMJTracker, calculate_fppa
 from body_tracking import process_video_gvhmr, project_3d_to_2d, smpl_to_coco17, get_yolo26_keypoints
 from remote_ssh_pipeline import process_video_on_remote
 from posture_analysis import load_rules
@@ -20,7 +20,7 @@ st.title("R2P Ready-to-Play Guard")
 
 # Global storage for trackers
 if "sway_tracker" not in st.session_state:
-    st.session_state["sway_tracker"] = SwayTracker(fps=30)
+    st.session_state["sway_tracker"] = SwayTracker(fps=60)
 
 # ────────────── Session Defaults ──────────────
 for k, v in DEFAULTS.items():
@@ -90,18 +90,13 @@ if source_option == "Upload MP4 Video":
 
 # ────────────── Persistent Counters / Trackers ──────────────
 if "cmj_counter" not in st.session_state:
-    st.session_state["cmj_counter"] = CMJTracker(fps=30)
+    st.session_state["cmj_counter"] = CMJTracker(fps=60)
 
 if "sls_counter" not in st.session_state:
-    st.session_state["sls_counter"] = RepCounter(
-        exercise="SLS",
-        feature="sls_fppa",
-        min_angle=5,
-        max_angle=15
-    )
+    st.session_state["sls_counter"] = SLSDetector()
 
 if "balance_tracker" not in st.session_state:
-    st.session_state["balance_tracker"] = SwayTracker(fps=30)
+    st.session_state["balance_tracker"] = SwayTracker(fps=60)
 
 if "r2p_scorer" not in st.session_state:
     st.session_state["r2p_scorer"] = R2PScorer()
@@ -242,7 +237,7 @@ def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
 # ────────────── MP4 Playback ──────────────
 if source_option == "Upload MP4 Video" and st.session_state.get("cap_path"):
     total_frames = st.session_state.get("total_frames", 1)
-    fps          = st.session_state.get("video_fps", 30)
+    fps          = st.session_state.get("video_fps", 60)
 
     # Controls live in a fixed container — rendered once before the loop
     # so they stay visible and clickable throughout playback.
