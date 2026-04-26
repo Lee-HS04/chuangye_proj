@@ -27,6 +27,13 @@ for k, v in DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
+# ────────────── Data Storage ──────────────
+if "video_results" not in st.session_state:
+    st.session_state["video_results"] = []
+
+if "cv_saved" not in st.session_state:
+    st.session_state["cv_saved"] = False
+
 # ────────────── Load Rules ──────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RULES_PATH = os.path.join(BASE_DIR, "assets", "rules.txt")
@@ -44,6 +51,7 @@ if source_option == "Upload MP4 Video":
     cap_path = st.session_state.get("cap_path")
     if cap_path:
         f_mm = st.session_state.get("camera_f_mm", 24)
+
         
         # Conditionally skip GVHMR processing for Balance/Frontal tests
         # To temporarily disable YOLO and test GVHMR, set use_yolo26 = False
@@ -261,10 +269,24 @@ if source_option == "Upload MP4 Video" and st.session_state.get("cap_path"):
                 break
 
             idx = int(st.session_state["frame_index"])
+
+            # if idx >= total_frames - 1:
+            #     st.session_state["playing"] = False
+            #     st.session_state["frame_index"] = total_frames - 1
             if idx >= total_frames - 1:
                 st.session_state["playing"] = False
                 st.session_state["frame_index"] = total_frames - 1
-                break
+
+                # ---- FINAL CV LOGGING ----
+                sway_tracker = st.session_state["sway_tracker"]
+
+                cv = sway_tracker.get_cv()
+                one_minus_cv = sway_tracker.get_one_minus_cv()
+
+                with open("sway_results.csv", "a") as f:
+                    f.write(f"{cv:.4f},{one_minus_cv:.4f}\n")
+
+
 
             t0 = time.perf_counter()
 
@@ -299,5 +321,8 @@ elif source_option == "Webcam" and run_webcam:
 
 elif source_option == "Webcam" and not run_webcam:
     st.info("Enable **Start Webcam** in the sidebar to begin.")
+
+
+
 
 

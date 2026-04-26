@@ -234,15 +234,24 @@ class SwayTracker:
         self.sway_velocity = 0.0
         self.cv = 0.0
         self.one_minus_cv = 0.0
+        self.final_cv = None
+        self.final_one_minus_cv = None
 
-    def update(self, mid_hip):
-        if mid_hip is None:
+    def update(self, mid_hip, mid_shoulder):
+        if mid_hip is None or mid_shoulder is None:
             return
 
-        v = np.array(mid_hip, dtype=float)
+        hip = np.array(mid_hip, dtype=float)
+        shoulder = np.array(mid_shoulder, dtype=float)
 
-        if v.shape[0] < 3:
+        if hip.shape[0] < 3 or shoulder.shape[0] < 3:
             return
+
+        # weights
+        w_hip = 0.7
+        w_shoulder = 0.3
+
+        v = w_hip * hip + w_shoulder * shoulder
 
         self.positions.append(v)
 
@@ -251,21 +260,45 @@ class SwayTracker:
 
         p1, p2 = self.positions[-2], self.positions[-1]
 
-        # ----------------------------
-        # 3D displacement
-        # ----------------------------
         diff = p2 - p1
-
-        dist = np.sqrt(
-            diff[0]**2 +
-            diff[1]**2 +
-            diff[2]**2
-        )
+        dist = np.linalg.norm(diff)
 
         if dist < self.threshold:
             dist = 0.0
 
         velocity = dist * self.fps
+
+    # def update(self, mid_hip):
+    #     if mid_hip is None:
+    #         return
+
+    #     v = np.array(mid_hip, dtype=float)
+
+    #     if v.shape[0] < 3:
+    #         return
+
+    #     self.positions.append(v)
+
+    #     if len(self.positions) < 2:
+    #         return
+
+    #     p1, p2 = self.positions[-2], self.positions[-1]
+
+    #     # ----------------------------
+    #     # 3D displacement
+    #     # ----------------------------
+    #     diff = p2 - p1
+
+    #     dist = np.sqrt(
+    #         diff[0]**2 +
+    #         diff[1]**2 +
+    #         diff[2]**2
+    #     )
+
+    #     if dist < self.threshold:
+    #         dist = 0.0
+
+    #     velocity = dist * self.fps
 
         # ----------------------------
         # SMOOTH VELOCITY (IMPORTANT)
@@ -316,6 +349,10 @@ class SwayTracker:
     
     def get_one_minus_cv(self):
         return self.one_minus_cv
+    
+    def finalize(self):
+        self.final_cv = self.cv
+        self.final_one_minus_cv = self.one_minus_cv
 
     def reset(self):
         self.positions.clear()
@@ -652,7 +689,7 @@ def calculate_jump_height(joints, baseline_feet_y):
 # ============================================================
 # FEATURE EXTRACTION FROM TRACKER OUTPUT
 # ============================================================
-def extract_features(tracker_output, baseline_feet_y=None, prev_mid_hip=None):
+def extract_features(tracker_output, baseline_feet_y=None, prev_mid_hip=None, prev_mid_shoulder=None):
     """
     Accepts tracker dictionary:
 
@@ -677,21 +714,52 @@ def extract_features(tracker_output, baseline_feet_y=None, prev_mid_hip=None):
 
     joints = np.array(joints)
 
-    try:
-        # ---------------- MID HIP ----------------
-        # left_hip = joints[11]
-        # right_hip = joints[12]
+    # try:
 
-        # features["mid_hip"] = (
-        #     (left_hip[0] + right_hip[0]) / 2,
-        #     (left_hip[1] + right_hip[1]) / 2,
-        #     (left_hip[2] + right_hip[2]) / 2,
-        # )
-# ---------------- MID HIP ----------------
+    #     left_hip = joints[11]
+    #     right_hip = joints[12]
+
+    #     alpha = 1
+
+    #     raw_mid_hip = np.array([
+    #         (left_hip[0] + right_hip[0]) / 2,
+    #         (left_hip[1] + right_hip[1]) / 2,
+    #         (left_hip[2] + right_hip[2]) / 2,
+    #     ], dtype=float)
+
+    #     # ---------------- SMOOTHING ----------------
+    #     if prev_mid_hip is None:
+    #         mid_hip = raw_mid_hip
+    #     else:
+    #         mid_hip = alpha * raw_mid_hip + (1 - alpha) * prev_mid_hip
+
+    #     features["mid_hip"] = tuple(mid_hip)
+
+    #     # ---------------- FPPA ----------------
+    #     features["sls_fppa"] = calculate_fppa(joints)
+
+    #     # ---------------- JUMP HEIGHT ----------------
+    #     if baseline_feet_y is not None:
+    #         features["jump_feet"] = calculate_jump_height(
+    #             joints,
+    #             baseline_feet_y
+    #         )
+    #     else:
+    #         features["jump_feet"] = None
+
+    # except:
+    #     features["mid_hip"] = None
+    #     features["sls_fppa"] = None
+    #     features["jump_feet"] = None
+
+    # return features
+
+    try:
         left_hip = joints[11]
         right_hip = joints[12]
 
-        alpha = 1
+        left_shoulder = joints[5]
+        right_shoulder = joints[6]
 
         raw_mid_hip = np.array([
             (left_hip[0] + right_hip[0]) / 2,
@@ -699,25 +767,31 @@ def extract_features(tracker_output, baseline_feet_y=None, prev_mid_hip=None):
             (left_hip[2] + right_hip[2]) / 2,
         ], dtype=float)
 
-        # ---------------- SMOOTHING ----------------
+        raw_mid_shoulder = np.array([
+            (left_shoulder[0] + right_shoulder[0]) / 2,
+            (left_shoulder[1] + right_shoulder[1]) / 2,
+            (left_shoulder[2] + right_shoulder[2]) / 2,
+        ], dtype=float)
+
+        alpha = 1
+
+        # ---- smoothing ----
         if prev_mid_hip is None:
             mid_hip = raw_mid_hip
         else:
             mid_hip = alpha * raw_mid_hip + (1 - alpha) * prev_mid_hip
 
+        if prev_mid_shoulder is None:
+            mid_shoulder = raw_mid_shoulder
+        else:
+            mid_shoulder = alpha * raw_mid_shoulder + (1 - alpha) * prev_mid_shoulder
+
         features["mid_hip"] = tuple(mid_hip)
+        features["mid_shoulder"] = tuple(mid_shoulder)
 
-        # ---------------- FPPA ----------------
+        # ---- other features ----
         features["sls_fppa"] = calculate_fppa(joints)
 
-
-
-
-
-        # ---------------- FPPA ----------------
-        features["sls_fppa"] = calculate_fppa(joints)
-
-        # ---------------- JUMP HEIGHT ----------------
         if baseline_feet_y is not None:
             features["jump_feet"] = calculate_jump_height(
                 joints,
@@ -728,6 +802,7 @@ def extract_features(tracker_output, baseline_feet_y=None, prev_mid_hip=None):
 
     except:
         features["mid_hip"] = None
+        features["mid_shoulder"] = None
         features["sls_fppa"] = None
         features["jump_feet"] = None
 

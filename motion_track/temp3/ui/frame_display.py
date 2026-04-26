@@ -27,7 +27,23 @@ def process_frame(
 
     display_frame = frame.copy()
 
+    if "cv_logged" not in st.session_state:
+        st.session_state["cv_logged"] = False
+
+
     if keypoints is None or keypoints_3d is None:
+        if not st.session_state["cv_saved"]:
+            sway_tracker = st.session_state["sway_tracker"]
+
+            result = {
+                "cv": sway_tracker.get_cv(),
+                "one_minus_cv": sway_tracker.get_one_minus_cv()
+            }
+
+            st.session_state["video_results"].append(result)
+            st.session_state["cv_saved"] = True
+
+
         cv2.line(display_frame, (0, floor_y),
                  (display_frame.shape[1], floor_y),
                  (255, 255, 0), 2)
@@ -71,7 +87,10 @@ def process_frame(
     # UPDATE TRACKERS
     # ==========================================================
     sway_tracker = st.session_state["sway_tracker"]
-    sway_tracker.update(features["mid_hip"])
+    sway_tracker.update(
+        features["mid_hip"],
+        features["mid_shoulder"]
+    )
 
     sway_velocity = sway_tracker.get_sway_velocity()
     sway_cv = sway_tracker.get_cv()
