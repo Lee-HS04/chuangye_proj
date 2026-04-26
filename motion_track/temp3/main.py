@@ -2,6 +2,7 @@
 import os
 import time
 import cv2
+import csv
 import streamlit as st
 
 from config import DEFAULTS
@@ -27,6 +28,7 @@ for k, v in DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
+
 # ────────────── Data Storage ──────────────
 if "video_results" not in st.session_state:
     st.session_state["video_results"] = []
@@ -47,6 +49,8 @@ selected_rules, source_option, run_webcam, exercise_name = setup_sidebar(rules_a
 # ────────────── Video Upload ──────────────
 if source_option == "Upload MP4 Video":
     handle_video_upload()
+
+
     
     cap_path = st.session_state.get("cap_path")
     if cap_path:
@@ -58,6 +62,18 @@ if source_option == "Upload MP4 Video":
         # use_yolo26 = exercise_name in ["SLS", "Balance"] 
         use_yolo26 = False # Uncomment this line to force GVHMR mapping for all exercises
         st.session_state["use_yolo26"] = use_yolo26
+
+        video_name = st.session_state.get("video_name")
+        video_hash = st.session_state.get("video_hash")
+
+        # fallback safety
+        if not video_name:
+            video_name = "video"
+
+        output_dir = os.path.join("outputs", video_name)
+        os.makedirs(output_dir, exist_ok=True)
+
+        st.session_state["metrics_saved"] = False
         
         if not use_yolo26:
             if st.session_state.get("gvhmr_path") != cap_path or st.session_state.get("gvhmr_f_mm") != f_mm:
@@ -65,7 +81,6 @@ if source_option == "Upload MP4 Video":
                     gvhmr_results = process_video_on_remote(cap_path, f_mm=f_mm) # Uses GPU server now!
                     st.session_state["gvhmr_results"] = gvhmr_results
 
-                    gvhmr_results = process_video_on_remote(cap_path, f_mm=f_mm)
 
                     print("\n=== GVHMR DEBUG ===")
                     print("num frames:",
@@ -225,6 +240,21 @@ def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
         balance_tracker,
         st.session_state["r2p_scorer"],
     )
+
+
+    # ────────────── WRITE FRAME TO VIDEO FILE ──────────────
+    writer = st.session_state.get("video_writer", None)
+
+    if writer is not None:
+        # IMPORTANT: resize processed frame BACK to original size
+        orig_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        orig_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        frame_to_save = cv2.resize(processed_image, (orig_w, orig_h))
+
+        frame_bgr = cv2.cvtColor(frame_to_save, cv2.COLOR_RGB2BGR)
+
+        writer.write(frame_bgr)
     
     frame_perf_end = time.perf_counter()
     latency_ms = (frame_perf_end - frame_perf_start) * 1000
@@ -243,6 +273,25 @@ def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
     return True
 
 # ────────────── MP4 Playback ──────────────
+def save_metrics_once(video_name, sway_tracker):
+    # Save to outputs/metrics.csv instead of outputs/video_name/metrics.csv
+    metrics_path = os.path.join("outputs", "metrics.csv")
+    
+    cv = sway_tracker.get_cv()
+    one_minus_cv = sway_tracker.get_one_minus_cv()
+    
+    file_exists = os.path.isfile(metrics_path)
+    
+    with open(metrics_path, "a", newline="") as f:
+        writer = csv.writer(f)
+        
+        if not file_exists:
+            writer.writerow(["video", "cv", "one_minus_cv"])
+        
+        writer.writerow([video_name, cv, one_minus_cv])
+
+
+
 if source_option == "Upload MP4 Video" and st.session_state.get("cap_path"):
     total_frames = st.session_state.get("total_frames", 1)
     fps          = st.session_state.get("video_fps", 60)
@@ -256,6 +305,26 @@ if source_option == "Upload MP4 Video" and st.session_state.get("cap_path"):
         video_controls(total_frames, fps)
 
     cap = cv2.VideoCapture(st.session_state["cap_path"])
+    if "video_writer" not in st.session_state:
+        # Use H.264 codec for better compatibility
+        fourcc = cv2.VideoWriter_fourcc(*"avc1")  # Changed from "mp4v"
+        
+        fps = st.session_state.get("video_fps", 60)
+        
+        # ALWAYS use ORIGINAL frame size (not resized one)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        output_path = os.path.join(output_dir, "annotated.mp4")
+        
+        st.session_state["video_writer"] = cv2.VideoWriter(
+            output_path,
+            fourcc,
+            fps,
+            (width, height)
+        )
+        
+        st.session_state["output_video_path"] = output_path
 
     if st.session_state.get("playing"):
         # ── Tight playback loop ───────────────────────────────────────────
@@ -269,31 +338,32 @@ if source_option == "Upload MP4 Video" and st.session_state.get("cap_path"):
                 break
 
             idx = int(st.session_state["frame_index"])
-
-            # if idx >= total_frames - 1:
-            #     st.session_state["playing"] = False
-            #     st.session_state["frame_index"] = total_frames - 1
-            if idx >= total_frames - 1:
-                st.session_state["playing"] = False
-                st.session_state["frame_index"] = total_frames - 1
-
-                # ---- FINAL CV LOGGING ----
-                sway_tracker = st.session_state["sway_tracker"]
-
-                cv = sway_tracker.get_cv()
-                one_minus_cv = sway_tracker.get_one_minus_cv()
-
-                with open("sway_results.csv", "a") as f:
-                    f.write(f"{cv:.4f},{one_minus_cv:.4f}\n")
-
-
-
-            t0 = time.perf_counter()
-
             ok = _render_frame(cap, frame_area)
             if not ok:
                 st.session_state["playing"] = False
                 break
+
+            if idx >= total_frames - 1:
+                st.session_state["playing"] = False
+                st.session_state["frame_index"] = total_frames - 1
+
+                if not st.session_state.get("metrics_saved", False):
+                    save_metrics_once(video_name, st.session_state["sway_tracker"])
+                    st.session_state["metrics_saved"] = True
+
+                # ────────────── release video writer ──────────────
+                writer = st.session_state.get("video_writer", None)
+                if writer is not None:
+                    writer.release()
+                    st.session_state["video_writer"] = None
+
+                # ────────────── save metrics ONCE ──────────────
+                sway_tracker = st.session_state["sway_tracker"]
+
+                output_dir = st.session_state.get("output_dir", "outputs")
+                video_name = os.path.basename(output_dir)
+
+            t0 = time.perf_counter()
 
             # Advance index (fractional accumulation handles sub-1x speeds)
             st.session_state["frame_index"] = min(

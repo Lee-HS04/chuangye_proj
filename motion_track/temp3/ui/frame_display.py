@@ -154,39 +154,39 @@ def process_frame(
                 font, 0.7, (255, 255, 255), 2)
     y += 30
 
-    # ==========================================================
-    # COACH OUTPUT (UNCHANGED)
-    # ==========================================================
-    total_score, traffic_light = r2p_scorer.compute(
-        cv=sway_cv,
-        fppa=fppa,
-        delta_rsi=rsi
-    )
+    # # ==========================================================
+    # # COACH OUTPUT (UNCHANGED)
+    # # ==========================================================
+    # total_score, traffic_light = r2p_scorer.compute(
+    #     cv=sway_cv,
+    #     fppa=fppa,
+    #     delta_rsi=rsi
+    # )
 
-    if traffic_light == "GREEN":
-        coach_msg = "Great Form"
-        color = (0, 255, 0)
+    # if traffic_light == "GREEN":
+    #     coach_msg = "Great Form"
+    #     color = (0, 255, 0)
 
-    elif traffic_light == "YELLOW":
-        coach_msg = "Adjust Form"
-        color = (0, 255, 255)
+    # elif traffic_light == "YELLOW":
+    #     coach_msg = "Adjust Form"
+    #     color = (0, 255, 255)
 
-    else:
-        coach_msg = "Fix Form"
-        color = (0, 0, 255)
+    # else:
+    #     coach_msg = "Fix Form"
+    #     color = (0, 0, 255)
 
-    cv2.putText(display_frame, coach_msg, (10, y),
-                font, 0.9, color, 2)
+    # cv2.putText(display_frame, coach_msg, (10, y),
+    #             font, 0.9, color, 2)
 
-    y += 35
+    # y += 35
 
-    # ==========================================================
-    # FLOOR LINE
-    # ==========================================================
-    cv2.line(display_frame,
-            (0, floor_y),
-            (display_frame.shape[1], floor_y),
-            (255, 255, 0), 2)
+    # # ==========================================================
+    # # FLOOR LINE
+    # # ==========================================================
+    # cv2.line(display_frame,
+    #         (0, floor_y),
+    #         (display_frame.shape[1], floor_y),
+    #         (255, 255, 0), 2)
 
     # ==========================================================
     # FRAME INDEX

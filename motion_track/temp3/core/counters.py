@@ -225,6 +225,8 @@ class SwayTracker:
     def __init__(self, fps=60, threshold=0.0):
         self.positions = deque(maxlen=2)
 
+        self.cv_history = []
+
         # ✅ FULL HISTORY (no maxlen)
         self.vel_history = []
 
@@ -332,6 +334,7 @@ class SwayTracker:
             if mean_v > 1e-6:
                 self.cv = (std_v / mean_v) * 100
                 self.one_minus_cv = 100 - self.cv
+                self.cv_history.append(self.cv)
 
             else:
                 self.cv = 0.0
