@@ -16,6 +16,8 @@ def video_controls(total_frames: int, fps: float) -> None:
         st.session_state["playing"] = False
 #reset trackers history
         st.session_state["sway_tracker"].reset()
+        st.session_state["sls_counter"].reset()
+        st.session_state["cmj_counter"].reset()
 
 
     with c1:

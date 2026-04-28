@@ -6,6 +6,7 @@ from core.counters import (
     R2PScorer,
     RepCounter,
     SwayTracker,
+    SLSDetector,
     extract_features,
     CMJTracker
 )
@@ -26,7 +27,23 @@ def process_frame(
 
     display_frame = frame.copy()
 
+    if "cv_logged" not in st.session_state:
+        st.session_state["cv_logged"] = False
+
+
     if keypoints is None or keypoints_3d is None:
+        if not st.session_state["cv_saved"]:
+            sway_tracker = st.session_state["sway_tracker"]
+
+            result = {
+                "cv": sway_tracker.get_cv(),
+                "one_minus_cv": sway_tracker.get_one_minus_cv()
+            }
+
+            st.session_state["video_results"].append(result)
+            st.session_state["cv_saved"] = True
+
+
         cv2.line(display_frame, (0, floor_y),
                  (display_frame.shape[1], floor_y),
                  (255, 255, 0), 2)
@@ -70,288 +87,264 @@ def process_frame(
     # UPDATE TRACKERS
     # ==========================================================
     sway_tracker = st.session_state["sway_tracker"]
-    sway_tracker.update(features["mid_hip"])
+    sway_tracker.update(
+        features["mid_hip"],
+        features["mid_shoulder"]
+    )
 
     sway_velocity = sway_tracker.get_sway_velocity()
     sway_cv = sway_tracker.get_cv()
 
-    delta_rsi = cmj_counter.update(
-        features["jump_feet"],
-        frame_index
-    )
+#Extract features
+    hip = keypoints_3d[11]
+    knee = keypoints_3d[13]
+    ankle = keypoints_3d[15]
+    sls_counter.update(hip, knee, ankle)
 
-    sls_reps = sls_counter.update(features)
+    left_ankle = keypoints_3d[15]
+    right_ankle = keypoints_3d[16]
+    ankle_y = (left_ankle[1] + right_ankle[1]) / 2
+    cmj_counter.update(ankle_y)
+
+
+
+    # SLS + CMJ metrics (continuous)
+    fppa = sls_counter.get_fppa()
+
+    rsi = cmj_counter.get_rsi()
+    # flight_time = cmj_counter.get_refined_flight_time()
+    # contraction_time = cmj_counter.get_contraction_time()
 
     # ==========================================================
     # DISPLAY VARIABLES
     # ==========================================================
     y = 30
+    font = cv2.FONT_HERSHEY_SIMPLEX
 
     # ==========================================================
-    # CMJ SCORE
+    # CMJ METRICS
     # ==========================================================
-    if delta_rsi is not None:
+    cv2.putText(display_frame, f"RSI: {rsi:.2f}", (10, y),
+                font, 0.7, (255, 255, 255), 2)
+    y += 25
 
-        rep_score_pct = max(0, 100 - delta_rsi)
+    # cv2.putText(display_frame, f"Flight: {flight_time*1000:.0f} ms", (10, y),
+    #             font, 0.7, (255, 255, 255), 2)
+    # y += 25
 
-        color = (
-            (0, 255, 0) if rep_score_pct > 80 else
-            (0, 255, 255) if rep_score_pct > 60 else
-            (0, 0, 255)
-        )
-
-        cv2.putText(
-            display_frame,
-            f"CMJ Score: {rep_score_pct:.0f}%",
-            (10, y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            color,
-            2
-        )
-
-        y += 30
+    # cv2.putText(display_frame, f"CT: {contraction_time*1000:.0f} ms", (10, y),
+    #             font, 0.7, (255, 255, 255), 2)
+    # y += 30
 
     # ==========================================================
-    # SLS REPS
+    # SLS METRIC
     # ==========================================================
-    cv2.putText(
-        display_frame,
-        f"SLS Reps: {sls_reps}",
-        (10, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.8,
-        (255, 255, 0),
-        2
-    )
-
+    cv2.putText(display_frame, f"FPPA: {fppa:.1f} deg", (10, y),
+                font, 0.7, (255, 255, 255), 2)
     y += 30
 
     # ==========================================================
     # SWAY METRICS
     # ==========================================================
-    cv2.putText(
-        display_frame,
-        f"Sway Vel: {sway_velocity:.2f}",
-        (10, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        (255, 255, 255),
-        2
-    )
-
+    cv2.putText(display_frame, f"Sway Vel: {sway_velocity:.3f}", (10, y),
+                font, 0.7, (255, 255, 255), 2)
     y += 25
 
-    cv2.putText(
-        display_frame,
-        f"CV: {sway_cv:.1f}%",
-        (10, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        (255, 255, 255),
-        2
-    )
+    cv2.putText(display_frame, f"CV: {sway_cv:.1f}%", (10, y),
+                font, 0.7, (255, 255, 255), 2)
+    y += 30
 
-    y += 25
+    # # ==========================================================
+    # # COACH OUTPUT (UNCHANGED)
+    # # ==========================================================
+    # total_score, traffic_light = r2p_scorer.compute(
+    #     cv=sway_cv,
+    #     fppa=fppa,
+    #     delta_rsi=rsi
+    # )
 
-    # ==========================================================
-    # GLOBAL SCORING
-    # ==========================================================
-    total_score, traffic_light = r2p_scorer.compute(
-        cv=sway_cv,
-        fppa=features["sls_fppa"],
-        delta_rsi=delta_rsi
-    )
+    # if traffic_light == "GREEN":
+    #     coach_msg = "Great Form"
+    #     color = (0, 255, 0)
 
-    if traffic_light == "GREEN":
-        coach_msg = "Great Form"
-        color = (0, 255, 0)
+    # elif traffic_light == "YELLOW":
+    #     coach_msg = "Adjust Form"
+    #     color = (0, 255, 255)
 
-    elif traffic_light == "YELLOW":
-        coach_msg = "Adjust Form"
-        color = (0, 255, 255)
+    # else:
+    #     coach_msg = "Fix Form"
+    #     color = (0, 0, 255)
 
-    else:
-        coach_msg = "Fix Form"
-        color = (0, 0, 255)
+    # cv2.putText(display_frame, coach_msg, (10, y),
+    #             font, 0.9, color, 2)
 
-    cv2.putText(
-        display_frame,
-        coach_msg,
-        (10, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.9,
-        color,
-        2
-    )
+    # y += 35
 
-    y += 35
+    # # ==========================================================
+    # # FLOOR LINE
+    # # ==========================================================
+    # cv2.line(display_frame,
+    #         (0, floor_y),
+    #         (display_frame.shape[1], floor_y),
+    #         (255, 255, 0), 2)
 
     # ==========================================================
-    # FLOOR LINE
-    # ==========================================================
-    cv2.line(
-        display_frame,
-        (0, floor_y),
-        (display_frame.shape[1], floor_y),
-        (255, 255, 0),
-        2
-    )
-
-    # ==========================================================
-    # INCREMENT FRAME
+    # FRAME INDEX
     # ==========================================================
     st.session_state["frame_index"] += 1
 
-    return cv2.cvtColor(
-        display_frame,
-        cv2.COLOR_BGR2RGB
-    )
+    return cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB)
+
+
+
+    # # ==========================================================
+    # # UPDATE TRACKERS
+    # # ==========================================================
+    # sway_tracker = st.session_state["sway_tracker"]
+    # sway_tracker.update(features["mid_hip"])
+
+    # sway_velocity = sway_tracker.get_sway_velocity()
+    # sway_cv = sway_tracker.get_cv()
+
+    # fppa = sls_counter.get_fppa()
+
+    # rsi = cmj_counter.get_rsi()
+    # flight_time = cmj_counter.get_refined_flight_time()
+    # contraction_time = cmj_counter.get_contraction_time()
+
+    # # delta_rsi = cmj_counter.update(
+    # #     features["jump_feet"],
+    # #     frame_index
+    # # )
+
+    # sls_reps = sls_counter.update(features)
+
+    # # ==========================================================
+    # # DISPLAY VARIABLES
+    # # ==========================================================
+    # y = 30
+
+    # # ==========================================================
+    # # CMJ SCORE
+    # # ==========================================================
+    # if delta_rsi is not None:
+
+    #     rep_score_pct = max(0, 100 - delta_rsi)
+
+    #     color = (
+    #         (0, 255, 0) if rep_score_pct > 80 else
+    #         (0, 255, 255) if rep_score_pct > 60 else
+    #         (0, 0, 255)
+    #     )
+
+    #     cv2.putText(
+    #         display_frame,
+    #         f"CMJ Score: {rep_score_pct:.0f}%",
+    #         (10, y),
+    #         cv2.FONT_HERSHEY_SIMPLEX,
+    #         0.8,
+    #         color,
+    #         2
+    #     )
+
+    #     y += 30
+
+    # # ==========================================================
+    # # SLS REPS
+    # # ==========================================================
+    # cv2.putText(
+    #     display_frame,
+    #     f"SLS Reps: {sls_reps}",
+    #     (10, y),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.8,
+    #     (255, 255, 0),
+    #     2
+    # )
+
+    # y += 30
+
+    # # ==========================================================
+    # # SWAY METRICS
+    # # ==========================================================
+    # cv2.putText(
+    #     display_frame,
+    #     f"Sway Vel: {sway_velocity:.2f}",
+    #     (10, y),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.7,
+    #     (255, 255, 255),
+    #     2
+    # )
+
+    # y += 25
+
+    # cv2.putText(
+    #     display_frame,
+    #     f"CV: {sway_cv:.1f}%",
+    #     (10, y),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.7,
+    #     (255, 255, 255),
+    #     2
+    # )
+
+    # y += 25
+
+    # # ==========================================================
+    # # GLOBAL SCORING
+    # # ==========================================================
+    # total_score, traffic_light = r2p_scorer.compute(
+    #     cv=sway_cv,
+    #     fppa=features["sls_fppa"],
+    #     delta_rsi=delta_rsi
+    # )
+
+    # if traffic_light == "GREEN":
+    #     coach_msg = "Great Form"
+    #     color = (0, 255, 0)
+
+    # elif traffic_light == "YELLOW":
+    #     coach_msg = "Adjust Form"
+    #     color = (0, 255, 255)
+
+    # else:
+    #     coach_msg = "Fix Form"
+    #     color = (0, 0, 255)
+
+    # cv2.putText(
+    #     display_frame,
+    #     coach_msg,
+    #     (10, y),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.9,
+    #     color,
+    #     2
+    # )
+
+    # y += 35
+
+    # # ==========================================================
+    # # FLOOR LINE
+    # # ==========================================================
+    # cv2.line(
+    #     display_frame,
+    #     (0, floor_y),
+    #     (display_frame.shape[1], floor_y),
+    #     (255, 255, 0),
+    #     2
+    # )
+
+    # # ==========================================================
+    # # INCREMENT FRAME
+    # # ==========================================================
+    # st.session_state["frame_index"] += 1
+
+    # return cv2.cvtColor(
+    #     display_frame,
+    #     cv2.COLOR_BGR2RGB
+    # )
 
 
 
 
-
-# # ui/frame_display.py
-# import cv2
-# import numpy as np
-# import streamlit as st
-# from collections import deque
-
-# from core.counters import R2PScorer, RepCounter, SwayTracker, extract_features, CMJTracker, calculate_fppa
-
-# # ────────────── Process Frame ──────────────
-# def process_frame(frame, keypoints, keypoints_3d, selected_rules, rules_all, floor_y,
-#                   cmj_counter, sls_counter, sway_tracker, r2p_scorer):
-
-#     display_frame = frame.copy()
-
-#     if keypoints is None or keypoints_3d is None:
-#         cv2.line(display_frame, (0, floor_y), (display_frame.shape[1], floor_y), (255, 255, 0), 2)
-#         return cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB)
-
-#     # ────────────── Extract Features ──────────────
-#     features = {}
-
-#     # Mid-hip position (for sway/balance)
-#     mid_hip = None
-#     if len(keypoints) > 12 and keypoints[11] is not None and keypoints[12] is not None:
-#         left_hip = keypoints[11]
-#         right_hip = keypoints[12]
-#         mid_hip = (
-#             (left_hip[0] + right_hip[0]) / 2,
-#             (left_hip[1] + right_hip[1]) / 2
-#         )
-#         # Smooth with previous frame
-#         alpha = 0.7
-#         if "prev_mid_hip" in st.session_state:
-#             prev = st.session_state["prev_mid_hip"]
-#             mid_hip = (
-#                 alpha * mid_hip[0] + (1 - alpha) * prev[0],
-#                 alpha * mid_hip[1] + (1 - alpha) * prev[1]
-#             )
-#         st.session_state["prev_mid_hip"] = mid_hip
-#     elif "prev_mid_hip" in st.session_state:
-#         mid_hip = st.session_state["prev_mid_hip"]
-
-#     features["mid_hip"] = mid_hip
-
-#     # Jump height (CMJ)
-#     if len(keypoints) > 16 and keypoints[15] is not None and keypoints[16] is not None:
-#         features["jump_feet"] = floor_y - min(keypoints[15][1], keypoints[16][1])
-#     else:
-#         features["jump_feet"] = None
-
-#     # ────────────── Update trackers ──────────────
-#     if mid_hip is not None:
-#         sway_tracker.update(mid_hip)
-
-#     sway_velocity = sway_tracker.get_sway_velocity()
-#     sway_cv = sway_tracker.get_cv()
-
-#     # Corrected RepCounter update calls
-#     delta_rsi = cmj_counter.update(features) 
-#     sls_reps = sls_counter.update(features)                     # features dictionary
-
-#     # ────────────── LIVE FEEDBACK ──────────────
-#     y = 30
-#     quality_score = 100
-
-#     for rule_name in selected_rules:
-#         val = features.get(rule_name)
-#         rule = rules_all.get(rule_name)
-
-#         if val is None or rule is None:
-#             continue
-
-#         min_v, max_v = rule
-
-#         if val < min_v:
-#             msg = f"{rule_name}: Too Low"
-#             color = (0, 0, 255)
-#             quality_score -= 10
-#         elif val > max_v:
-#             msg = f"{rule_name}: Too High"
-#             color = (0, 165, 255)
-#             quality_score -= 10
-#         else:
-#             msg = f"{rule_name}: Good"
-#             color = (0, 255, 0)
-
-#         cv2.putText(display_frame, msg, (10, y),
-#                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
-#         y += 25
-
-#     # ────────────── REP SCORES ──────────────
-#     if delta_rsi is not None:
-#         # Convert RSI delta to percentage for display
-#         rep_score_pct = max(0, 100 - delta_rsi)
-#         msg = f"CMJ Score: {rep_score_pct:.0f}%"
-#         color = (0, 255, 0) if rep_score_pct > 80 else (0, 255, 255) if rep_score_pct > 60 else (0, 0, 255)
-#         cv2.putText(display_frame, msg, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-#         y += 30
-
-#     # SLS reps
-#     cv2.putText(display_frame, f"SLS Reps: {sls_reps}", (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
-#     y += 30
-
-#     # ────────────── BALANCE / SWAY ──────────────
-#     if sway_velocity is not None:
-#         cv2.putText(display_frame, f"Sway Vel: {sway_velocity:.2f}", (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-#         y += 25
-
-#     if sway_cv is not None:
-#         if sway_cv < 10:
-#             status = "Stable"
-#             color = (0, 255, 0)
-#         elif sway_cv < 20:
-#             status = "Slight Fatigue"
-#             color = (0, 255, 255)
-#         else:
-#             status = "Fatigued"
-#             color = (0, 0, 255)
-#         cv2.putText(display_frame, f"CV: {sway_cv:.1f}%", (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
-#         y += 25
-#         cv2.putText(display_frame, status, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-#         y += 25
-#     else:
-#         cv2.putText(display_frame, "Balance: Detecting...", (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
-#         y += 25
-
-#     # ────────────── GLOBAL COACH MESSAGE ──────────────
-#     total_score, traffic_light = r2p_scorer.compute(cv=sway_cv, fppa=None, delta_rsi=delta_rsi)
-
-#     if traffic_light == "GREEN":
-#         coach_msg, color = "Great Form", (0, 255, 0)
-#     elif traffic_light == "YELLOW":
-#         coach_msg, color = "Adjust Form", (0, 255, 255)
-#     else:
-#         coach_msg, color = "Fix Form", (0, 0, 255)
-
-#     cv2.putText(display_frame, coach_msg, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
-#     y += 35
-
-#     # ────────────── FLOOR LINE ──────────────
-#     cv2.line(display_frame, (0, floor_y), (display_frame.shape[1], floor_y), (255, 255, 0), 2)
-
-#     return cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB)
