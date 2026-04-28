@@ -1,0 +1,55 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "username": "宗千然",
+      "password": "hashed_password",
+      "phone": "13800138000",
+      "verification_code": "123456",
+      "personal_info": {
+        "age": "26-30",
+        "gender": "male",
+        "exercise": "10h+",
+        "identity": "athlete",
+        "injury": "no",
+        "injury_location": "none"
+      },
+      "upload_records": [
+        {
+          "id": "1",
+          "type": "assessment",
+          "file_name": "寰俊瑙嗛2026-04-12_110559_172.mp4",
+          "upload_time": "2026-04-12T11:05:59",
+          "status": "completed"
+        },
+        {
+          "id": "2",
+          "type": "warmup",
+          "file_name": "褰曞睆2026-04-12 15.45.10.mp4",
+          "upload_time": "2026-04-12T15:45:10",
+          "status": "completed"
+        }
+      ],
+      "backend_video_data": {
+        "assessment": {
+          "url": "",
+          "analysis": {},
+          "recommendations": []
+        },
+        "warmup": {
+          "url": "",
+          "analysis": {},
+          "recommendations": []
+        },
+        "recovery": {
+          "url": "",
+          "analysis": {},
+          "recommendations": []
+        }
+      },
+      "created_at": "2026-04-18T00:00:00",
+      "updated_at": "2026-04-18T00:00:00"
+    }
+  ],
+  "last_updated": "2026-04-18T00:00:00"
+}

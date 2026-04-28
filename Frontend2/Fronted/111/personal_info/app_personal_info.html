@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>个人信息 - R2P-Guard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-align: center;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: #666;
+        }
+
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .option {
+            flex: 1 1 calc(50% - 6px);
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .option input {
+            display: none;
+        }
+
+        .option span {
+            display: block;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .option input:checked + span {
+            color: #007AFF;
+        }
+
+        .option input:checked {
+            border-color: #007AFF;
+            background-color: rgba(0, 122, 255, 0.05);
+        }
+
+        .option:hover {
+            border-color: #007AFF;
+            background-color: rgba(0, 122, 255, 0.05);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-top: auto;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=200&h=200&fit=crop" alt="R2P-Guard">
+        </div>
+
+        <div class="form-container">
+            <h1>个人信息</h1>
+
+            <div class="form-group">
+                <label>年龄</label>
+                <div class="options">
+                    <label class="option">
+                        <input type="radio" name="age" value="<=18">
+                        <span><= 18岁</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="age" value="18-22">
+                        <span>18 ~ 22岁</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="age" value="22-26">
+                        <span>22 ~ 26岁</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="age" value="26-30">
+                        <span>26 ~ 30岁</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="age" value="30-34">
+                        <span>30 ~ 34岁</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="age" value="34-38">
+                        <span>34 ~ 38岁</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="age" value="38-42">
+                        <span>38 ~ 42岁</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="age" value=">=42">
+                        <span>>= 42岁</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>性别</label>
+                <div class="options">
+                    <label class="option">
+                        <input type="radio" name="gender" value="male">
+                        <span>男</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="gender" value="female">
+                        <span>女</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>一周运动几小时</label>
+                <div class="options">
+                    <label class="option">
+                        <input type="radio" name="exercise" value="none">
+                        <span>基本不运动</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="exercise" value="<=2">
+                        <span><= 2小时</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="exercise" value="2-10">
+                        <span>2小时 ~ 10小时</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="exercise" value=">=10">
+                        <span>>= 10小时</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>身份</label>
+                <div class="options">
+                    <label class="option">
+                        <input type="radio" name="identity" value="amateur">
+                        <span>业余爱好者</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="identity" value="retired">
+                        <span>退役运动员</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="identity" value="athlete">
+                        <span>运动员</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="identity" value="coach">
+                        <span>教练</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>是否有伤病困扰</label>
+                <div class="options">
+                    <label class="option">
+                        <input type="radio" name="injury" value="yes" onchange="toggleInjuryLocation()">
+                        <span>是</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="injury" value="no" onchange="toggleInjuryLocation()">
+                        <span>否</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group" id="injuryLocationGroup" style="display: none;">
+                <label>伤病部位</label>
+                <div class="options">
+                    <label class="option">
+                        <input type="radio" name="injury_location" value="knee">
+                        <span>膝盖</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="injury_location" value="ankle">
+                        <span>脚踝</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="injury_location" value="back">
+                        <span>背部</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="injury_location" value="shoulder">
+                        <span>肩部</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="injury_location" value="other">
+                        <span>其他</span>
+                    </label>
+                </div>
+            </div>
+
+            <button id="completeButton">完成</button>
+        </div>
+
+        <div class="footer">
+            © 2026 R2P-Guard. 保留所有权利。
+        </div>
+    </div>
+
+    <script>
+        // 切换伤病部位选项的显示/隐藏
+        function toggleInjuryLocation() {
+            const injuryYes = document.querySelector('input[name="injury"][value="yes"]');
+            const injuryLocationGroup = document.getElementById('injuryLocationGroup');
+            
+            if (injuryYes.checked) {
+                injuryLocationGroup.style.display = 'block';
+            } else {
+                injuryLocationGroup.style.display = 'none';
+                // 当选择"否"时，重置伤病部位选项
+                document.querySelectorAll('input[name="injury_location"]').forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+        }
+
+        // 页面加载时预填个人信息
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (currentUser && currentUser.personal_info) {
+                const personalInfo = currentUser.personal_info;
+                
+                // 预填年龄
+                if (personalInfo.age) {
+                    const ageRadio = document.querySelector(`input[name="age"][value="${personalInfo.age}"]`);
+                    if (ageRadio) ageRadio.checked = true;
+                }
+                
+                // 预填性别
+                if (personalInfo.gender) {
+                    const genderRadio = document.querySelector(`input[name="gender"][value="${personalInfo.gender}"]`);
+                    if (genderRadio) genderRadio.checked = true;
+                }
+                
+                // 预填运动时间
+                if (personalInfo.exercise) {
+                    const exerciseRadio = document.querySelector(`input[name="exercise"][value="${personalInfo.exercise}"]`);
+                    if (exerciseRadio) exerciseRadio.checked = true;
+                }
+                
+                // 预填身份
+                if (personalInfo.identity) {
+                    const identityRadio = document.querySelector(`input[name="identity"][value="${personalInfo.identity}"]`);
+                    if (identityRadio) identityRadio.checked = true;
+                }
+                
+                // 预填伤病困扰
+                if (personalInfo.injury) {
+                    const injuryRadio = document.querySelector(`input[name="injury"][value="${personalInfo.injury}"]`);
+                    if (injuryRadio) injuryRadio.checked = true;
+                }
+                
+                // 预填伤病部位并处理显示状态
+                if (personalInfo.injury_location) {
+                    const injuryLocationRadio = document.querySelector(`input[name="injury_location"][value="${personalInfo.injury_location}"]`);
+                    if (injuryLocationRadio) injuryLocationRadio.checked = true;
+                }
+                
+                // 触发一次切换逻辑，确保初始状态正确
+                toggleInjuryLocation();
+            }
+        });
+
+        // 同步数据到user_data.json文件
+        function syncUserDataToJsonFile() {
+            const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+            if (userData.users && userData.users.length > 0) {
+                // 这里可以添加与后端API的通信，将数据同步到服务器
+                // 目前我们先确保localStorage中的数据与JSON文件结构一致
+                console.log('用户数据已更新，准备同步到JSON文件:', userData);
+                // 模拟同步成功
+                alert('个人信息已成功更新！');
+            }
+        }
+
+        document.getElementById('completeButton').addEventListener('click', function() {
+            // 收集用户选择的信息
+            const personalInfo = {
+                age: document.querySelector('input[name="age"]:checked')?.value || '',
+                gender: document.querySelector('input[name="gender"]:checked')?.value || '',
+                exercise: document.querySelector('input[name="exercise"]:checked')?.value || '',
+                identity: document.querySelector('input[name="identity"]:checked')?.value || '',
+                injury: document.querySelector('input[name="injury"]:checked')?.value || '',
+                injury_location: document.querySelector('input[name="injury_location"]:checked')?.value || ''
+            };
+
+            // 获取当前用户信息
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (currentUser) {
+                // 更新当前用户的个人信息
+                currentUser.personal_info = personalInfo;
+                currentUser.updated_at = new Date().toISOString();
+                
+                // 更新localStorage中的用户数据
+                const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+                if (userData.users) {
+                    const userIndex = userData.users.findIndex(u => u.id === currentUser.id);
+                    if (userIndex !== -1) {
+                        userData.users[userIndex] = currentUser;
+                    } else {
+                        userData.users.push(currentUser);
+                    }
+                    userData.last_updated = new Date().toISOString();
+                    localStorage.setItem('userData', JSON.stringify(userData));
+                }
+                
+                // 更新当前用户信息
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                // 同步数据到JSON文件
+                syncUserDataToJsonFile();
+            }
+
+            // 跳转到main主页
+        window.location.href = 'http://localhost:8002/111/main_features/main.html';
+        });
+    </script>
+</body>
+</html>

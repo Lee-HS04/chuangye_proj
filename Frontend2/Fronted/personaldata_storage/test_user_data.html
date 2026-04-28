@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试用户数据</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        pre {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #f57c00;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #e67e22;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>测试用户数据存储</h1>
+        <button onclick="showUserData()">查看用户数据</button>
+        <button onclick="clearUserData()">清空用户数据</button>
+        <div id="userData"></div>
+    </div>
+    
+    <script>
+        function showUserData() {
+            const userData = localStorage.getItem('userData');
+            if (userData) {
+                document.getElementById('userData').innerHTML = '<pre>' + JSON.stringify(JSON.parse(userData), null, 2) + '</pre>';
+            } else {
+                document.getElementById('userData').innerHTML = '<p>暂无用户数据</p>';
+            }
+        }
+        
+        function clearUserData() {
+            if (confirm('确定要清空所有用户数据吗？')) {
+                localStorage.removeItem('userData');
+                showUserData();
+            }
+        }
+        
+        // 初始显示
+        showUserData();
+    </script>
+</body>
+</html>

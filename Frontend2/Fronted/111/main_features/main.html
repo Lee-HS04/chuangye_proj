@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运动员状态管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0071e3;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #0071e3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .main-content {
+            margin-top: 60px;
+        }
+
+        .hero-section {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .hero-title {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+        }
+
+        .hero-subtitle {
+            font-size: 20px;
+            color: #86868b;
+            margin-bottom: 48px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 32px;
+            margin-top: 48px;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 24px;
+        }
+
+        .feature-icon.assessment {
+            background: linear-gradient(135deg, #0071e3, #0056b3);
+        }
+
+        .feature-icon.warmup {
+            background: linear-gradient(135deg, #34c759, #28a745);
+        }
+
+        .feature-icon.recovery {
+            background: linear-gradient(135deg, #ff9500, #ff6b00);
+        }
+
+        .feature-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1d1d1f;
+        }
+
+        .feature-description {
+            font-size: 16px;
+            color: #86868b;
+            margin-bottom: 24px;
+        }
+
+        .feature-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            border: 1px solid #e0e0e0;
+        }
+
+        .btn-primary:hover {
+            background-color: #e0e0e0;
+        }
+
+        .btn-secondary {
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            border: 1px solid #e0e0e0;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e0e0e0;
+        }
+
+        .arrow-icon {
+            font-size: 18px;
+            color: #0071e3;
+        }
+
+
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .hero-title {
+                font-size: 32px;
+            }
+
+            .hero-subtitle {
+                font-size: 16px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .feature-card {
+                padding: 24px;
+            }
+        }
+
+        /* 个人信息弹窗 */
+        .personal-info-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .personal-info-modal.show {
+            display: flex;
+        }
+
+        .personal-info-content {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .personal-info-content h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #1d1d1f;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #86868b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">R2P-Guard</div>
+            <div class="user-info" id="userInfo">
+                <span>张教练</span>
+                <div class="user-avatar" onclick="showPersonalInfo()">张</div>
+            </div>
+        </header>
+
+        <!-- Personal Info Modal -->
+        <div id="personalInfoModal" class="personal-info-modal">
+            <div class="personal-info-content">
+                <button class="close-btn" onclick="hidePersonalInfo()">&times;</button>
+                <h2>个人信息</h2>
+                <div style="display: flex; flex-direction: column; gap: 16px;" id="personalInfoContent">
+                    <!-- 个人信息将通过JavaScript动态填充 -->
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <section class="hero-section">
+                <h1 class="hero-title">R2P-Guard</h1>
+                <p class="hero-subtitle">全方位管理运动员的赛前状态、训练准备和疲劳恢复</p>
+                <div style="margin-top: 48px; display: flex; justify-content: center;">
+                    <button class="btn btn-primary" style="font-size: 18px; padding: 16px 32px;" onclick="showTestOptions()">开始检测</button>
+                </div>
+            </section>
+
+            <!-- 测试选项模态框 -->
+            <div id="testOptionsModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(10px);">
+                <div style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15); transition: transform 0.3s ease, box-shadow 0.3s ease;">
+                    <h3 style="font-size: 24px; font-weight: 600; margin-bottom: 32px; text-align: center; color: #1d1d1f;">选择检测类型</h3>
+                    <div style="display: flex; flex-direction: column; gap: 16px; width: 100%; align-items: center;">
+                        <button class="btn btn-primary" style="width: 100%; max-width: 300px; padding: 16px; font-size: 16px; border-radius: 12px; background-color: #f5f5f7; color: #1d1d1f; border: 1px solid #e0e0e0; text-align: center;" onclick="startTest('assessment')">赛前状态评估</button>
+                        <button class="btn btn-secondary" style="width: 100%; max-width: 300px; padding: 16px; font-size: 16px; border-radius: 12px; background-color: #f5f5f7; color: #1d1d1f; border: 1px solid #e0e0e0; text-align: center;" onclick="startTest('warmup')">个体化运动准备</button>
+                        <button class="btn btn-secondary" style="width: 100%; max-width: 300px; padding: 16px; font-size: 16px; border-radius: 12px; background-color: #f5f5f7; color: #1d1d1f; border: 1px solid #e0e0e0; text-align: center;" onclick="startTest('recovery')">疲劳恢复与决策</button>
+                        <button class="btn btn-secondary" style="width: 100%; max-width: 300px; padding: 16px; font-size: 16px; border-radius: 12px; background-color: #f5f5f7; color: #1d1d1f; border: 1px solid #e0e0e0; text-align: center;" onclick="hideTestOptions()">取消</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="features-grid">
+                <!-- 需求一：赛前快速评估 -->
+                <div class="feature-card" onclick="window.location.href='index.html'">
+                    <div class="feature-icon assessment">评估</div>
+                    <h2 class="feature-title">赛前快速评估</h2>
+                    <p class="feature-description">快速评估运动员赛前状态，提供红黄绿灯风险分级和基础行动建议，帮助教练做出更明智的决策。</p>
+                    <div class="feature-actions">
+                        <a href="index.html" class="btn btn-primary">查看详情</a>
+                        <span class="arrow-icon">→</span>
+                    </div>
+                </div>
+
+                <!-- 需求二：个体化运动准备 -->
+                <div class="feature-card" onclick="window.location.href='warmup.html'">
+                    <div class="feature-icon warmup">准备</div>
+                    <h2 class="feature-title">个体化运动准备</h2>
+                    <p class="feature-description">基于训练前状态评分，提供个性化热身推荐，逐步叠加历史数据学习能力，形成针对不同运动项目的专项准备系统。</p>
+                    <div class="feature-actions">
+                        <a href="warmup.html" class="btn btn-primary">查看详情</a>
+                        <span class="arrow-icon">→</span>
+                    </div>
+                </div>
+
+                <!-- 需求三：疲劳恢复与后续决策 -->
+                <div class="feature-card" onclick="window.location.href='recovery.html'">
+                    <div class="feature-icon recovery">恢复</div>
+                    <h2 class="feature-title">疲劳恢复与后续决策</h2>
+                    <p class="feature-description">从场间疲劳识别切入，延伸到赛后恢复追踪，最终沉淀成用户长期恢复模型，支持下次训练和比赛安排。</p>
+                    <div class="feature-actions">
+                        <a href="recovery.html" class="btn btn-primary">查看详情</a>
+                        <span class="arrow-icon">→</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('主页面加载完成');
+            updateUserInfo();
+        });
+
+        // 更新用户信息显示
+        function updateUserInfo() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            const userInfoElement = document.getElementById('userInfo');
+            
+            if (currentUser) {
+                const username = currentUser.username || '用户';
+                const initial = username.charAt(0).toUpperCase();
+                
+                userInfoElement.innerHTML = `
+                    <span>${username}</span>
+                    <div class="user-avatar" onclick="showPersonalInfo()">${initial}</div>
+                `;
+            }
+        }
+
+        // 显示测试选项模态框
+        function showTestOptions() {
+            document.getElementById('testOptionsModal').style.display = 'flex';
+        }
+
+        // 隐藏测试选项模态框
+        function hideTestOptions() {
+            document.getElementById('testOptionsModal').style.display = 'none';
+        }
+
+        // 开始测试
+        function startTest(testType) {
+            hideTestOptions();
+            // 根据测试类型跳转到相应的视频页面 (bypassing video.html for quick testing)
+            window.location.href = 'camera.html?type=' + testType;
+        }
+
+        // 显示个人信息弹窗
+        function showPersonalInfo() {
+            const personalInfoContent = document.getElementById('personalInfoContent');
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            
+            if (currentUser) {
+                // 构建个人信息HTML
+                let infoHtml = '';
+                
+                // 基本信息
+                infoHtml += `<div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 600;">用户名:</span>
+                    <span>${currentUser.username || '未设置'}</span>
+                </div>`;
+                
+                infoHtml += `<div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 600;">邮箱:</span>
+                    <span>${currentUser.email || '未设置'}</span>
+                </div>`;
+                
+                // 个人信息
+                if (currentUser.personal_info) {
+                    const personalInfo = currentUser.personal_info;
+                    
+                    infoHtml += `<div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600;">年龄:</span>
+                        <span>${personalInfo.age || '未设置'}</span>
+                    </div>`;
+                    
+                    infoHtml += `<div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600;">性别:</span>
+                        <span>${personalInfo.gender || '未设置'}</span>
+                    </div>`;
+                    
+                    infoHtml += `<div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600;">一周运动几小时:</span>
+                        <span>${personalInfo.exercise || '未设置'}</span>
+                    </div>`;
+                    
+                    infoHtml += `<div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600;">身份:</span>
+                        <span>${personalInfo.identity || '未设置'}</span>
+                    </div>`;
+                }
+                
+                personalInfoContent.innerHTML = infoHtml + `
+                    <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e0e0e0;">
+                        <button onclick="editPersonalInfo()" style="width: 100%; padding: 12px; background-color: #0071e3; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background-color 0.3s ease;">
+                            修改个人信息
+                        </button>
+                    </div>
+                `;
+            } else {
+                personalInfoContent.innerHTML = '<div style="text-align: center; color: #86868b;">未登录或无个人信息</div>';
+            }
+            
+            document.getElementById('personalInfoModal').classList.add('show');
+        }
+
+        // 隐藏个人信息弹窗
+        function hidePersonalInfo() {
+            document.getElementById('personalInfoModal').classList.remove('show');
+        }
+
+        // 修改个人信息
+        function editPersonalInfo() {
+            hidePersonalInfo();
+            window.location.href = '../personal_info/app_personal_info.html';
+        }
+
+        // 点击弹窗外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('personalInfoModal');
+            if (event.target == modal) {
+                hidePersonalInfo();
+            }
+        }
+
+        // 页面加载时检查URL参数
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const type = urlParams.get('type');
+            if (type) {
+                // 如果URL中有type参数，直接显示测试选项模态框
+                showTestOptions();
+            }
+        });
+    </script>
+</body>
+</html>
