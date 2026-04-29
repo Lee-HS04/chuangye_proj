@@ -69,7 +69,7 @@ def process_frame(
     # ==========================================================
     # UPDATE TRACKERS
     # ==========================================================
-    sway_tracker.update(features["mid_hip"])
+    sway_tracker.update(features.get("mid_hip"), features.get("mid_shoulder"))
 
     sway_velocity = sway_tracker.get_sway_velocity()
     sway_cv = sway_tracker.get_cv()

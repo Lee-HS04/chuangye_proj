@@ -1,6 +1,7 @@
 import os
 import cv2
 import time
+import csv
 from posture_analysis import load_rules
 from core.counters import R2PScorer, RepCounter, SwayTracker, CMJTracker
 from body_tracking import project_3d_to_2d, smpl_to_coco17, get_yolo26_keypoints
@@ -109,5 +110,17 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
 
     cap.release()
     out.release()
-    print(f"Task {task_id} complete! Saved to {out_path}")
+    
+    # Save results similarly to main.py logic (merged partner functionality)
+    metrics_path = os.path.join(out_dir, "metrics.csv")
+    cv_val = balance_tracker.get_cv()
+    one_minus_cv = balance_tracker.get_one_minus_cv()
+    file_exists = os.path.isfile(metrics_path)
+    with open(metrics_path, "a", newline="") as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["video", "cv", "one_minus_cv"])
+        writer.writerow([f"{task_id}_annotated.webm", cv_val, one_minus_cv])
+
+    print(f"Task {task_id} complete! Saved {cv_val:.2f}% CV to {out_path}")
     return out_path

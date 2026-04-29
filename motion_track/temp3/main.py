@@ -43,8 +43,8 @@ if source_option == "Upload MP4 Video":
         
         # Conditionally skip GVHMR processing for Balance/Frontal tests
         # To temporarily disable YOLO and test GVHMR, set use_yolo26 = False
-        use_yolo26 = exercise_name in ["SLS", "Balance"] 
-        # use_yolo26 = False # Uncomment this line to force GVHMR mapping for all exercises
+        # use_yolo26 = exercise_name in ["SLS", "Balance"] 
+        use_yolo26 = False # Uncomment this line to force GVHMR mapping for all exercises
         st.session_state["use_yolo26"] = use_yolo26
         
         if not use_yolo26:
