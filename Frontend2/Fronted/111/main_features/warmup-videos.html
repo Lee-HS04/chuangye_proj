@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>热身视频播放</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0071e3;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #0071e3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .main-content {
+            margin-top: 40px;
+        }
+
+        .video-section {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #1d1d1f;
+        }
+
+        .video-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto 32px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .video-controls {
+            margin-top: 24px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: #0071e3;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            margin-left: 12px;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e0e0e0;
+        }
+
+        .exercise-info {
+            margin-bottom: 24px;
+        }
+
+        .exercise-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .exercise-description {
+            color: #86868b;
+        }
+
+        .progress-container {
+            margin: 24px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #f5f5f7;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #0071e3;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #86868b;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .video-section {
+                padding: 24px;
+            }
+
+            .section-title {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <a href="main.html" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;">返回主界面</a>
+                <div class="logo">R2P-Guard</div>
+            </div>
+            <div class="user-info">
+                <span>张教练</span>
+                <div class="user-avatar">张</div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="video-section">
+                <h2 class="section-title">热身视频</h2>
+                
+                <div class="exercise-info">
+                    <h3 class="exercise-name" id="exerciseName">动态拉伸</h3>
+                    <p class="exercise-description" id="exerciseDescription">针对下肢肌肉群的动态拉伸</p>
+                </div>
+
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 16.67%;"></div>
+                    </div>
+                    <p class="progress-text" id="progressText">1/6 动作</p>
+                </div>
+                
+                <div class="video-container">
+                    <video id="demoVideo" controls>
+                        <source src="录屏2026-04-12 15.45.10.mp4" type="video/mp4">
+                        您的浏览器不支持视频播放。
+                    </video>
+                </div>
+
+                <div class="video-controls">
+                    <button id="nextButton" class="btn btn-primary" style="display: none;">继续</button>
+                    <button id="finishButton" class="btn btn-primary" style="display: none;">再次检测热身状态</button>
+                    <a href="warmup.html" class="btn btn-secondary">返回</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 热身动作数据
+        const exercises = [
+            {
+                name: "动态拉伸",
+                description: "针对下肢肌肉群的动态拉伸",
+                video: "https://www.w3schools.com/html/mov_bbb.mp4"
+            },
+            {
+                name: "高抬腿",
+                description: "提高心率和下肢灵活性",
+                video: "https://www.w3schools.com/html/mov_bbb.mp4"
+            },
+            {
+                name: "侧弓步",
+                description: "增强髋部和腿部肌肉",
+                video: "https://www.w3schools.com/html/mov_bbb.mp4"
+            },
+            {
+                name: "轻重量深蹲",
+                description: "激活下肢肌肉群",
+                video: "https://www.w3schools.com/html/mov_bbb.mp4"
+            },
+            {
+                name: "动态平衡训练",
+                description: "提高核心稳定性",
+                video: "https://www.w3schools.com/html/mov_bbb.mp4"
+            },
+            {
+                name: "冲刺跑",
+                description: "提高爆发力和反应速度",
+                video: "https://www.w3schools.com/html/mov_bbb.mp4"
+            }
+        ];
+
+        // 当前动作索引
+        let currentExerciseIndex = 0;
+
+        // 获取DOM元素
+        const video = document.getElementById('demoVideo');
+        const nextButton = document.getElementById('nextButton');
+        const finishButton = document.getElementById('finishButton');
+        const exerciseName = document.getElementById('exerciseName');
+        const exerciseDescription = document.getElementById('exerciseDescription');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+
+        // 获取URL参数中的动作索引
+        function getExerciseIndex() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const index = parseInt(urlParams.get('index'));
+            if (!isNaN(index) && index >= 0 && index < exercises.length) {
+                return index;
+            }
+            return 0;
+        }
+
+        // 更新当前动作信息
+        function updateExerciseInfo() {
+            const exercise = exercises[currentExerciseIndex];
+            exerciseName.textContent = exercise.name;
+            exerciseDescription.textContent = exercise.description;
+            video.src = exercise.video;
+            
+            // 更新进度条
+            const progress = ((currentExerciseIndex + 1) / exercises.length) * 100;
+            progressFill.style.width = progress + '%';
+            progressText.textContent = `${currentExerciseIndex + 1}/${exercises.length} 动作`;
+        }
+
+        // 播放下一个动作视频
+        function playNextExercise() {
+            currentExerciseIndex++;
+            if (currentExerciseIndex < exercises.length) {
+                updateExerciseInfo();
+                nextButton.style.display = 'none';
+                video.play();
+            } else {
+                // 所有视频播放完毕
+                finishButton.style.display = 'inline-block';
+                nextButton.style.display = 'none';
+            }
+        }
+
+        // 再次检测热身状态
+        function checkWarmupStatus() {
+            // 跳转到开始检测页面，传递warmup类型
+            window.location.href = 'main.html?type=warmup';
+        }
+
+        // 事件监听
+        video.addEventListener('ended', function() {
+            if (currentExerciseIndex < exercises.length - 1) {
+                nextButton.style.display = 'inline-block';
+            } else {
+                finishButton.style.display = 'inline-block';
+            }
+        });
+
+        nextButton.addEventListener('click', playNextExercise);
+        finishButton.addEventListener('click', checkWarmupStatus);
+
+        // 初始化
+        currentExerciseIndex = getExerciseIndex();
+        updateExerciseInfo();
+    </script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人信息 - R2P-Guard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0071e3;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #0071e3;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+            gap: 32px;
+        }
+
+        .sidebar {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .profile-section {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #1d1d1f;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background-color: #0071e3;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: 600;
+            margin: 0 auto 24px;
+        }
+
+        .profile-name {
+            font-size: 20px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .profile-role {
+            font-size: 16px;
+            color: #86868b;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            padding: 16px 0;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item:hover {
+            color: #0071e3;
+        }
+
+        .nav-item.active {
+            color: #0071e3;
+            font-weight: 600;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .info-card {
+            background: #f5f5f7;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .info-card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #86868b;
+        }
+
+        .info-value {
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: #0071e3;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            margin-left: 12px;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e0e0e0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-secondary {
+                margin-left: 0;
+                margin-top: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <a href="main.html" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;">返回主界面</a>
+                <div class="logo">R2P-Guard</div>
+            </div>
+            <div class="user-info">
+                <span>张教练</span>
+                <div class="user-avatar">张</div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- 侧边栏 -->
+            <div class="sidebar">
+                <div class="profile-avatar">张</div>
+                <div class="profile-name">张教练</div>
+                <div class="profile-role">专业教练</div>
+                <ul class="nav-menu">
+                    <li class="nav-item active">个人信息</li>
+                    <li class="nav-item">训练计划</li>
+                    <li class="nav-item">历史记录</li>
+                    <li class="nav-item">设置</li>
+                </ul>
+            </div>
+
+            <!-- 个人信息部分 -->
+            <div class="profile-section">
+                <h2 class="section-title">个人信息</h2>
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-card-title">基本信息</div>
+                        <div class="info-item">
+                            <span class="info-label">姓名</span>
+                            <span class="info-value">张教练</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">性别</span>
+                            <span class="info-value">男</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">年龄</span>
+                            <span class="info-value">35岁</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">联系方式</span>
+                            <span class="info-value">138****8888</span>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-title">专业信息</div>
+                        <div class="info-item">
+                            <span class="info-label">专业领域</span>
+                            <span class="info-value">篮球训练</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">执教经验</span>
+                            <span class="info-value">10年</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">认证资格</span>
+                            <span class="info-value">国家级教练</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">所属机构</span>
+                            <span class="info-value">国家篮球队</span>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-title">最近活动</div>
+                        <div class="info-item">
+                            <span class="info-label">最近评估</span>
+                            <span class="info-value">2026-04-12</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">最近训练</span>
+                            <span class="info-value">2026-04-11</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">累计评估</span>
+                            <span class="info-value">128次</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">累计训练</span>
+                            <span class="info-value">365次</span>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-title">身体数据</div>
+                        <div class="info-item">
+                            <span class="info-label">身高</span>
+                            <span class="info-value">185cm</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">体重</span>
+                            <span class="info-value">75kg</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">体脂率</span>
+                            <span class="info-value">12%</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">心率</span>
+                            <span class="info-value">65次/分钟</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 32px;">
+                    <button class="btn btn-primary">编辑个人信息</button>
+                    <button class="btn btn-secondary">导出数据</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

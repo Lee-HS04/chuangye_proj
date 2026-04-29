@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>登录/注册 - R2P-Guard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-align: center;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #666;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #007AFF;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        .error-message {
+            color: #ff3b30;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .send-code-btn {
+            width: 100%;
+            margin-top: 10px;
+            padding: 12px 16px;
+            background-color: #34C759;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .send-code-btn:hover {
+            background-color: #2db84d;
+        }
+
+        .send-code-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .toggle-form {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #007AFF;
+            cursor: pointer;
+        }
+
+        .toggle-form:hover {
+            text-decoration: underline;
+        }
+
+        .form-section {
+            display: none;
+        }
+
+        .form-section.active {
+            display: block;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-top: auto;
+            padding-top: 20px;
+        }
+
+        .success-message {
+            color: #34C759;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=200&h=200&fit=crop" alt="R2P-Guard">
+        </div>
+
+        <div class="form-container">
+            <!-- 登录表单 -->
+            <div class="form-section active" id="loginForm">
+                <h1>登录</h1>
+
+                <div class="form-group">
+                    <label for="loginUsername">用户名</label>
+                    <input type="text" id="loginUsername" placeholder="请输入用户名">
+                    <div class="error-message" id="loginUsernameError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword">密码</label>
+                    <input type="password" id="loginPassword" placeholder="请输入密码">
+                    <div class="error-message" id="loginPasswordError"></div>
+                </div>
+
+                <button id="loginBtn">登录</button>
+
+                <div class="toggle-form" onclick="toggleForm('registerForm')">
+                    没有账号？立即注册
+                </div>
+            </div>
+
+            <!-- 注册表单 -->
+            <div class="form-section" id="registerForm">
+                <h1>注册</h1>
+
+                <div class="form-group">
+                    <label for="registerEmail">邮箱</label>
+                    <input type="email" id="registerEmail" placeholder="请输入邮箱">
+                    <button type="button" class="send-code-btn" id="sendCodeBtn">发送验证码</button>
+                    <div class="error-message" id="registerEmailError"></div>
+                    <div class="success-message" id="registerEmailSuccess"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerCode">验证码</label>
+                    <input type="text" id="registerCode" placeholder="请输入验证码">
+                    <div class="error-message" id="registerCodeError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerUsername">用户名</label>
+                    <input type="text" id="registerUsername" placeholder="请输入用户名">
+                    <div class="error-message" id="registerUsernameError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerPassword">密码</label>
+                    <input type="password" id="registerPassword" placeholder="请输入密码">
+                    <div class="error-message" id="registerPasswordError"></div>
+                </div>
+
+                <button id="registerBtn">注册</button>
+
+                <div class="toggle-form" onclick="toggleForm('loginForm')">
+                    已有账号？立即登录
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            © 2026 R2P-Guard. 保留所有权利。
+        </div>
+    </div>
+
+    <script>
+        let generatedCode = '';
+        let currentEmail = '';
+        let emailVerified = false;
+        const EMAIL_API_HOST = 'http://127.0.0.1:8001';
+
+        // 表单切换功能
+        function toggleForm(formId) {
+            document.querySelectorAll('.form-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(formId).classList.add('active');
+            emailVerified = false;
+        }
+
+        // 发送验证码
+        document.getElementById('sendCodeBtn').addEventListener('click', function() {
+            const email = document.getElementById('registerEmail').value.trim();
+            const errorEl = document.getElementById('registerEmailError');
+            const successEl = document.getElementById('registerEmailSuccess');
+
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+
+            if (!email) {
+                errorEl.textContent = '请输入邮箱';
+                errorEl.style.display = 'block';
+                return;
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                errorEl.textContent = '请输入正确的邮箱格式';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            // 验证邮箱是否已存在
+            const userData = getUserData();
+            const existingUser = userData.users.find(u => u.email === email);
+            if (existingUser) {
+                errorEl.textContent = '该邮箱已注册';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            // 发送验证码到后端
+            fetch(EMAIL_API_HOST + '/send_code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email: email })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    currentEmail = email;
+                    successEl.textContent = '验证码已发送到您的邮箱';
+                    successEl.style.display = 'block';
+                    errorEl.style.display = 'none';
+
+                    // 开始倒计时
+                    const btn = document.getElementById('sendCodeBtn');
+                    let countdown = 60;
+                    btn.disabled = true;
+                    btn.textContent = `${countdown}秒后重发`;
+
+                    const timer = setInterval(() => {
+                        countdown--;
+                        if (countdown <= 0) {
+                            clearInterval(timer);
+                            btn.disabled = false;
+                            btn.textContent = '发送验证码';
+                        } else {
+                            btn.textContent = `${countdown}秒后重发`;
+                        }
+                    }, 1000);
+                } else {
+                    errorEl.textContent = data.message || '发送失败，请稍后重试';
+                    errorEl.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('发送验证码失败:', error);
+                errorEl.textContent = '服务连接失败，请确保邮箱服务已启动';
+                errorEl.style.display = 'block';
+            });
+        });
+
+        // 初始化用户数据
+        function initUserData() {
+            if (!localStorage.getItem('userData')) {
+                const initialData = {
+                    "users": [],
+                    "last_updated": new Date().toISOString()
+                };
+                localStorage.setItem('userData', JSON.stringify(initialData));
+            }
+        }
+
+        // 获取用户数据
+        function getUserData() {
+            initUserData();
+            return JSON.parse(localStorage.getItem('userData'));
+        }
+
+        // 保存用户数据
+        function saveUserData(data) {
+            data.last_updated = new Date().toISOString();
+            localStorage.setItem('userData', JSON.stringify(data));
+        }
+
+        // 保存用户到JSON文件（用于备份）
+        function saveUserToJsonFile(user) {
+            let jsonData = {};
+            try {
+                const existingJson = localStorage.getItem('userDataJson');
+                if (existingJson) {
+                    jsonData = JSON.parse(existingJson);
+                }
+            } catch (e) {
+                jsonData = { users: [], last_updated: '' };
+            }
+
+            if (!jsonData.users) {
+                jsonData.users = [];
+            }
+
+            // 检查是否已存在
+            const existingIndex = jsonData.users.findIndex(u => u.email === user.email);
+            if (existingIndex >= 0) {
+                jsonData.users[existingIndex] = user;
+            } else {
+                jsonData.users.push(user);
+            }
+
+            jsonData.last_updated = new Date().toISOString();
+            localStorage.setItem('userDataJson', JSON.stringify(jsonData, null, 2));
+        }
+
+        // 同步更新user_data.json文件
+        function syncUserDataToJsonFile() {
+            const userData = getUserData();
+            // 这里可以添加与后端API的通信，将数据同步到服务器
+            // 目前我们先确保localStorage中的数据与JSON文件结构一致
+            console.log('用户数据已更新，准备同步到JSON文件:', userData);
+        }
+
+        // 登录按钮点击事件
+        document.getElementById('loginBtn').addEventListener('click', function() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+
+            // 验证输入
+            let isValid = true;
+
+            if (!username) {
+                document.getElementById('loginUsernameError').textContent = '请输入用户名';
+                document.getElementById('loginUsernameError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('loginUsernameError').style.display = 'none';
+            }
+
+            if (!password) {
+                document.getElementById('loginPasswordError').textContent = '请输入密码';
+                document.getElementById('loginPasswordError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('loginPasswordError').style.display = 'none';
+            }
+
+            if (isValid) {
+                // 验证用户名和密码
+                const userData = getUserData();
+                const user = userData.users.find(u => u.username === username && u.password === password);
+
+                if (user) {
+                    alert('登录成功！');
+                    // 存储当前登录用户信息
+                    localStorage.setItem('currentUser', JSON.stringify(user));
+                    // 检查用户是否已填写个人信息
+                    if (user.personal_info && Object.keys(user.personal_info).length > 0) {
+                        // 已填写个人信息，直接跳转到主页面
+                        window.location.href = '../main_features/main.html';
+                    } else {
+                        // 未填写个人信息，跳转到个人信息收集页面
+                        window.location.href = '../personal_info/app_personal_info.html';
+                    }
+                } else {
+                    document.getElementById('loginPasswordError').textContent = '用户名或密码错误';
+                    document.getElementById('loginPasswordError').style.display = 'block';
+                }
+            }
+        });
+
+        // 注册按钮点击事件
+        document.getElementById('registerBtn').addEventListener('click', function() {
+            const email = document.getElementById('registerEmail').value.trim();
+            const code = document.getElementById('registerCode').value.trim();
+            const username = document.getElementById('registerUsername').value.trim();
+            const password = document.getElementById('registerPassword').value.trim();
+
+            // 验证输入
+            let isValid = true;
+
+            if (!email) {
+                document.getElementById('registerEmailError').textContent = '请输入邮箱';
+                document.getElementById('registerEmailError').style.display = 'block';
+                isValid = false;
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                document.getElementById('registerEmailError').textContent = '请输入正确的邮箱格式';
+                document.getElementById('registerEmailError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('registerEmailError').style.display = 'none';
+            }
+
+            if (!code) {
+                document.getElementById('registerCodeError').textContent = '请输入验证码';
+                document.getElementById('registerCodeError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('registerCodeError').style.display = 'none';
+            }
+
+            if (!username) {
+                document.getElementById('registerUsernameError').textContent = '请输入用户名';
+                document.getElementById('registerUsernameError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('registerUsernameError').style.display = 'none';
+            }
+
+            if (!password) {
+                document.getElementById('registerPasswordError').textContent = '请输入密码';
+                document.getElementById('registerPasswordError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('registerPasswordError').style.display = 'none';
+            }
+
+            if (isValid) {
+                // 验证邮箱是否已存在
+                const userData = getUserData();
+                const existingUser = userData.users.find(u => u.email === email);
+
+                if (existingUser) {
+                    document.getElementById('registerEmailError').textContent = '该邮箱已注册';
+                    document.getElementById('registerEmailError').style.display = 'block';
+                    return;
+                }
+
+                // 验证验证码
+                fetch(EMAIL_API_HOST + '/verify_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email: email, code: code })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // 创建新用户
+                        const newUser = {
+                            id: Date.now().toString(),
+                            username: username,
+                            password: password,
+                            email: email,
+                            verification_code: code,
+                            personal_info: {},
+                            upload_records: [],
+                            backend_video_data: {},
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        };
+
+                        // 保存用户数据到localStorage
+                        userData.users.push(newUser);
+                        saveUserData(userData);
+
+                        // 同时保存到JSON文件（用于备份）
+                        saveUserToJsonFile(newUser);
+
+                        // 存储当前登录用户信息
+                        localStorage.setItem('currentUser', JSON.stringify(newUser));
+
+                        alert('注册成功！');
+                        // 跳转到个人信息收集页面
+                        window.location.href = '../personal_info/app_personal_info.html';
+                    } else {
+                        document.getElementById('registerCodeError').textContent = data.message || '验证码错误';
+                        document.getElementById('registerCodeError').style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('验证失败:', error);
+                    document.getElementById('registerCodeError').textContent = '服务连接失败，请确保邮箱服务已启动';
+                    document.getElementById('registerCodeError').style.display = 'block';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
