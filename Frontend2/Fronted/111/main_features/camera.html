@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动作拍摄</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0071e3;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #0071e3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .main-content {
+            margin-top: 40px;
+        }
+
+        .camera-section {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #1d1d1f;
+        }
+
+        .camera-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto 32px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            background-color: #000;
+            position: relative;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .camera-container.error-glow {
+            box-shadow: 0 0 30px rgba(255, 59, 48, 0.8), inset 0 0 20px rgba(255, 59, 48, 0.5);
+            border: 2px solid #ff3b30;
+        }
+
+        /* Countdown timer in top right */
+        .fsm-timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            font-family: monospace;
+            display: none;
+            z-index: 10;
+        }
+
+        /* Status hint overlay */
+        .fsm-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: 500;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        canvas {
+            display: none;
+        }
+
+        .camera-controls {
+            margin-top: 24px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: #0071e3;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            margin-left: 12px;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e0e0e0;
+        }
+
+        .btn-danger {
+            background-color: #ff3b30;
+            color: white;
+            margin-left: 12px;
+        }
+
+        .btn-danger:hover {
+            background-color: #ff453a;
+        }
+
+        .uploading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            flex-direction: column;
+            display: none;
+        }
+
+        .uploading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #0071e3;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 24px;
+        }
+
+        .uploading-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .camera-section {
+                padding: 24px;
+            }
+
+            .section-title {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <a href="main.html" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;">返回主界面</a>
+                <div class="logo">R2P-Guard</div>
+            </div>
+            <div class="user-info">
+                <span>张教练</span>
+                <div class="user-avatar">张</div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="camera-section">
+                <h2 class="section-title">动作拍摄</h2>
+                <p style="margin-bottom: 24px; color: #86868b;">请按照示范动作进行拍摄，确保全身都在画面中</p>
+                
+                <div class="camera-container" id="cameraBox">
+                    <div id="fsmTimer" class="fsm-timer">5.0</div>
+                    <div id="fsmHint" class="fsm-hint">正在连线 AI 分析引擎...</div>
+
+                    <video id="video" autoplay></video>
+                    <video id="previewVideo" controls style="display: none;"></video>
+                    <!-- Hide canvas via style -->
+                    <canvas id="canvas" style="display: none;"></canvas>
+                </div>
+
+                <div class="camera-controls" id="recordingControls">
+                    <button id="startButton" class="btn btn-primary">开始拍摄 (摄像头)</button>
+                    <label class="btn btn-secondary" style="cursor:pointer; margin: 0; margin-left: 12px;">
+                        上传本地视频
+                        <input type="file" id="videoFileInput" accept="video/mp4,video/x-m4v,video/*" style="display: none;" onchange="handleFileUpload(event)">
+                    </label>
+                    <button id="stopButton" class="btn btn-danger" style="display: none;">结束拍摄</button>
+                    <a href="video.html" class="btn btn-secondary" style="margin-left: 12px;">返回动作示范</a>
+                </div>
+
+                <div class="camera-controls" id="previewControls" style="display: none;">
+                    <button id="uploadButton" class="btn btn-primary" onclick="uploadVideo()">确认上传分析</button>
+                    <a href="camera.html" class="btn btn-secondary">重新拍摄 / 选择</a>
+                </div>
+
+                <!-- Analysis Processing Status -->
+                <div id="analysisSection" style="display: none; margin-top: 32px; background: #fbfbfd; padding: 24px; border-radius: 12px; border: 1px solid #e0e0e0;">
+                    <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 16px;">后端处理状态与结果</h3>
+                    <div id="processingStatus" style="font-weight: 600; color: #ff9500; margin-bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 8px;">
+                        <div class="uploading-spinner" style="width: 20px; height: 20px; border-width: 3px; margin: 0;"></div>
+                        <span id="processingText">上传完成，正在排队等待服务器处理...</span>
+                    </div>
+                    <div class="video-container" style="box-shadow: none; background: transparent; margin-bottom: 0;">
+                        <video id="resultVideo" controls style="display: none; border-radius: 8px; width: 100%; max-width: 600px; margin: 0 auto;"></video>
+                    </div>
+                    <div class="camera-controls" id="resultControls" style="display: none; margin-top: 24px;">
+                        <a href="index.html" class="btn btn-primary">查看详细综合报告</a>
+                        <a href="camera.html" class="btn btn-secondary">返回继续拍摄</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 上传提示 -->
+    <div class="uploading" id="uploading">
+        <div class="uploading-spinner"></div>
+        <div class="uploading-text">视频正在上传分析，请耐心等待...</div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const previewVideo = document.getElementById('previewVideo');
+        const canvas = document.getElementById('canvas');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const uploading = document.getElementById('uploading');
+        const analysisSection = document.getElementById('analysisSection');
+        const processingStatus = document.getElementById('processingStatus');
+        const resultVideo = document.getElementById('resultVideo');
+        const resultControls = document.getElementById('resultControls');
+        const fileInput = document.getElementById('videoFileInput');
+        
+        // FSM UI elements
+        const cameraBox = document.getElementById('cameraBox');
+        const fsmTimer = document.getElementById('fsmTimer');
+        const fsmHint = document.getElementById('fsmHint');
+        
+        let stream = null;
+        let recorder = null;
+        let recordedChunks = [];
+        let selectedFileMap = null;
+        let apiHost = "http://127.0.0.1:8000";
+        
+        // WebSocket logic
+        let ws = null;
+        let wsInterval = null;
+        let autoRecordingActive = false;
+        let isSuccessRep = false;
+        let previousState = 1;
+
+        async function initCamera() {
+            try {
+                if (stream) { stopCamera(); }
+                // Force an ideal 30 FPS track limit to guarantee timing locks with OpenCV backend
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { frameRate: { ideal: 30, max: 30 } }, 
+                    audio: false 
+                });
+                video.srcObject = stream;
+            } catch (error) {
+                console.warn('摄像头被拒绝或未找到，将只允许本地视频上传:', error);
+                video.style.display = 'none';
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+        }
+        
+        function getTestType() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('type') || 'assessment';
+        }
+
+        // Connect Auto-Recording FSM WebSockets
+        function connectWebSocket() {
+            const testType = getTestType();
+            let exerciseName = "Balance"; 
+            if (testType === 'cmj') exerciseName = "CMJ";
+            else if (testType === 'squat') exerciseName = "SLS";
+
+            const wsUrl = `ws://127.0.0.1:8000/ws/form-check/${exerciseName}`;
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => { console.log("WebSocket connected for Auto-Recording"); };
+            ws.onmessage = (event) => {
+                const response = JSON.parse(event.data);
+                if(!autoRecordingActive) return;
+
+                fsmHint.textContent = response.hint;
+
+                // NEW LOGIC: Native MediaRecorder Restart
+                // If they just entered State 2 ("Balancing. Hold it!")...
+                if (response.state === 2 && previousState === 1) {
+                    // Silently reset the WebM recorder entirely to 0.0s 
+                    // so it drops setup time and ONLY captures the final action!
+                    if (recorder && recorder.state === 'recording') {
+                        isSuccessRep = false;
+                        recorder.stop(); 
+                    }
+                }
+                
+                // Keep track of the state for the next frame
+                previousState = response.state;
+
+                if (response.status === "GOOD") {
+                    cameraBox.classList.remove("error-glow");
+                    
+                    // Parse timer string if it's the Balance test: "Holding... Xs"
+                    if (exerciseName === "Balance" && response.state === 2) {
+                        fsmTimer.style.display = "block";
+                        const match = response.hint.match(/([\d\.]+)s/);
+                        if(match) {
+                            const heldSec = parseFloat(match[1]);
+                            const remaining = (5.0 - heldSec).toFixed(1);
+                            fsmTimer.textContent = remaining > 0 ? remaining : "0.0";
+                        }
+                    } else {
+                        fsmTimer.style.display = "none";
+                    }
+
+                } else if (response.status === "BAD") {
+                    if (!cameraBox.classList.contains("error-glow")) {
+                        cameraBox.classList.add("error-glow");
+                      }
+                      if (exerciseName === "Balance" && response.hint.includes("Leg dropped")) {
+                          fsmTimer.style.display = "none";
+                          fsmTimer.textContent = "5.0"; // Reset view
+                    }
+                } else if (response.status === "REP_COMPLETE") {
+                    cameraBox.classList.remove("error-glow");
+                    fsmHint.textContent = "动作完成！自动截取生成中...";
+                    fsmTimer.style.display = "block";
+                    fsmTimer.textContent = "✔";
+                    fsmTimer.style.color = "#34c759"; 
+                    
+                    // Mark as a success so the onstop handler knows to actually upload it
+                    isSuccessRep = true;
+                    triggerAutoUpload(); // Auto-stop and submit rolling buffer
+                }
+            };
+            ws.onerror = (err) => { console.error("WS Err:", err); };
+        }
+
+        // WebM + Rolling Video Buffer
+        function startRecording() {
+            if (!stream) {
+                alert("未能访问摄像头，请尝试上传本地文件！");
+                return;
+            }
+            autoRecordingActive = true;
+            recordedChunks = [];
+            
+            // Prefer vp8 codec for fast inline browser recording
+            recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp8,opus" });
+            
+            recorder.ondataavailable = event => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            recorder.onstop = () => {
+                // If it wasn't a success flip (user dropped pose, or hasn't started holding yet)
+                if (autoRecordingActive && !isSuccessRep) {
+                    // Start immediately again to natively rebuild the WebM header!
+                    recordedChunks = [];
+                    recorder.start(500);
+                    return;
+                }
+                
+                // Otherwise, it was a real completion. Handle it!
+                autoRecordingActive = false;
+                clearInterval(wsInterval);
+                if(ws) ws.close();
+                
+                // Form a clip from the action
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                selectedFileMap = blob; 
+                uploadVideo(); // Skip preview, immediately upload via FSM Auto-Record
+            };
+
+            // Capture chunks every 500ms to allow fine-grained rolling buffers
+            recorder.start(500); 
+
+            // Start Broadcasting webcam frames to Backend FSM
+            connectWebSocket();
+            wsInterval = setInterval(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 640;
+                    canvas.height = 480;
+                    ctx.drawImage(video, 0, 0, 640, 480);
+                    // Low-res Base64 for fast latency analysis
+                    ws.send(canvas.toDataURL('image/jpeg', 0.4)); 
+                }
+            }, 200); // 5 FPS bounding-box check
+
+            document.getElementById('recordingControls').style.display = 'none';
+            stopButton.style.display = 'inline-block';
+            stopButton.parentElement.style.display = 'flex';
+        }
+
+        function stopRecording() {
+            // Manual Stop (falls back to selecting the whole buffer and asking for preview/upload)
+            autoRecordingActive = false;
+            clearInterval(wsInterval);
+            if(ws) ws.close();
+
+            if (recorder && recorder.state === 'recording') {
+                recorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    selectedFileMap = blob;
+                    showPreview(blob); // Normal flow instead of auto-upload
+                };
+                recorder.stop();
+            }
+        }
+        
+        function triggerAutoUpload() {
+            if (recorder && recorder.state === 'recording') {
+                recorder.stop(); // The recorder.onstop closure configured in startRecording points straight to uploadVideo()
+            }
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            selectedFileMap = file;
+            showPreview(file);
+        }
+
+        function showPreview(fileOrBlob) {
+            stopCamera();
+            video.style.display = 'none';
+            previewVideo.style.display = 'block';
+            previewVideo.src = URL.createObjectURL(fileOrBlob);
+            
+            document.getElementById('recordingControls').style.display = 'none';
+            document.getElementById('previewControls').style.display = 'flex';
+        }
+
+        function uploadVideo() {
+            if (!selectedFileMap) {
+                alert("请先录制或上传视频！");
+                return;
+            }
+
+            uploading.style.display = 'flex';
+
+            const formData = new FormData();
+            formData.append("video", selectedFileMap, "user_recording.mp4");
+            
+            const testType = getTestType();
+            let exerciseName = "Balance"; 
+            if (testType === 'cmj') exerciseName = "CMJ";
+            else if (testType === 'squat') exerciseName = "SLS";
+            formData.append("exercise_name", exerciseName);
+
+            // 提交给 FastAPI 进行处理
+            fetch(apiHost + "/upload", {
+                method: "POST",
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                uploading.style.display = 'none';
+                const taskId = data.task_id;
+                
+                // Implement requested flow: Balance recording -> CMJ recording -> Results
+                if (testType === 'balance' || testType === 'assessment') {
+                    // Start CMJ while Balance processes in background
+                    window.location.href = 'camera.html?type=cmj&balanceTask=' + taskId;
+                } else if (testType === 'cmj') {
+                    // Both done, go to index to poll
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const balanceTaskId = urlParams.get('balanceTask');
+                    
+                    if (balanceTaskId) {
+                        window.location.href = 'index.html?balanceTask=' + balanceTaskId + '&cmjTask=' + taskId;
+                    } else {
+                        window.location.href = 'index.html?task=' + taskId;
+                    }
+                } else {
+                    window.location.href = 'index.html?task=' + taskId;
+                }
+            })
+            .catch(error => {
+                console.error('Error uploading:', error);
+                uploading.style.display = 'none';
+                alert("服务端连接失败，请确保 python api.py 正在运行。\n错误信息: " + error);
+                document.getElementById('previewControls').style.display = 'flex';
+            });
+        }
+
+        function startPolling(taskId) {
+            const interval = setInterval(() => {
+                fetch(apiHost + "/status/" + taskId)
+                .then(res => res.json())
+                .then(data => {
+                    console.log("Poll", data);
+                    if(data.status === 'completed') {
+                        clearInterval(interval);
+                        processingStatus.style.color = '#34c759';
+                        processingStatus.innerHTML = '<span>✅ 分析完成！</span>';
+                        
+                        resultVideo.style.display = 'block';
+                        resultVideo.src = apiHost + data.result_video;
+                        resultControls.style.display = 'flex';
+                    } else if(data.status === 'failed') {
+                        clearInterval(interval);
+                        processingStatus.style.color = '#ff3b30';
+                        processingStatus.innerHTML = '<span>❌ 分析失败: ' + (data.error || '未知错误') + '</span>';
+                        resultControls.style.display = 'flex';
+                    }
+                })
+                .catch(err => {
+                    console.log("Poll fail", err);
+                });
+            }, 3000); // Check every 3 seconds
+        }
+
+        initCamera();
+
+        startButton.addEventListener('click', startRecording);
+        stopButton.addEventListener('click', stopRecording);
+    </script>
+</body>
+</html>

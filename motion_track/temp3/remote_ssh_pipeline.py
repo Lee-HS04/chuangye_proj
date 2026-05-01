@@ -13,6 +13,7 @@ if not os.path.exists(SSH_KEY_PATH):
     # Fallback to the WSL path if the script is running inside WSL (Linux)
     SSH_KEY_PATH = "/mnt/c/Users/LeeHS/.ssh/id_ed25519"
 
+
 def get_ssh_client():
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -77,13 +78,10 @@ print('Done decoding.')
     remote_decoder_path = f"{remote_video_dir}/decode_{video_base}.py"
     
     try:
-        # Write the temporary decoding script to the server
-        with scp.SCPClient(ssh.get_transport()) as scp_client:
-            # We temporarily write the script to our local disk and push it
-            with open("temp_decoder.py", "w") as f:
-                f.write(remote_decoder_script)
-            scp_client.put("temp_decoder.py", remote_decoder_path)
-            os.remove("temp_decoder.py")
+        # Write the temporary decoding script directly on the remote host.
+        with ssh.open_sftp() as sftp:
+            with sftp.file(remote_decoder_path, "w") as remote_file:
+                remote_file.write(remote_decoder_script)
     except Exception as e:
         print(f"Failed to copy decoder script: {e}")
         ssh.close()
@@ -97,7 +95,7 @@ print('Done decoding.')
         f"bash -lc \"source ~/miniconda3/etc/profile.d/conda.sh 2>/dev/null || source ~/anaconda3/etc/profile.d/conda.sh 2>/dev/null; "
         f"conda activate gvhmr && "
         f"cd /home/ai/GVHMR && "
-        f"CUDA_VISIBLE_DEVICES=0 python tools/demo/demo.py --video '{remote_video_path}' --output_root '{remote_output_dir}' -s {f_mm_arg} && "
+        f"CUDA_VISIBLE_DEVICES=0 python tools/demo/demo.py --video '{remote_video_path}' --output_root '{remote_output_dir}' {f_mm_arg} && "
         f"CUDA_VISIBLE_DEVICES=0 python {remote_decoder_path} && "
         f"rm -f {remote_decoder_path}\""
     )

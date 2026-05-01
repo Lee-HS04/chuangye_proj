@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动作详情</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0071e3;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #0071e3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .main-content {
+            margin-top: 40px;
+        }
+
+        .exercise-detail-section {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .section-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1d1d1f;
+        }
+
+        .exercise-icon {
+            font-size: 48px;
+            margin-bottom: 24px;
+        }
+
+        .video-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto 32px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .info-section {
+            margin-bottom: 32px;
+        }
+
+        .info-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+        }
+
+        .info-content {
+            color: #86868b;
+            line-height: 1.6;
+        }
+
+        .key-points {
+            list-style-type: none;
+        }
+
+        .key-points li {
+            margin-bottom: 8px;
+            color: #86868b;
+            padding-left: 24px;
+            position: relative;
+        }
+
+        .key-points li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #0071e3;
+            font-weight: bold;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: #0071e3;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            margin-left: 12px;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e0e0e0;
+        }
+
+        .action-buttons {
+            margin-top: 32px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .exercise-detail-section {
+                padding: 24px;
+            }
+
+            .section-title {
+                font-size: 24px;
+            }
+
+            .info-title {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <a href="main.html" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;">返回主界面</a>
+                <div class="logo">R2P-Guard</div>
+            </div>
+            <div class="user-info">
+                <span>张教练</span>
+                <div class="user-avatar">张</div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="exercise-detail-section">
+                <div class="exercise-icon" id="exerciseIcon">🏃</div>
+                <h2 class="section-title" id="exerciseName">动态拉伸</h2>
+                
+                <div class="video-container">
+                    <video id="demoVideo" controls>
+                        <source src="录屏2026-04-12 15.45.10.mp4" type="video/mp4">
+                        您的浏览器不支持视频播放。
+                    </video>
+                </div>
+
+                <div class="info-section">
+                    <h3 class="info-title">动作介绍</h3>
+                    <p class="info-content" id="exerciseDescription">动态拉伸是一种通过缓慢、有控制的动作来增加肌肉柔韧性和关节活动范围的热身方法。它不同于静态拉伸，动态拉伸是在运动中进行的，有助于提高肌肉温度和准备身体进行更剧烈的活动。</p>
+                </div>
+
+                <div class="info-section">
+                    <h3 class="info-title">功能介绍</h3>
+                    <p class="info-content" id="exerciseFunction">动态拉伸可以：</p>
+                    <ul class="key-points" id="functionPoints">
+                        <li>提高肌肉温度和血液循环</li>
+                        <li>增加关节活动范围</li>
+                        <li>减少运动损伤的风险</li>
+                        <li>改善肌肉协调性和反应能力</li>
+                        <li>为后续的高强度训练做准备</li>
+                    </ul>
+                </div>
+
+                <div class="info-section">
+                    <h3 class="info-title">动作要点</h3>
+                    <ul class="key-points" id="keyPoints">
+                        <li>保持动作流畅，避免突然用力</li>
+                        <li>控制动作幅度，不要过度拉伸</li>
+                        <li>保持呼吸平稳，不要憋气</li>
+                        <li>每个动作重复10-15次</li>
+                        <li>专注于目标肌肉群的拉伸</li>
+                    </ul>
+                </div>
+
+                <div class="action-buttons">
+                    <a href="warmup.html" class="btn btn-primary">返回热身方案</a>
+                    <a href="warmup-videos.html" class="btn btn-secondary">开始热身</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 动作详情数据
+        const exercises = [
+            {
+                name: "动态拉伸",
+                icon: "🏃",
+                description: "动态拉伸是一种通过缓慢、有控制的动作来增加肌肉柔韧性和关节活动范围的热身方法。它不同于静态拉伸，动态拉伸是在运动中进行的，有助于提高肌肉温度和准备身体进行更剧烈的活动。",
+                function: "动态拉伸可以：",
+                functionPoints: [
+                    "提高肌肉温度和血液循环",
+                    "增加关节活动范围",
+                    "减少运动损伤的风险",
+                    "改善肌肉协调性和反应能力",
+                    "为后续的高强度训练做准备"
+                ],
+                keyPoints: [
+                    "保持动作流畅，避免突然用力",
+                    "控制动作幅度，不要过度拉伸",
+                    "保持呼吸平稳，不要憋气",
+                    "每个动作重复10-15次",
+                    "专注于目标肌肉群的拉伸"
+                ],
+                video: "https://www.w3schools.com/html/mov_bbb.mp4"
+            },
+            {
+                name: "高抬腿",
+                icon: "🦵",
+                description: "高抬腿是一种常见的热身动作，通过快速抬起大腿至与地面平行的位置，同时保持身体直立，有助于提高心率和下肢灵活性。",
+                function: "高抬腿可以：",
+                functionPoints: [
+                    "快速提高心率和血液循环",
+                    "激活腿部肌肉群",
+                    "提高下肢灵活性和协调性",
+                    "增强核心稳定性",
+                    "改善跑步姿势和步幅"
+                ],
+                keyPoints: [
+                    "保持上半身直立，不要前倾",
+                    "大腿尽量抬至与地面平行",
+                    "落地时轻盈，避免膝盖受伤",
+                    "保持呼吸节奏，不要憋气",
+                    "逐渐增加速度和幅度"
+                ],
+                video: "https://www.w3schools.com/html/mov_bbb.mp4"
+            },
+            {
+                name: "侧弓步",
+                icon: "🤸",
+                description: "侧弓步是一种针对下肢的功能性训练动作，通过向侧面跨步并弯曲膝盖，有助于增强髋部和腿部肌肉，提高侧向移动能力。",
+                function: "侧弓步可以：",
+                functionPoints: [
+                    "增强髋部和腿部肌肉",
+                    "提高侧向移动能力",
+                    "改善下肢力量平衡",
+                    "增加髋关节活动范围",
+                    "预防运动损伤"
+                ],
+                keyPoints: [
+                    "保持上半身直立，不要前倾",
+                    "向侧面跨步，膝盖不要超过脚尖",
+                    "另一侧腿保持伸直",
+                    "重心在弯曲的腿上",
+                    "两侧交替进行，保持平衡"
+                ],
+                video: "https://www.w3schools.com/html/mov_bbb.mp4"
+            },
+            {
+                name: "轻重量深蹲",
+                icon: "🏋️",
+                description: "轻重量深蹲是一种使用小重量进行的深蹲训练，有助于激活下肢肌肉群，为高强度训练做准备。",
+                function: "轻重量深蹲可以：",
+                functionPoints: [
+                    "激活下肢肌肉群",
+                    "提高核心稳定性",
+                    "增强下肢力量",
+                    "改善深蹲技术",
+                    "为后续的高强度训练做准备"
+                ],
+                keyPoints: [
+                    "保持上半身直立，不要前倾",
+                    "膝盖与脚尖方向一致",
+                    "下蹲时大腿与地面平行",
+                    "控制重量，避免受伤",
+                    "保持呼吸节奏"
+                ],
+                video: "https://www.w3schools.com/html/mov_bbb.mp4"
+            },
+            {
+                name: "动态平衡训练",
+                icon: "🧘",
+                description: "动态平衡训练是一种通过单腿站立或其他平衡动作来提高核心稳定性和平衡能力的训练方法。",
+                function: "动态平衡训练可以：",
+                functionPoints: [
+                    "提高核心稳定性",
+                    "增强平衡能力",
+                    "改善 proprioception（本体感觉）",
+                    "预防运动损伤",
+                    "提高身体协调性"
+                ],
+                keyPoints: [
+                    "保持身体直立，不要摇晃",
+                    "目光固定在前方一点",
+                    "逐渐增加动作难度",
+                    "保持呼吸平稳",
+                    "两侧交替进行"
+                ],
+                video: "https://www.w3schools.com/html/mov_bbb.mp4"
+            },
+            {
+                name: "冲刺跑",
+                icon: "💨",
+                description: "冲刺跑是一种短距离、高强度的跑步训练，有助于提高爆发力和反应速度。",
+                function: "冲刺跑可以：",
+                functionPoints: [
+                    "提高爆发力和反应速度",
+                    "增强下肢肌肉力量",
+                    "改善心肺功能",
+                    "提高跑步技术",
+                    "为比赛中的冲刺做准备"
+                ],
+                keyPoints: [
+                    "保持身体前倾，手臂摆动有力",
+                    "步幅适中，频率快",
+                    "落地时轻盈，避免膝盖受伤",
+                    "逐渐增加距离和强度",
+                    "充分热身，避免受伤"
+                ],
+                video: "https://www.w3schools.com/html/mov_bbb.mp4"
+            }
+        ];
+
+        // 获取URL参数中的动作索引
+        function getExerciseIndex() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const index = parseInt(urlParams.get('index'));
+            if (!isNaN(index) && index >= 0 && index < exercises.length) {
+                return index;
+            }
+            return 0;
+        }
+
+        // 更新动作详情
+        function updateExerciseDetail() {
+            const index = getExerciseIndex();
+            const exercise = exercises[index];
+            
+            document.getElementById('exerciseIcon').textContent = exercise.icon;
+            document.getElementById('exerciseName').textContent = exercise.name;
+            document.getElementById('exerciseDescription').textContent = exercise.description;
+            document.getElementById('exerciseFunction').textContent = exercise.function;
+            
+            // 更新功能点
+            const functionPoints = document.getElementById('functionPoints');
+            functionPoints.innerHTML = '';
+            exercise.functionPoints.forEach(point => {
+                const li = document.createElement('li');
+                li.textContent = point;
+                functionPoints.appendChild(li);
+            });
+            
+            // 更新动作要点
+            const keyPoints = document.getElementById('keyPoints');
+            keyPoints.innerHTML = '';
+            exercise.keyPoints.forEach(point => {
+                const li = document.createElement('li');
+                li.textContent = point;
+                keyPoints.appendChild(li);
+            });
+            
+            // 更新视频
+            document.getElementById('demoVideo').src = exercise.video;
+        }
+
+        // 初始化
+        updateExerciseDetail();
+    </script>
+</body>
+</html>

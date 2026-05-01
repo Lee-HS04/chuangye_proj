@@ -3,10 +3,10 @@ import cv2
 import time
 import csv
 from posture_analysis import load_rules
-from core.counters import R2PScorer, RepCounter, SwayTracker, CMJTracker
+from core.counters import R2PScorer, SLSDetector, SwayTracker, CMJTracker
 from body_tracking import project_3d_to_2d, smpl_to_coco17, get_yolo26_keypoints
 from remote_ssh_pipeline import process_video_on_remote
-from ui.frame_display import process_frame
+from ui.frame_display import process_frame, set_runtime_state_values
 from ui.sidebar import load_rule_groups
 
 def draw_skeleton(frame, keypoints_2d):
@@ -26,16 +26,16 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
     rules_all = load_rules(os.path.join(BASE_DIR, "assets", "rules.txt"))
     selected_rules = rule_groups.get(exercise_name, [])
 
-    cmj_counter = CMJTracker(fps=30)
-    sls_counter = RepCounter(exercise="SLS", feature="sls_fppa", min_angle=5, max_angle=15)
-    balance_tracker = SwayTracker(fps=30)
+    cmj_counter = CMJTracker(fps=60)
+    sls_counter = SLSDetector()
+    balance_tracker = SwayTracker(fps=60)
     r2p_scorer = R2PScorer()
 
     cap = cv2.VideoCapture(video_path)
     raw_fps = cap.get(cv2.CAP_PROP_FPS)
     # WebM from browser often reports 1000 FPS causing hyper-accelerated output.
     if raw_fps > 60 or raw_fps < 5 or str(raw_fps) == "nan":
-        fps = 30
+        fps = 60
     else:
         fps = int(raw_fps)
         
@@ -49,8 +49,25 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
     fourcc = cv2.VideoWriter_fourcc(*'vp80') 
     
     print(f"Video Writer Params: File={out_path}, FPS={fps}, Width={width}, Height={height}")
+    print(
+        f"[CVDEBUG][engine] input_meta_fps={raw_fps:.6f} "
+        f"writer_fps={fps} tracker_fps={balance_tracker.fps}"
+    )
+
+    set_runtime_state_values(
+        cv_logged=False,
+        cv_saved=False,
+        video_results=[],
+        baseline_feet_y=None,
+        frame_index=0,
+        cv_debug_frame_index=0,
+        sway_tracker=balance_tracker,
+        cv_debug_enabled=os.getenv("CV_DEBUG", "0") == "1",
+        cv_debug_pipeline="engine",
+        cv_debug_count=0,
+    )
     
-    use_yolo26 = exercise_name in ["SLS", "Proper Squat"] #add the name of the exercise for which you want YOLO26 to be used
+    use_yolo26 = exercise_name in [] #add the name of the exercise for which you want YOLO26 to be used
     gvhmr_results = None
     
     if not use_yolo26:
@@ -69,7 +86,7 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
         print(f"WARNING: Fixing dimensions from ({width}x{height}) to ({frame_w}x{frame_h})")
         width, height = frame_w, frame_h
     if fps == 0:
-        fps = 30
+        fps = 60
 
     out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
 

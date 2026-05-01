@@ -170,3 +170,4 @@ class StateMachineFSM:
                     return "BAD", "Leg dropped! Reset FSM.", self.current_state
 
         return "BAD", "Invalid Exercise", self.current_state
+
