@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运动评估 - 信息收集</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部进度条 -->
+        <div class="progress-header">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-steps">
+                <div class="step-indicator active" data-step="1">
+                    <div class="step-circle">1</div>
+                    <span class="step-label">基础信息</span>
+                </div>
+                <div class="step-indicator" data-step="2">
+                    <div class="step-circle">2</div>
+                    <span class="step-label">生活状态</span>
+                </div>
+                <div class="step-indicator" data-step="3">
+                    <div class="step-circle">3</div>
+                    <span class="step-label">健康状况</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 步骤 1: 基础身份信息 -->
+        <div class="form-step active" id="step1">
+            <div class="step-header">
+                <h2>基础身份信息</h2>
+                <p class="step-desc">请填写您的基本信息，帮助我们更好地了解您</p>
+            </div>
+
+            <div class="form-group">
+                <label>年龄</label>
+                <div class="input-wrapper">
+                    <input type="number" id="age" placeholder="请输入您的年龄" min="10" max="100">
+                    <span class="unit">岁</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>性别</label>
+                <div class="gender-options">
+                    <label class="radio-card">
+                        <input type="radio" name="gender" value="male">
+                        <span class="radio-content">
+                            <span class="radio-icon">♂</span>
+                            <span class="radio-text">男</span>
+                        </span>
+                    </label>
+                    <label class="radio-card">
+                        <input type="radio" name="gender" value="female">
+                        <span class="radio-content">
+                            <span class="radio-icon">♀</span>
+                            <span class="radio-text">女</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group half">
+                    <label>身高</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="height" placeholder="175" min="100" max="250">
+                        <span class="unit">cm</span>
+                    </div>
+                </div>
+                <div class="form-group half">
+                    <label>体重</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="weight" placeholder="70" min="30" max="200">
+                        <span class="unit">kg</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>运动经验</label>
+                <div class="experience-options">
+                    <label class="option-card">
+                        <input type="radio" name="experience" value="beginner">
+                        <span class="option-content">
+                            <span class="option-title">新手</span>
+                            <span class="option-desc">刚开始接触运动</span>
+                        </span>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="experience" value="entry">
+                        <span class="option-content">
+                            <span class="option-title">入门</span>
+                            <span class="option-desc">有一定运动基础</span>
+                        </span>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="experience" value="intermediate">
+                        <span class="option-content">
+                            <span class="option-title">熟练</span>
+                            <span class="option-desc">经常运动，经验丰富</span>
+                        </span>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="experience" value="advanced">
+                        <span class="option-content">
+                            <span class="option-title">资深</span>
+                            <span class="option-desc">专业或半专业水平</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>运动目标（可多选）</label>
+                <div class="goal-options">
+                    <label class="checkbox-card">
+                        <input type="checkbox" name="goal" value="fat-loss">
+                        <span class="checkbox-content">
+                            <span class="checkbox-icon">🔥</span>
+                            <span class="checkbox-text">减脂塑形</span>
+                        </span>
+                    </label>
+                    <label class="checkbox-card">
+                        <input type="checkbox" name="goal" value="muscle">
+                        <span class="checkbox-content">
+                            <span class="checkbox-icon">💪</span>
+                            <span class="checkbox-text">增肌强化</span>
+                        </span>
+                    </label>
+                    <label class="checkbox-card">
+                        <input type="checkbox" name="goal" value="fitness">
+                        <span class="checkbox-content">
+                            <span class="checkbox-icon">⚡</span>
+                            <span class="checkbox-text">体能提升</span>
+                        </span>
+                    </label>
+                    <label class="checkbox-card">
+                        <input type="checkbox" name="goal" value="rehab">
+                        <span class="checkbox-content">
+                            <span class="checkbox-icon">🏥</span>
+                            <span class="checkbox-text">康复训练</span>
+                        </span>
+                    </label>
+                    <label class="checkbox-card">
+                        <input type="checkbox" name="goal" value="relax">
+                        <span class="checkbox-content">
+                            <span class="checkbox-icon">🧘</span>
+                            <span class="checkbox-text">日常放松</span>
+                        </span>
+                    </label>
+                    <label class="checkbox-card">
+                        <input type="checkbox" name="goal" value="competition">
+                        <span class="checkbox-content">
+                            <span class="checkbox-icon">🏆</span>
+                            <span class="checkbox-text">专项竞技</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-primary" onclick="nextStep()">下一步</button>
+            </div>
+        </div>
+
+        <!-- 步骤 2: 工作/生活状态 -->
+        <div class="form-step" id="step2">
+            <div class="step-header">
+                <h2>工作与生活状态</h2>
+                <p class="step-desc">了解您的日常状态，为您定制合适的运动方案</p>
+            </div>
+
+            <div class="form-group">
+                <label>工作状态</label>
+                <div class="work-options">
+                    <label class="option-card">
+                        <input type="radio" name="work" value="sedentary">
+                        <span class="option-content">
+                            <span class="option-title">久坐办公</span>
+                            <span class="option-desc">每天坐着工作超过6小时</span>
+                        </span>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="work" value="light">
+                        <span class="option-content">
+                            <span class="option-title">轻度活动</span>
+                            <span class="option-desc">工作中需要偶尔走动</span>
+                        </span>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="work" value="moderate">
+                        <span class="option-content">
+                            <span class="option-title">中度活动</span>
+                            <span class="option-desc">工作中需要较多体力活动</span>
+                        </span>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="work" value="heavy">
+                        <span class="option-content">
+                            <span class="option-title">重度体力</span>
+                            <span class="option-desc">工作强度大，体力劳动为主</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>每周运动频率</label>
+                <div class="frequency-options">
+                    <label class="radio-pill">
+                        <input type="radio" name="frequency" value="0">
+                        <span>几乎不运动</span>
+                    </label>
+                    <label class="radio-pill">
+                        <input type="radio" name="frequency" value="1-2">
+                        <span>1-2次</span>
+                    </label>
+                    <label class="radio-pill">
+                        <input type="radio" name="frequency" value="3-4">
+                        <span>3-4次</span>
+                    </label>
+                    <label class="radio-pill">
+                        <input type="radio" name="frequency" value="5+">
+                        <span>5次以上</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>日常主要活动类型（可多选）</label>
+                <div class="activity-options">
+                    <label class="checkbox-card">
+                        <input type="checkbox" name="activity" value="desk">
+                        <span class="checkbox-content">
+                            <span class="checkbox-icon">💻</span>
+                            <span class="checkbox-text">伏案工作</span>
+                        </span>
+                    </label>
+                    <label class="checkbox-card">
+                        <input type="checkbox" name="activity" value="standing">
+                        <span class="checkbox-content">
+                            <span class="checkbox-icon">🧍</span>
+                            <span class="checkbox-text">长时间站立</span>
+                        </span>
+                    </label>
+                    <label class="checkbox-card">
+                        <input type="checkbox" name="activity" value="lifting">
+                        <span class="checkbox-content">
+                            <span class="checkbox-icon">📦</span>
+                            <span class="checkbox-text">搬运重物</span>
+                        </span>
+                    </label>
+                    <label class="checkbox-card">
+                        <input type="checkbox" name="activity" value="driving">
+                        <span class="checkbox-content">
+                            <span class="checkbox-icon">🚗</span>
+                            <span class="checkbox-text">长时间驾驶</span>
+                        </span>
+                    </label>
+                    <label class="checkbox-card">
+                        <input type="checkbox" name="activity" value="housework">
+                        <span class="checkbox-content">
+                            <span class="checkbox-icon">🏠</span>
+                            <span class="checkbox-text">家务劳动</span>
+                        </span>
+                    </label>
+                    <label class="checkbox-card">
+                        <input type="checkbox" name="activity" value="childcare">
+                        <span class="checkbox-content">
+                            <span class="checkbox-icon">👶</span>
+                            <span class="checkbox-text">照顾小孩</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>睡眠质量</label>
+                <div class="sleep-options">
+                    <label class="option-card">
+                        <input type="radio" name="sleep" value="poor">
+                        <span class="option-content">
+                            <span class="option-title">较差</span>
+                            <span class="option-desc">难以入睡或易醒</span>
+                        </span>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="sleep" value="fair">
+                        <span class="option-content">
+                            <span class="option-title">一般</span>
+                            <span class="option-desc">睡眠尚可，偶有失眠</span>
+                        </span>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="sleep" value="good">
+                        <span class="option-content">
+                            <span class="option-title">良好</span>
+                            <span class="option-desc">入睡较快，睡眠质量好</span>
+                        </span>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="sleep" value="excellent">
+                        <span class="option-content">
+                            <span class="option-title">优秀</span>
+                            <span class="option-desc">睡眠充足，精神饱满</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-secondary" onclick="prevStep()">上一步</button>
+                <button class="btn btn-primary" onclick="nextStep()">下一步</button>
+            </div>
+        </div>
+
+        <!-- 步骤 3: 受伤情况调查 -->
+        <div class="form-step" id="step3">
+            <div class="step-header">
+                <h2>健康状况与受伤史</h2>
+                <p class="step-desc">了解您的身体状况，确保运动安全</p>
+            </div>
+
+            <!-- 是否有旧伤 -->
+            <div class="form-group">
+                <label>是否有过运动损伤或旧伤？</label>
+                <div class="injury-toggle">
+                    <label class="toggle-option">
+                        <input type="radio" name="hasInjury" value="no" checked onchange="toggleInjurySection(false)">
+                        <span class="toggle-content">
+                            <span class="toggle-icon">✓</span>
+                            <span>无旧伤</span>
+                        </span>
+                    </label>
+                    <label class="toggle-option">
+                        <input type="radio" name="hasInjury" value="yes" onchange="toggleInjurySection(true)">
+                        <span class="toggle-content">
+                            <span class="toggle-icon">!</span>
+                            <span>有旧伤</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 旧伤详情（默认隐藏） -->
+            <div class="injury-details" id="injuryDetails" style="display: none;">
+                <div class="form-group">
+                    <label>受伤部位（可多选）</label>
+                    <div class="body-parts">
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="injuryPart" value="neck">
+                            <span class="part-content">
+                                <span class="part-name">颈部</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="injuryPart" value="shoulder">
+                            <span class="part-content">
+                                <span class="part-name">肩部</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="injuryPart" value="elbow">
+                            <span class="part-content">
+                                <span class="part-name">肘部</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="injuryPart" value="wrist">
+                            <span class="part-content">
+                                <span class="part-name">手腕</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="injuryPart" value="back">
+                            <span class="part-content">
+                                <span class="part-name">腰部/背部</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="injuryPart" value="hip">
+                            <span class="part-content">
+                                <span class="part-name">髋部</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="injuryPart" value="knee">
+                            <span class="part-content">
+                                <span class="part-name">膝盖</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="injuryPart" value="ankle">
+                            <span class="part-content">
+                                <span class="part-name">脚踝</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>旧伤类型</label>
+                    <div class="injury-types">
+                        <label class="checkbox-card">
+                            <input type="checkbox" name="injuryType" value="muscle">
+                            <span class="checkbox-content">
+                                <span class="checkbox-text">肌肉拉伤</span>
+                            </span>
+                        </label>
+                        <label class="checkbox-card">
+                            <input type="checkbox" name="injuryType" value="ligament">
+                            <span class="checkbox-content">
+                                <span class="checkbox-text">韧带撕裂</span>
+                            </span>
+                        </label>
+                        <label class="checkbox-card">
+                            <input type="checkbox" name="injuryType" value="sprain">
+                            <span class="checkbox-content">
+                                <span class="checkbox-text">关节扭伤</span>
+                            </span>
+                        </label>
+                        <label class="checkbox-card">
+                            <input type="checkbox" name="injuryType" value="fracture">
+                            <span class="checkbox-content">
+                                <span class="checkbox-text">骨折术后</span>
+                            </span>
+                        </label>
+                        <label class="checkbox-card">
+                            <input type="checkbox" name="injuryType" value="chronic">
+                            <span class="checkbox-content">
+                                <span class="checkbox-text">慢性劳损（如腰肌劳损）</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 目前是否有不适 -->
+            <div class="form-group">
+                <label>目前是否有不适？</label>
+                <div class="discomfort-toggle">
+                    <label class="toggle-option">
+                        <input type="radio" name="hasDiscomfort" value="no" checked onchange="toggleDiscomfortSection(false)">
+                        <span class="toggle-content">
+                            <span class="toggle-icon">✓</span>
+                            <span>无不适</span>
+                        </span>
+                    </label>
+                    <label class="toggle-option">
+                        <input type="radio" name="hasDiscomfort" value="yes" onchange="toggleDiscomfortSection(true)">
+                        <span class="toggle-content warning">
+                            <span class="toggle-icon">!</span>
+                            <span>有不适</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 不适详情（默认隐藏） -->
+            <div class="discomfort-details" id="discomfortDetails" style="display: none;">
+                <div class="form-group">
+                    <label>不适部位（可多选）</label>
+                    <div class="body-parts">
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="discomfortPart" value="neck">
+                            <span class="part-content">
+                                <span class="part-name">颈部</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="discomfortPart" value="shoulder">
+                            <span class="part-content">
+                                <span class="part-name">肩部</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="discomfortPart" value="elbow">
+                            <span class="part-content">
+                                <span class="part-name">肘部</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="discomfortPart" value="wrist">
+                            <span class="part-content">
+                                <span class="part-name">手腕</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="discomfortPart" value="back">
+                            <span class="part-content">
+                                <span class="part-name">腰部/背部</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="discomfortPart" value="hip">
+                            <span class="part-content">
+                                <span class="part-name">髋部</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="discomfortPart" value="knee">
+                            <span class="part-content">
+                                <span class="part-name">膝盖</span>
+                            </span>
+                        </label>
+                        <label class="body-part-checkbox">
+                            <input type="checkbox" name="discomfortPart" value="ankle">
+                            <span class="part-content">
+                                <span class="part-name">脚踝</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>症状描述（可多选）</label>
+                    <div class="symptom-options">
+                        <label class="checkbox-card">
+                            <input type="checkbox" name="symptom" value="sore">
+                            <span class="checkbox-content">
+                                <span class="checkbox-text">酸痛</span>
+                            </span>
+                        </label>
+                        <label class="checkbox-card">
+                            <input type="checkbox" name="symptom" value="swollen">
+                            <span class="checkbox-content">
+                                <span class="checkbox-text">胀痛</span>
+                            </span>
+                        </label>
+                        <label class="checkbox-card">
+                            <input type="checkbox" name="symptom" value="sharp">
+                            <span class="checkbox-content">
+                                <span class="checkbox-text">刺痛</span>
+                            </span>
+                        </label>
+                        <label class="checkbox-card">
+                            <input type="checkbox" name="symptom" value="stiff">
+                            <span class="checkbox-content">
+                                <span class="checkbox-text">僵硬</span>
+                            </span>
+                        </label>
+                        <label class="checkbox-card">
+                            <input type="checkbox" name="symptom" value="weak">
+                            <span class="checkbox-content">
+                                <span class="checkbox-text">无力</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>其他健康问题（选填）</label>
+                <textarea id="otherHealth" placeholder="如有其他健康问题或特殊情况，请在此说明..."></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-secondary" onclick="prevStep()">上一步</button>
+                <button class="btn btn-primary" onclick="submitForm()">完成评估</button>
+            </div>
+        </div>
+
+        <!-- 完成页面 -->
+        <div class="form-step" id="step4">
+            <div class="completion-page">
+                <div class="success-icon">✓</div>
+                <h2>信息收集完成！</h2>
+                <p class="completion-desc">感谢您的配合，我们正在为您生成个性化的运动评估报告...</p>
+                <div class="loading-bar">
+                    <div class="loading-progress"></div>
+                </div>
+                <button class="btn btn-primary" onclick="location.reload()">重新评估</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

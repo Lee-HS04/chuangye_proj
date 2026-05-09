@@ -1,0 +1,57 @@
+{
+  "users": [
+    {
+      "id": "1776819336436",
+      "username": "宗千然",
+      "password": "123456",
+      "email": "zongqr24@mails.tsinghua.edu.cn",
+      "verification_code": "694418",
+      "personal_info": {
+        "basicInfo": {
+          "age": "24",
+          "gender": "female",
+          "height": "175",
+          "weight": "65",
+          "experience": "entry",
+          "goals": [
+            "muscle",
+            "fitness"
+          ]
+        },
+        "lifeStatus": {
+          "work": "light",
+          "frequency": "1-2",
+          "activities": [
+            "standing"
+          ],
+          "sleep": "poor"
+        },
+        "healthStatus": {
+          "hasInjury": "yes",
+          "injuryParts": [
+            "elbow",
+            "hip"
+          ],
+          "injuryTypes": [
+            "ligament",
+            "chronic"
+          ],
+          "hasDiscomfort": "yes",
+          "discomfortParts": [
+            "elbow"
+          ],
+          "symptoms": [
+            "swollen"
+          ],
+          "otherHealth": ""
+        },
+        "updatedAt": "2026-04-22T07:38:17.468Z"
+      },
+      "upload_records": [],
+      "backend_video_data": {},
+      "created_at": "2026-04-22T00:55:36.437Z",
+      "updated_at": "2026-04-22T07:38:17.471Z"
+    }
+  ],
+  "last_updated": "2026-04-22T07:38:17.471Z"
+}

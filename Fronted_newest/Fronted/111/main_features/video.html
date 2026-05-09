@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动作示范视频</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0071e3;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #0071e3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .main-content {
+            margin-top: 40px;
+        }
+
+        .video-section {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #1d1d1f;
+        }
+
+        .video-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto 32px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .video-controls {
+            margin-top: 24px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: #0071e3;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            margin-left: 12px;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e0e0e0;
+        }
+
+        .countdown {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .countdown-number {
+            font-size: 120px;
+            font-weight: 700;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .video-section {
+                padding: 24px;
+            }
+
+            .section-title {
+                font-size: 20px;
+            }
+
+            .countdown-number {
+                font-size: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <a href="main.html" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;">返回主界面</a>
+                <div class="logo">R2P-Guard</div>
+            </div>
+            <div class="user-info">
+                <span>张教练</span>
+                <div class="user-avatar">张</div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="video-section">
+                <h2 class="section-title" id="videoTitle">动作示范视频</h2>
+                <p style="margin-bottom: 24px; color: #86868b;" id="videoDescription">请观看以下动作示范视频，然后按照示范进行动作</p>
+                
+                <div class="video-container">
+                    <video id="demoVideo" controls>
+                        <source src="录屏2026-04-12 15.45.10.mp4" type="video/mp4">
+                        您的浏览器不支持视频播放。
+                    </video>
+                </div>
+
+                <div style="margin: 32px 0; text-align: left; background-color: #f5f5f7; padding: 24px; border-radius: 12px;">
+                    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #1d1d1f;">注意事项：</h3>
+                    <ul style="list-style-type: none; padding-left: 0;">
+                        <li style="margin-bottom: 8px; padding-left: 24px; position: relative;">
+                            <span style="position: absolute; left: 0; color: #0071e3;">•</span>
+                            鞋一致
+                        </li>
+                        <li style="margin-bottom: 8px; padding-left: 24px; position: relative;">
+                            <span style="position: absolute; left: 0; color: #0071e3;">•</span>
+                            双手叉腰
+                        </li>
+                        <li style="margin-bottom: 8px; padding-left: 24px; position: relative;">
+                            <span style="position: absolute; left: 0; color: #0071e3;">•</span>
+                            非支撑腿屈膝 90 度且不得接触支撑腿（类似单腿高抬腿）
+                        </li>
+                        <li style="margin-bottom: 8px; padding-left: 24px; position: relative;">
+                            <span style="position: absolute; left: 0; color: #0071e3;">•</span>
+                            将手机放置在骨盆等高的位置并保持水平
+                        </li>
+                        <li style="margin-bottom: 8px; padding-left: 24px; position: relative;">
+                            <span style="position: absolute; left: 0; color: #0071e3;">•</span>
+                            录制全身
+                        </li>
+                        <li style="padding-left: 24px; position: relative;">
+                            <span style="position: absolute; left: 0; color: #0071e3;">•</span>
+                            固定的参考点（手机）眼神游离会通过前庭系统影响平衡稳定性
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="video-controls">
+                    <a href="camera.html" id="startButton" class="btn btn-primary" style="display: none;">开始</a>
+                    <a href="main.html" class="btn btn-secondary">返回</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 倒计时弹窗 -->
+    <div class="countdown" id="countdown">
+        <div class="countdown-number" id="countdownNumber">3</div>
+    </div>
+
+    <script>
+        // 获取视频元素和开始按钮
+        const video = document.getElementById('demoVideo');
+        const startButton = document.getElementById('startButton');
+        const countdown = document.getElementById('countdown');
+        const countdownNumber = document.getElementById('countdownNumber');
+        const videoTitle = document.getElementById('videoTitle');
+        const videoDescription = document.getElementById('videoDescription');
+
+        // 获取URL参数中的测试类型
+        function getTestType() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('type') || 'assessment';
+        }
+
+        // 根据测试类型更新页面内容
+        function updateVideoContent(testType) {
+            switch(testType) {
+                case 'assessment':
+                    videoTitle.textContent = '赛前状态评估动作示范';
+                    videoDescription.textContent = '请观看以下动作示范视频，然后按照示范进行动作，以评估您的赛前状态';
+                    break;
+                case 'warmup':
+                    videoTitle.textContent = '个体化运动准备动作示范';
+                    videoDescription.textContent = '请观看以下动作示范视频，然后按照示范进行动作，以准备您的训练';
+                    break;
+                case 'recovery':
+                    videoTitle.textContent = '疲劳测试动作示范';
+                    videoDescription.textContent = '请观看以下动作示范视频，然后按照示范进行动作，以评估您的疲劳恢复状态';
+                    break;
+                default:
+                    videoTitle.textContent = '动作示范视频';
+                    videoDescription.textContent = '请观看以下动作示范视频，然后按照示范进行动作';
+            }
+        }
+
+        // 初始化页面内容
+        const testType = getTestType();
+        updateVideoContent(testType);
+
+        // 当视频播放结束时显示开始按钮
+        video.addEventListener('ended', function() {
+            startButton.style.display = 'inline-block';
+        });
+
+        // 当点击开始按钮时，显示倒计时
+        startButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // 显示倒计时
+            countdown.style.display = 'flex';
+            
+            let count = 3;
+            countdownNumber.textContent = count;
+            
+            // 倒计时逻辑
+            const interval = setInterval(function() {
+                count--;
+                if (count > 0) {
+                    countdownNumber.textContent = count;
+                } else {
+                    clearInterval(interval);
+                    // 倒计时结束后跳转到摄像头页面，并传递测试类型
+                    window.location.href = 'camera.html?type=' + testType;
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

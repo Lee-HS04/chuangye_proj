@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>R2P-Guard - AI守护每一次发力</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        /* 欢迎页样式 - 灰黑色背景，窄长型手机比例 */
+        .welcome-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .welcome-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .logo {
+            width: 180px;
+            height: 180px;
+            margin-top: 120px;
+        }
+
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .slogan {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            text-align: center;
+            padding: 0 40px;
+            position: absolute;
+            bottom: 80px;
+            letter-spacing: 0.5px;
+            line-height: 1.4;
+        }
+
+        /* 右下角跳过箭头 */
+        .skip-button {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .skip-button:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            transform: scale(1.05);
+        }
+
+        /* 轮播页样式 */
+        .slider-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .slider-container.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .slider {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+            height: 100%;
+        }
+
+        .slide {
+            flex: 0 0 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .slide-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 100px 30px 140px 30px;
+            color: white;
+            background: linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.4), rgba(0,0,0,0));
+            transform: translateY(0);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            backdrop-filter: blur(2px);
+        }
+
+        .slide-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .slide-text {
+            font-size: 15px;
+            line-height: 1.6;
+            font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            letter-spacing: 0.3px;
+            opacity: 0.9;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            max-width: 90%;
+        }
+
+        .indicators {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+        }
+
+        .indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: rgba(255,255,255,0.5);
+            transition: background-color 0.3s ease;
+        }
+
+        .indicator.active {
+            background-color: white;
+            width: 24px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 欢迎页 -->
+    <div class="welcome-screen" id="welcomeScreen">
+        <div class="logo">
+            <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=200&h=200&fit=crop" alt="R2P-Guard">
+        </div>
+        <div class="slogan">R2P-Guard: 用 AI 守护每一次发力</div>
+        <button class="skip-button" id="skipButton">完成</button>
+    </div>
+
+    <!-- 轮播页 -->
+    <div class="slider-container" id="sliderContainer">
+        <div class="slider" id="slider">
+            <!-- 第一张：赛前状态评估 -->
+            <div class="slide">
+                <img src="https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=800&h=1200&fit=crop" alt="赛前状态评估">
+                <div class="slide-content">
+                    <div class="slide-title">赛前状态评估</div>
+                    <div class="slide-text">
+                        快速评估运动员赛前状态<br>
+                        提供红绿灯风险分级和基础行动建议<br>
+                        帮助教练做出更明智的决策
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第二张：个性化运动准备 -->
+            <div class="slide">
+                <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&h=1200&fit=crop" alt="个性化运动准备">
+                <div class="slide-content">
+                    <div class="slide-title">个性化运动准备</div>
+                    <div class="slide-text">
+                        基于训练前状态评分<br>
+                        提供个性化热身推荐<br>
+                        逐步叠加历史数据学习能力<br>
+                        形成针对不同运动项目的专项准备系统
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第三张：疲劳恢复与后续决策 -->
+            <div class="slide">
+                <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=1200&fit=crop" alt="疲劳恢复与后续决策">
+                <div class="slide-content">
+                    <div class="slide-title">疲劳恢复与后续决策</div>
+                    <div class="slide-text">
+                        从场间疲劳识别切入<br>
+                        延伸到赛后恢复追踪<br>
+                        最终沉淀成用户长期健康模型<br>
+                        支持下次训练和比赛安排
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="indicators" id="indicators">
+            <div class="indicator active"></div>
+            <div class="indicator"></div>
+            <div class="indicator"></div>
+        </div>
+    </div>
+
+    <script>
+        // 欢迎页元素
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const skipButton = document.getElementById('skipButton');
+
+        // 轮播页元素
+        const sliderContainer = document.getElementById('sliderContainer');
+        const slider = document.getElementById('slider');
+        const indicators = document.getElementById('indicators').children;
+        const slides = slider.children;
+        let currentIndex = 0;
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        // 显示轮播页
+        function showSlider() {
+            welcomeScreen.classList.add('hidden');
+            sliderContainer.classList.add('visible');
+        }
+
+        // 更新轮播
+        function updateSlider() {
+            slider.style.transform = `translateX(-${currentIndex * 100}vw)`;
+
+            // 更新指示器
+            for (let i = 0; i < indicators.length; i++) {
+                if (i === currentIndex) {
+                    indicators[i].classList.add('active');
+                } else {
+                    indicators[i].classList.remove('active');
+                }
+            }
+        }
+
+        // 下一张
+        function nextSlide() {
+            if (currentIndex < slides.length - 1) {
+                currentIndex++;
+                updateSlider();
+            } else {
+                // 最后一页跳转到登录页
+                window.location.href = '../auth/app_login_register.html';
+            }
+        }
+
+        // 上一张
+        function prevSlide() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateSlider();
+            }
+        }
+
+        // 处理滑动
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            if (touchEndX < touchStartX - swipeThreshold) {
+                nextSlide();
+            } else if (touchEndX > touchStartX + swipeThreshold) {
+                prevSlide();
+            }
+        }
+
+        // 欢迎页事件
+        skipButton.addEventListener('click', showSlider);
+
+        // 触摸事件
+        slider.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        slider.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        // 点击指示器
+        for (let i = 0; i < indicators.length; i++) {
+            indicators[i].addEventListener('click', () => {
+                currentIndex = i;
+                updateSlider();
+            });
+        }
+
+        // 点击页面向后一张跳转
+        slider.addEventListener('click', (e) => {
+            nextSlide();
+        });
+
+        // 每次打开都显示欢迎页和轮播图
+        // 移除本地存储检查，确保每次都展示轮播图
+    </script>
+</body>
+</html>

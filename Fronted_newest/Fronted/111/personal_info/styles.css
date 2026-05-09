@@ -1,0 +1,568 @@
+/* 全局样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    background-color: white;
+}
+
+/* 进度条样式 */
+.progress-header {
+    margin-bottom: 40px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background-color: #e0e0e0;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #007AFF;
+    width: 33.33%;
+    transition: width 0.3s ease;
+}
+
+.progress-steps {
+    display: flex;
+    justify-content: space-between;
+}
+
+.step-indicator {
+    text-align: center;
+    flex: 1;
+}
+
+.step-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #e0e0e0;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.step-indicator.active .step-circle {
+    background-color: #007AFF;
+    color: white;
+}
+
+.step-label {
+    font-size: 12px;
+    color: #666;
+    display: block;
+}
+
+.step-indicator.active .step-label {
+    color: #007AFF;
+    font-weight: 500;
+}
+
+/* 步骤内容样式 */
+.form-step {
+    display: none;
+}
+
+.form-step.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.step-header {
+    margin-bottom: 30px;
+}
+
+.step-header h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.step-desc {
+    font-size: 14px;
+    color: #666;
+}
+
+/* 表单组样式 */
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.form-group.half {
+    flex: 1;
+}
+
+label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: #333;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+input[type="number"] {
+    width: 100%;
+    padding: 12px 40px 12px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+input[type="number"]:focus {
+    outline: none;
+    border-color: #007AFF;
+}
+
+.unit {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    font-size: 14px;
+}
+
+/* 单选按钮样式 */
+.gender-options,
+.experience-options,
+.work-options,
+.sleep-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.radio-card,
+.option-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.radio-card:hover,
+.option-card:hover {
+    border-color: #007AFF;
+    background-color: rgba(0, 122, 255, 0.05);
+}
+
+.radio-card input[type="radio"],
+.option-card input[type="radio"] {
+    display: none;
+}
+
+.radio-card input[type="radio"]:checked + .radio-content .radio-text,
+.option-card input[type="radio"]:checked + .option-content .option-title {
+    color: #007AFF;
+    font-weight: 600;
+}
+
+.radio-card input[type="radio"]:checked + .radio-content .radio-text,
+.option-card input[type="radio"]:checked + .option-content .option-title {
+    color: #007AFF;
+    font-weight: 600;
+}
+
+.radio-card:has(input[type="radio"]:checked),
+.option-card:has(input[type="radio"]:checked) {
+    border-color: #007AFF;
+    background-color: rgba(0, 122, 255, 0.1);
+}
+
+.radio-content,
+.option-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.radio-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.radio-text,
+.option-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+
+.option-desc {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+}
+
+/* 复选框样式 */
+.goal-options,
+.activity-options,
+.injury-types,
+.symptom-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.checkbox-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.checkbox-card:hover {
+    border-color: #007AFF;
+    background-color: rgba(0, 122, 255, 0.05);
+}
+
+.checkbox-card input[type="checkbox"] {
+    display: none;
+}
+
+.checkbox-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.checkbox-icon {
+    font-size: 18px;
+    transition: all 0.3s ease;
+}
+
+.checkbox-text {
+    font-size: 14px;
+    color: #333;
+    transition: color 0.3s ease;
+}
+
+.checkbox-card:has(input[type="checkbox"]:checked) {
+    border-color: #007AFF;
+    background-color: rgba(0, 122, 255, 0.1);
+}
+
+.checkbox-card:has(input[type="checkbox"]:checked) .checkbox-text {
+    color: #007AFF;
+    font-weight: 500;
+}
+
+.checkbox-card:has(input[type="checkbox"]:checked) .checkbox-icon {
+    color: #007AFF;
+    transform: scale(1.1);
+}
+
+/* 频率选项样式 */
+.frequency-options {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.radio-pill {
+    flex: 1;
+    min-width: 100px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.radio-pill:hover {
+    border-color: #007AFF;
+    background-color: rgba(0, 122, 255, 0.05);
+}
+
+.radio-pill input[type="radio"] {
+    display: none;
+}
+
+.radio-pill input[type="radio"]:checked + span {
+    color: #007AFF;
+    font-weight: 500;
+}
+
+.radio-pill:has(input[type="radio"]:checked) {
+    border-color: #007AFF;
+    background-color: rgba(0, 122, 255, 0.1);
+}
+
+/* 切换选项样式 */
+.injury-toggle,
+.discomfort-toggle {
+    display: flex;
+    gap: 12px;
+}
+
+.toggle-option {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.toggle-option:hover {
+    border-color: #007AFF;
+}
+
+.toggle-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.toggle-icon {
+    font-size: 18px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.toggle-content.warning {
+    color: #FF9500;
+}
+
+.toggle-option:has(input[type="radio"]:checked) {
+    border-color: #007AFF;
+    background-color: rgba(0, 122, 255, 0.1);
+}
+
+.toggle-option:has(input[type="radio"]:checked) .toggle-content {
+    color: #007AFF;
+    font-weight: 500;
+}
+
+.toggle-option:has(input[type="radio"]:checked) .toggle-icon {
+    color: #007AFF;
+    transform: scale(1.1);
+}
+
+/* 身体部位选择样式 */
+.body-parts {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.body-part-checkbox {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.body-part-checkbox:hover {
+    border-color: #007AFF;
+    background-color: rgba(0, 122, 255, 0.05);
+}
+
+.body-part-checkbox input[type="checkbox"] {
+    display: none;
+}
+
+.part-name {
+    font-size: 14px;
+    color: #333;
+    transition: color 0.3s ease;
+}
+
+.body-part-checkbox:has(input[type="checkbox"]:checked) {
+    border-color: #007AFF;
+    background-color: rgba(0, 122, 255, 0.1);
+}
+
+.body-part-checkbox:has(input[type="checkbox"]:checked) .part-name {
+    color: #007AFF;
+    font-weight: 500;
+}
+
+/* 文本域样式 */
+textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: #007AFF;
+}
+
+/* 按钮样式 */
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 30px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #007AFF;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: #f0f0f0;
+    color: #333;
+}
+
+.btn-secondary:hover {
+    background-color: #e0e0e0;
+}
+
+/* 完成页面样式 */
+.completion-page {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.success-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: #4CD964;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    margin: 0 auto 24px;
+}
+
+.completion-page h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #333;
+}
+
+.completion-desc {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.loading-bar {
+    width: 200px;
+    height: 4px;
+    background-color: #e0e0e0;
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 0 auto 30px;
+}
+
+.loading-progress {
+    height: 100%;
+    background-color: #007AFF;
+    width: 0;
+    animation: loading 2s ease-in-out infinite;
+}
+
+@keyframes loading {
+    0% { width: 0; }
+    50% { width: 70%; }
+    100% { width: 0; }
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+    .container {
+        padding: 16px;
+    }
+    
+    .form-row {
+        flex-direction: column;
+    }
+    
+    .form-group.half {
+        width: 100%;
+    }
+    
+    .gender-options,
+    .experience-options,
+    .work-options,
+    .sleep-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .body-parts {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+}

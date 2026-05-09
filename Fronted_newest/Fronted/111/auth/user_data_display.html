@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>用户数据管理 - R2P-Guard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-align: center;
+            color: #333;
+        }
+        
+        .data-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .data-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .data-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-secondary {
+            background-color: #34C759;
+            margin-left: 10px;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #2db84d;
+        }
+        
+        .btn-danger {
+            background-color: #ff3b30;
+        }
+        
+        .btn-danger:hover {
+            background-color: #d63030;
+        }
+        
+        pre {
+            background-color: #f5f5f5;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.5;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .user-list {
+            margin-top: 20px;
+        }
+        
+        .user-card {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .user-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .user-card-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #007AFF;
+        }
+        
+        .user-card-body {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+            font-size: 14px;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .info-item .label {
+            color: #666;
+            font-weight: 500;
+            font-size: 12px;
+        }
+        
+        .info-item .value {
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .personal-info-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .personal-info-section h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .empty-message {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error-message {
+            background-color: #ffebee;
+            border: 1px solid #ffcdd2;
+            color: #c62828;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>用户数据管理</h1>
+        
+        <div id="errorDiv" class="error-message" style="display: none;"></div>
+        
+        <div class="data-section">
+            <div class="data-header">
+                <h2>JSON数据</h2>
+                <div>
+                    <button onclick="downloadJson()">下载JSON文件</button>
+                    <button class="btn-danger" onclick="clearAllData()">清空所有数据</button>
+                </div>
+            </div>
+            <pre id="jsonData">加载中...</pre>
+        </div>
+        
+        <div class="data-section">
+            <div class="data-header">
+                <h2>用户列表</h2>
+                <button class="btn-secondary" onclick="refreshData()">刷新</button>
+            </div>
+            <div id="userList" class="user-list">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentUserData = { users: [], last_updated: '' };
+        
+        const goalLabels = {
+            'fat-loss': '减脂塑形',
+            'muscle': '增肌强化',
+            'fitness': '体能提升',
+            'rehab': '康复训练',
+            'relax': '日常放松',
+            'competition': '专项竞技'
+        };
+        
+        const experienceLabels = {
+            'beginner': '新手',
+            'entry': '入门',
+            'intermediate': '熟练',
+            'advanced': '资深'
+        };
+        
+        const workLabels = {
+            'sedentary': '久坐办公',
+            'light': '轻度活动',
+            'moderate': '中度活动',
+            'heavy': '重度体力'
+        };
+        
+        const sleepLabels = {
+            'poor': '较差',
+            'fair': '一般',
+            'good': '良好',
+            'excellent': '优秀'
+        };
+        
+        const partLabels = {
+            'neck': '颈部',
+            'shoulder': '肩部',
+            'elbow': '肘部',
+            'wrist': '手腕',
+            'back': '腰部/背部',
+            'hip': '髋部',
+            'knee': '膝盖',
+            'ankle': '脚踝'
+        };
+        
+        const injuryTypeLabels = {
+            'muscle': '肌肉拉伤',
+            'ligament': '韧带撕裂',
+            'sprain': '关节扭伤',
+            'fracture': '骨折术后',
+            'chronic': '慢性劳损'
+        };
+        
+        const symptomLabels = {
+            'sore': '酸痛',
+            'swollen': '胀痛',
+            'sharp': '刺痛',
+            'stiff': '僵硬',
+            'weak': '无力'
+        };
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorDiv');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        async function getUserData() {
+            try {
+                const response = await fetch('/api/get_user_data');
+                const data = await response.json();
+                return data || { users: [], last_updated: '' };
+            } catch (error) {
+                console.error('获取用户数据失败:', error);
+                showError('获取用户数据失败: ' + error.message);
+                return { users: [], last_updated: '' };
+            }
+        }
+        
+        async function refreshData() {
+            document.getElementById('jsonData').textContent = '加载中...';
+            document.getElementById('userList').innerHTML = '<div class="loading">加载中...</div>';
+            
+            currentUserData = await getUserData();
+            
+            document.getElementById('jsonData').textContent = JSON.stringify(currentUserData, null, 2);
+            
+            const userListEl = document.getElementById('userList');
+            if (currentUserData.users && currentUserData.users.length > 0) {
+                userListEl.innerHTML = currentUserData.users.map(user => renderUserCard(user)).join('');
+            } else {
+                userListEl.innerHTML = '<div class="empty-message">暂无用户数据</div>';
+            }
+        }
+        
+        function renderUserCard(user) {
+            let html = `
+                <div class="user-card">
+                    <div class="user-card-header">
+                        <h3>${user.username || '未知用户'}</h3>
+                        <button class="btn-danger" onclick="deleteUser('${user.id}')">删除</button>
+                    </div>
+                    <div class="user-card-body">
+                        <div class="info-item">
+                            <span class="label">用户ID</span>
+                            <span class="value">${user.id || '未设置'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">邮箱</span>
+                            <span class="value">${user.email || '未设置'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">密码</span>
+                            <span class="value">${user.password || '未设置'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">验证码</span>
+                            <span class="value">${user.verification_code || '未设置'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">创建时间</span>
+                            <span class="value">${user.created_at ? new Date(user.created_at).toLocaleString() : '未设置'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">更新时间</span>
+                            <span class="value">${user.updated_at ? new Date(user.updated_at).toLocaleString() : '未设置'}</span>
+                        </div>
+                    </div>
+            `;
+            
+            if (user.personal_info) {
+                html += `
+                    <div class="personal-info-section">
+                        <h4>个人信息</h4>
+                `;
+                
+                if (user.personal_info.basicInfo) {
+                    const basic = user.personal_info.basicInfo;
+                    html += `
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">年龄</span>
+                                <span class="value">${basic.age || '未设置'}岁</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">性别</span>
+                                <span class="value">${basic.gender === 'male' ? '男' : basic.gender === 'female' ? '女' : '未设置'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">身高</span>
+                                <span class="value">${basic.height || '未设置'}cm</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">体重</span>
+                                <span class="value">${basic.weight || '未设置'}kg</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">运动经验</span>
+                                <span class="value">${experienceLabels[basic.experience] || basic.experience || '未设置'}</span>
+                            </div>
+                    `;
+                    
+                    if (basic.goals && basic.goals.length > 0) {
+                        html += `
+                            <div class="info-item" style="grid-column: 1 / -1;">
+                                <span class="label">运动目标</span>
+                                <span class="value">${basic.goals.map(g => goalLabels[g] || g).join(', ')}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    html += `</div>`;
+                }
+                
+                if (user.personal_info.lifeStatus) {
+                    const life = user.personal_info.lifeStatus;
+                    html += `
+                        <div class="personal-info-section">
+                            <h4>生活状态</h4>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <span class="label">工作状态</span>
+                                    <span class="value">${workLabels[life.work] || life.work || '未设置'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="label">运动频率</span>
+                                    <span class="value">${life.frequency || '未设置'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="label">睡眠质量</span>
+                                    <span class="value">${sleepLabels[life.sleep] || life.sleep || '未设置'}</span>
+                                </div>
+                    `;
+                    
+                    if (life.activities && life.activities.length > 0) {
+                        html += `
+                            <div class="info-item" style="grid-column: 1 / -1;">
+                                <span class="label">日常活动</span>
+                                <span class="value">${life.activities.map(a => {
+                                    const labels = {
+                                        'desk': '伏案工作',
+                                        'standing': '长时间站立',
+                                        'lifting': '搬运重物',
+                                        'driving': '长时间驾驶',
+                                        'housework': '家务劳动',
+                                        'childcare': '照顾小孩'
+                                    };
+                                    return labels[a] || a;
+                                }).join(', ')}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    html += `</div></div>`;
+                }
+                
+                if (user.personal_info.healthStatus) {
+                    const health = user.personal_info.healthStatus;
+                    html += `
+                        <div class="personal-info-section">
+                            <h4>健康状况</h4>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <span class="label">有旧伤</span>
+                                    <span class="value">${health.hasInjury === 'yes' ? '是' : '否'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="label">有不适</span>
+                                    <span class="value">${health.hasDiscomfort === 'yes' ? '是' : '否'}</span>
+                                </div>
+                    `;
+                    
+                    if (health.injuryParts && health.injuryParts.length > 0) {
+                        html += `
+                            <div class="info-item" style="grid-column: 1 / -1;">
+                                <span class="label">受伤部位</span>
+                                <span class="value">${health.injuryParts.map(p => partLabels[p] || p).join(', ')}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    if (health.injuryTypes && health.injuryTypes.length > 0) {
+                        html += `
+                            <div class="info-item" style="grid-column: 1 / -1;">
+                                <span class="label">旧伤类型</span>
+                                <span class="value">${health.injuryTypes.map(t => injuryTypeLabels[t] || t).join(', ')}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    if (health.discomfortParts && health.discomfortParts.length > 0) {
+                        html += `
+                            <div class="info-item" style="grid-column: 1 / -1;">
+                                <span class="label">不适部位</span>
+                                <span class="value">${health.discomfortParts.map(p => partLabels[p] || p).join(', ')}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    if (health.symptoms && health.symptoms.length > 0) {
+                        html += `
+                            <div class="info-item" style="grid-column: 1 / -1;">
+                                <span class="label">症状</span>
+                                <span class="value">${health.symptoms.map(s => symptomLabels[s] || s).join(', ')}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    if (health.otherHealth) {
+                        html += `
+                            <div class="info-item" style="grid-column: 1 / -1;">
+                                <span class="label">其他健康问题</span>
+                                <span class="value">${health.otherHealth}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    html += `</div></div>`;
+                }
+                
+                html += `</div>`;
+            }
+            
+            html += `</div>`;
+            return html;
+        }
+        
+        function downloadJson() {
+            const data = currentUserData;
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'user_data.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        async function deleteUser(userId) {
+            if (!confirm('确定要删除这个用户吗？')) return;
+            
+            currentUserData.users = currentUserData.users.filter(u => u.id !== userId);
+            currentUserData.last_updated = new Date().toISOString();
+            
+            try {
+                await fetch('/api/update_user_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(currentUserData)
+                });
+                
+                refreshData();
+                alert('用户已删除');
+            } catch (error) {
+                console.error('删除用户失败:', error);
+                showError('删除用户失败: ' + error.message);
+            }
+        }
+        
+        async function clearAllData() {
+            if (!confirm('确定要清空所有数据吗？此操作不可恢复！')) return;
+            
+            try {
+                currentUserData = { users: [], last_updated: new Date().toISOString() };
+                await fetch('/api/update_user_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(currentUserData)
+                });
+                
+                refreshData();
+                alert('所有数据已清空');
+            } catch (error) {
+                console.error('清空数据失败:', error);
+                showError('清空数据失败: ' + error.message);
+            }
+        }
+        
+        window.onload = refreshData;
+    </script>
+</body>
+</html>
