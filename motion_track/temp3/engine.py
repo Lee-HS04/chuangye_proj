@@ -9,6 +9,7 @@ from remote_ssh_pipeline import process_video_on_remote
 from ui.frame_display import process_frame, set_runtime_state_values
 from ui.sidebar import load_rule_groups
 
+
 def draw_skeleton(frame, keypoints_2d):
     if not keypoints_2d: return frame
     edges = [(0,1),(0,2),(1,3),(2,4),(5,7),(7,9),(6,8),(8,10),(5,6),(5,11),(6,12),(11,12),(11,13),(13,15),(12,14),(14,16)]
@@ -26,18 +27,28 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
     rules_all = load_rules(os.path.join(BASE_DIR, "assets", "rules.txt"))
     selected_rules = rule_groups.get(exercise_name, [])
 
-    cmj_counter = CMJTracker(fps=60)
-    sls_counter = SLSDetector()
-    balance_tracker = SwayTracker(fps=60)
-    r2p_scorer = R2PScorer()
+    # Keep analysis fps aligned with the legacy baseline so CV stays comparable
+    # across the old and new frontend paths.
+    tracker_fps = 60
 
+    # Read input metadata fps for diagnostics only.
     cap = cv2.VideoCapture(video_path)
     raw_fps = cap.get(cv2.CAP_PROP_FPS)
-    # WebM from browser often reports 1000 FPS causing hyper-accelerated output.
-    if raw_fps > 60 or raw_fps < 5 or str(raw_fps) == "nan":
-        fps = 60
+    cap.release()
+    
+    if raw_fps <= 0 or raw_fps > 240 or str(raw_fps) == "nan":
+        analysis_fps = 30
     else:
-        fps = int(raw_fps)
+        analysis_fps = int(raw_fps)
+
+    # Initialize trackers with the legacy 60 fps baseline.
+    cmj_counter = CMJTracker(fps=tracker_fps)
+    sls_counter = SLSDetector()
+    balance_tracker = SwayTracker(fps=tracker_fps)
+    r2p_scorer = R2PScorer()
+
+    # Open video again for processing
+    cap = cv2.VideoCapture(video_path)
         
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -48,10 +59,10 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
     out_path = os.path.join(out_dir, f"{task_id}_annotated.webm")
     fourcc = cv2.VideoWriter_fourcc(*'vp80') 
     
-    print(f"Video Writer Params: File={out_path}, FPS={fps}, Width={width}, Height={height}")
+    print(f"Video Writer Params: File={out_path}, FPS={analysis_fps}, Width={width}, Height={height}")
     print(
         f"[CVDEBUG][engine] input_meta_fps={raw_fps:.6f} "
-        f"writer_fps={fps} tracker_fps={balance_tracker.fps}"
+        f"writer_fps={analysis_fps} tracker_fps={analysis_fps}"
     )
 
     set_runtime_state_values(
@@ -85,10 +96,7 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
     if width == 0 or height == 0 or width != frame_w or height != frame_h:
         print(f"WARNING: Fixing dimensions from ({width}x{height}) to ({frame_w}x{frame_h})")
         width, height = frame_w, frame_h
-    if fps == 0:
-        fps = 60
-
-    out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
+    out = cv2.VideoWriter(out_path, fourcc, analysis_fps, (width, height))
 
     # Process the first frame we already read
     frame = first_frame

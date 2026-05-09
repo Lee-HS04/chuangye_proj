@@ -8,10 +8,10 @@ import time
 REMOTE_IP = "101.6.162.37"
 REMOTE_PORT = 62222
 USERNAME = "ai"
-SSH_KEY_PATH = r"C:\Users\LeeHS\.ssh\id_ed25519"
+SSH_KEY_PATH = r"C:\Users\LeeHS\.ssh\id_ed25519" #Change this to your own SSH key path
 if not os.path.exists(SSH_KEY_PATH):
     # Fallback to the WSL path if the script is running inside WSL (Linux)
-    SSH_KEY_PATH = "/mnt/c/Users/LeeHS/.ssh/id_ed25519"
+    SSH_KEY_PATH = "/mnt/c/Users/LeeHS/.ssh/id_ed25519" #Change this to your own SSH key path
 
 
 def get_ssh_client():

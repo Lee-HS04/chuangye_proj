@@ -11,8 +11,6 @@ import hashlib
 import os
 import streamlit as st
 
-from core.counters import R2PScorer, SLSDetector, SwayTracker, CMJTracker
-
 UPLOAD_DIR = "uploads"
 
 
@@ -37,12 +35,20 @@ def handle_video_upload() -> None:
         with open(dest, "wb") as f:
             f.write(raw)
 
+    cap = cv2.VideoCapture(dest)
+    input_video_fps = cap.get(cv2.CAP_PROP_FPS) or 60
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    cap.release()
+
     # reset only when new file
     if st.session_state.get("_loaded_hash") != file_hash:
         st.session_state["_loaded_hash"] = file_hash
         st.session_state["cap_path"] = dest
         st.session_state["frame_index"] = 0
         st.session_state["playing"] = False
+        st.session_state["input_video_fps"] = input_video_fps
+        st.session_state["video_fps"] = input_video_fps
+        st.session_state["total_frames"] = total_frames
 
         # Reset per-video analysis state so Streamlit matches engine's fresh-run behavior.
         st.session_state["video_results"] = []
@@ -53,20 +59,8 @@ def handle_video_upload() -> None:
         st.session_state["cv_debug_count"] = 0
         st.session_state["cv_debug_frame_index"] = 0
 
-        # Recreate trackers/counters for deterministic CV parity across runs.
-        st.session_state["sway_tracker"] = SwayTracker(fps=60)
-        st.session_state["balance_tracker"] = st.session_state["sway_tracker"]
-        st.session_state["cmj_counter"] = CMJTracker(fps=60)
-        st.session_state["sls_counter"] = SLSDetector()
-        st.session_state["r2p_scorer"] = R2PScorer()
-
         # Refresh GVHMR cache key to force re-compute for this specific video path.
         st.session_state["gvhmr_path"] = None
-
-        cap = cv2.VideoCapture(dest)
-        st.session_state["total_frames"] = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        st.session_state["video_fps"] = cap.get(cv2.CAP_PROP_FPS) or 30
-        cap.release()
 
     # ✅ SAFE NAME HANDLING (ADD THIS HERE)
     file_name = uploaded.name
@@ -124,5 +118,5 @@ def handle_video_upload() -> None:
 
 #         cap = cv2.VideoCapture(dest)
 #         st.session_state["total_frames"] = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-#         st.session_state["video_fps"] = cap.get(cv2.CAP_PROP_FPS) or 30
+#         st.session_state["video_fps"] = cap.get(cv2.CAP_PROP_FPS) or 60
 #         cap.release()
