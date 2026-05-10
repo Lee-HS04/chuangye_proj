@@ -1,0 +1,106 @@
+/* R2P-Guard 全局样式 - Mac横屏统一尺寸 */
+
+/* Mac横屏参考尺寸：
+   MacBook Air 13": 2560 x 1600
+   MacBook Pro 14": 3024 x 1964
+   MacBook Pro 16": 3456 x 2234
+   常用横屏尺寸: 1440 x 900, 1280 x 800, 1920 x 1080
+*/
+
+:root {
+    /* 统一页面尺寸 */
+    --page-max-width: 1440px;
+    --page-min-width: 1024px;
+    --page-padding: 40px;
+    --page-padding-mobile: 16px;
+
+    /* 统一容器尺寸 */
+    --container-max-width: 1200px;
+    --container-padding: 20px;
+
+    /* 统一圆角 */
+    --border-radius-sm: 8px;
+    --border-radius-md: 12px;
+    --border-radius-lg: 16px;
+    --border-radius-xl: 20px;
+
+    /* 统一阴影 */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+    /* 统一颜色 */
+    --primary-color: #0071e3;
+    --success-color: #34c759;
+    --warning-color: #ff9500;
+    --danger-color: #ff3b30;
+    --bg-color: #f5f5f7;
+    --text-color: #1d1d1f;
+    --text-secondary: #86868b;
+}
+
+/* 全局重置 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+/* 统一页面容器 */
+.page-wrapper {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 统一内容容器 */
+.container {
+    width: 100%;
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: var(--container-padding);
+}
+
+/* 统一卡片样式 */
+.card {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    padding: 32px;
+    box-shadow: var(--shadow-md);
+}
+
+/* 响应式适配 */
+@media (min-width: 1440px) {
+    :root {
+        --container-padding: 40px;
+    }
+}
+
+@media (max-width: 1024px) {
+    :root {
+        --page-padding: 24px;
+        --container-padding: 16px;
+        --container-max-width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --page-padding: 16px;
+        --container-padding: 16px;
+    }
+
+    .card {
+        padding: 24px;
+    }
+}

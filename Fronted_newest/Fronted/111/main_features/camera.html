@@ -4,40 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>动作拍摄</title>
+    <link rel="stylesheet" href="../styles/global.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* Note: global.css applied, removed duplicate html and body tag */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
         }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            <!DOCTYPE html>
-            <html lang="zh-CN">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>动作拍摄</title>
-                <style>
-                    * {
-                        margin: 0;
-                        padding: 0;
-                        box-sizing: border-box;
-                    }
-
-                    body {
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-                        background-color: #f5f5f7;
-                        color: #1d1d1f;
-                        line-height: 1.6;
-                    }
-
-                    .container {
-                        max-width: 1200px;
-                        margin: 0 auto;
-                        padding: 20px;
-                    }
 
                     header {
                         display: flex;
@@ -341,6 +315,27 @@
                     let isSuccessRep = false;
                     let previousState = 1;
 
+                    function initPage() {
+                        const leg = getLeg();
+                        const sectionTitle = document.querySelector('.section-title');
+                        const sectionDescription = document.querySelector('p[style*="margin-bottom: 24px; color: #86868b;"]');
+                        const backToVideoBtn = document.querySelector('a[href="video.html"].btn-secondary');
+                        const testType = getTestType();
+
+                        if (leg === 'right') {
+                            if (sectionTitle) sectionTitle.textContent = '右腿支撑测试 - 动作拍摄';
+                            if (sectionDescription) sectionDescription.textContent = '请以右腿作为支撑腿进行单腿站立测试，确保全身都在画面中';
+                            if (backToVideoBtn) backToVideoBtn.href = 'video.html?type=assessment';
+                        } else if (leg === 'left') {
+                            if (sectionTitle) sectionTitle.textContent = '左腿支撑测试 - 动作拍摄';
+                            if (sectionDescription) sectionDescription.textContent = '请以左腿作为支撑腿进行单腿站立测试，确保全身都在画面中';
+                            if (backToVideoBtn) backToVideoBtn.href = 'video.html?type=assessment';
+                        } else if (testType === 'balance' || testType === 'assessment') {
+                            // If it's a balance test but no leg specified, default to right leg first
+                            window.location.href = `camera.html?type=${testType}&leg=right`;
+                        }
+                    }
+
                     async function initCamera() {
                         try {
                             if (stream) { stopCamera(); }
@@ -350,9 +345,18 @@
                                 audio: false 
                             });
                             video.srcObject = stream;
+                            video.style.display = 'block';
+                            fsmHint.textContent = '摄像头已就绪，请点击开始拍摄';
                         } catch (error) {
                             console.warn('摄像头被拒绝或未找到，将只允许本地视频上传:', error);
-                            video.style.display = 'none';
+                            video.style.display = 'block';
+                            video.src = '';
+                            video.style.backgroundColor = '#000';
+                            video.poster = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480"%3E%3Crect fill="%232c2c2c" width="640" height="480"/%3E%3Ctext fill="%23ffffff" font-family="Arial" font-size="24" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3E摄像头无法访问%3C/text%3E%3Ctext fill="%23888888" font-family="Arial" font-size="16" x="50%25" y="55%25" text-anchor="middle" dominant-baseline="middle"%3E请检查摄像头权限设置或上传本地视频%3C/text%3E%3C/svg%3E';
+                            fsmHint.textContent = '摄像头不可用，请上传本地视频';
+                            startButton.style.backgroundColor = '#999999';
+                            startButton.style.cursor = 'not-allowed';
+                            startButton.disabled = true;
                         }
                     }
 
@@ -366,6 +370,11 @@
                     function getTestType() {
                         const urlParams = new URLSearchParams(window.location.search);
                         return urlParams.get('type') || 'assessment';
+                    }
+
+                    function getLeg() {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        return urlParams.get('leg');
                     }
 
                     // Connect Auto-Recording FSM WebSockets
@@ -528,9 +537,15 @@
 
                     function showPreview(fileOrBlob) {
                         stopCamera();
-                        video.style.display = 'none';
-                        previewVideo.style.display = 'block';
-                        previewVideo.src = URL.createObjectURL(fileOrBlob);
+                        // Re-use the existing video element for preview for better UI flow
+                        video.src = URL.createObjectURL(fileOrBlob);
+                        video.srcObject = null;
+                        video.controls = true;
+                        video.style.display = 'block';
+                        
+                        // Hide FSM elements
+                        fsmHint.style.display = 'none';
+                        fsmTimer.style.display = 'none';
             
                         document.getElementById('recordingControls').style.display = 'none';
                         document.getElementById('previewControls').style.display = 'flex';
@@ -545,13 +560,20 @@
                         uploading.style.display = 'flex';
 
                         const formData = new FormData();
+                        // Force file format to mp4 for CV constraints, regardless of what browser natively recorded
                         formData.append("video", selectedFileMap, "user_recording.mp4");
             
                         const testType = getTestType();
+                        const leg = getLeg();
+
                         let exerciseName = "Balance"; 
                         if (testType === 'cmj') exerciseName = "CMJ";
                         else if (testType === 'squat') exerciseName = "SLS";
                         formData.append("exercise_name", exerciseName);
+                        
+                        if (leg) {
+                            formData.append("leg", leg);
+                        }
 
                         // 提交给 FastAPI 进行处理
                         fetch(apiHost + "/upload", {
@@ -563,22 +585,47 @@
                             uploading.style.display = 'none';
                             const taskId = data.task_id;
                 
-                            // Implement requested flow: Balance recording -> CMJ recording -> Results
-                            if (testType === 'balance' || testType === 'assessment') {
-                                // Start CMJ while Balance processes in background
-                                window.location.href = 'camera.html?type=cmj&balanceTask=' + taskId;
-                            } else if (testType === 'cmj') {
-                                // Both done, go to index to poll
-                                const urlParams = new URLSearchParams(window.location.search);
-                                const balanceTaskId = urlParams.get('balanceTask');
-                    
-                                if (balanceTaskId) {
-                                    window.location.href = 'index.html?balanceTask=' + balanceTaskId + '&cmjTask=' + taskId;
+                            if (leg) {
+                                // Right -> Left -> Results flow when leg exists
+                                if (leg === 'right') {
+                                    // After right leg, proceed to left leg capture
+                                    window.location.href = `camera.html?type=${testType}&leg=left&rightLegTask=${taskId}`;
+                                } else if (leg === 'left') {
+                                    // After left leg, go to results with both leg tasks
+                                    const urlParams = new URLSearchParams(window.location.search);
+                                    const rightLegTaskId = urlParams.get('rightLegTask');
+                                    
+                                    if (rightLegTaskId) {
+                                        window.location.href = `index.html?leftLegTask=${taskId}&rightLegTask=${rightLegTaskId}`;
+                                    } else {
+                                        window.location.href = `index.html?leftLegTask=${taskId}`;
+                                    }
                                 } else {
-                                    window.location.href = 'index.html?task=' + taskId;
+                                    // Fallback for single-leg tests without specific side designation
+                                    window.location.href = `video.html?type=${testType}&leg=${leg}&uploaded=true&taskId=${taskId}`;
                                 }
                             } else {
-                                window.location.href = 'index.html?task=' + taskId;
+                                // Implement requested flow: Balance recording -> CMJ recording -> Results
+                                if (testType === 'balance' || testType === 'assessment') {
+                                    // Start CMJ while Balance processes in background
+                                    window.location.href = 'camera.html?type=cmj&balanceTask=' + taskId;
+                                } 
+                                /* COMMENTED OUT: CMJ test transitions
+                                else if (testType === 'cmj') {
+                                    // Both done, go to index to poll
+                                    const urlParams = new URLSearchParams(window.location.search);
+                                    const balanceTaskId = urlParams.get('balanceTask');
+                        
+                                    if (balanceTaskId) {
+                                        window.location.href = 'index.html?balanceTask=' + balanceTaskId + '&cmjTask=' + taskId;
+                                    } else {
+                                        window.location.href = 'index.html?task=' + taskId;
+                                    }
+                                } 
+                                */
+                                else {
+                                    window.location.href = 'index.html?task=' + taskId;
+                                }
                             }
                         })
                         .catch(error => {
@@ -617,6 +664,7 @@
                     }
 
                     initCamera();
+                    initPage();
 
                     startButton.addEventListener('click', startRecording);
                     stopButton.addEventListener('click', stopRecording);
