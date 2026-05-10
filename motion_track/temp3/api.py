@@ -7,12 +7,17 @@ import shutil
 import base64
 import cv2
 import numpy as np
+import asyncio
 
 from engine import run_analysis
 from body_tracking import get_yolo26_keypoints
 from core.state_machine import StateMachineFSM
 
 app = FastAPI()
+
+# GPU Semaphore to ensure only one heavy AI process runs at a time
+# This prevents OOM errors on the 32GB V100 GPU
+gpu_semaphore = asyncio.Semaphore(1)
 
 # Allow frontend requests
 app.add_middleware(
@@ -35,17 +40,22 @@ app.mount("/videos", StaticFiles(directory=OUTPUT_DIR), name="videos")
 # In-memory mock database tracking video status
 jobs = {}
 
-def analyze_in_background(task_id: str, file_path: str, exercise_name: str):
-    try:
-        jobs[task_id] = {"status": "processing"}
-        out_path = run_analysis(file_path, task_id, exercise_name)
-        jobs[task_id] = {
-            "status": "completed", 
-            # Changed to .webm for native browser playback compatibility
-            "result_video": f"/videos/{task_id}_annotated.webm" 
-        }
-    except Exception as e:
-        jobs[task_id] = {"status": "failed", "error": str(e)}
+async def analyze_in_background(task_id: str, file_path: str, exercise_name: str):
+    # Wait for the GPU to become available
+    async with gpu_semaphore:
+        try:
+            jobs[task_id] = {"status": "processing"}
+            # run_analysis is a blocking CPU-bound function, call in thread to not block event loop
+            loop = asyncio.get_event_loop()
+            out_path = await loop.run_in_executor(None, run_analysis, file_path, task_id, exercise_name)
+            jobs[task_id] = {
+                "status": "completed", 
+                # Changed to .webm for native browser playback compatibility
+                "result_video": f"/videos/{task_id}_annotated.webm" 
+            }
+        except Exception as e:
+            print(f"Error processing task {task_id}: {e}")
+            jobs[task_id] = {"status": "failed", "error": str(e)}
 
 @app.post("/upload")
 async def upload_video(
@@ -60,6 +70,7 @@ async def upload_video(
         shutil.copyfileobj(video.file, buffer)
         
     jobs[task_id] = {"status": "queued"}
+    # The background task will now respect the semaphore
     background_tasks.add_task(analyze_in_background, task_id, file_path, exercise_name)
     
     return {"task_id": task_id, "message": "Video uploaded successfully. Processing in background."}

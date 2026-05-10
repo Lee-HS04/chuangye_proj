@@ -137,14 +137,14 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
     out.release()
     
     # Save results similarly to main.py logic (merged partner functionality)
-    metrics_path = os.path.join(out_dir, "metrics.csv")
+    # Using unique metrics file per task to avoid concurrent write corruption
+    metrics_path = os.path.join(out_dir, f"{task_id}_metrics.csv")
     cv_val = balance_tracker.get_cv()
     one_minus_cv = balance_tracker.get_one_minus_cv()
-    file_exists = os.path.isfile(metrics_path)
-    with open(metrics_path, "a", newline="") as f:
+    
+    with open(metrics_path, "w", newline="") as f:
         writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(["video", "cv", "one_minus_cv"])
+        writer.writerow(["video", "cv", "one_minus_cv"])
         writer.writerow([f"{task_id}_annotated.webm", cv_val, one_minus_cv])
 
     print(f"Task {task_id} complete! Saved {cv_val:.2f}% CV to {out_path}")
