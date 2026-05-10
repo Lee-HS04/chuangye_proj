@@ -989,7 +989,14 @@
     <script>
         const apiHost = "http://127.0.0.1:8000";
 
-        function pollTask(taskId, progressEl, textEl, videoEl, spinnerEl) {
+        const taskResults = {
+            rightLeg: null,
+            leftLeg: null,
+            cmj: null,
+            single: null
+        };
+
+        function pollTask(taskId, progressEl, textEl, videoEl, spinnerEl, taskKey) {
             const interval = setInterval(() => {
                 fetch(apiHost + "/status/" + taskId)
                 .then(res => res.json())
@@ -1001,15 +1008,81 @@
                         if (spinnerEl) spinnerEl.style.display = 'none';
                         videoEl.style.display = 'block';
                         videoEl.src = apiHost + data.result_video;
+                        
+                        taskResults[taskKey] = data;
+                        checkAllTasksCompleted();
                     } else if (data.status === 'failed') {
                         clearInterval(interval);
                         progressEl.style.color = '#ff3b30';
                         textEl.innerText = "❌ 分析失败: " + (data.error || '未知错误');
                         if (spinnerEl) spinnerEl.style.display = 'none';
+                        
+                        taskResults[taskKey] = { failed: true };
+                        checkAllTasksCompleted();
                     }
                 })
                 .catch(err => console.log("Poll fail", err));
             }, 3000);
+        }
+
+        let requiredTasksCount = 0;
+        let completedTasksCount = 0;
+
+        function checkAllTasksCompleted() {
+            completedTasksCount++;
+            if (completedTasksCount === requiredTasksCount) {
+                // All tasks completed, let's calculate average CV
+                let totalCv = 0;
+                let cvCount = 0;
+                
+                if (taskResults.rightLeg && taskResults.rightLeg.cv !== undefined && taskResults.rightLeg.cv !== null) {
+                    totalCv += taskResults.rightLeg.cv;
+                    cvCount++;
+                }
+                
+                if (taskResults.leftLeg && taskResults.leftLeg.cv !== undefined && taskResults.leftLeg.cv !== null) {
+                    totalCv += taskResults.leftLeg.cv;
+                    cvCount++;
+                }
+                
+                if (taskResults.single && taskResults.single.cv !== undefined && taskResults.single.cv !== null) {
+                    totalCv += taskResults.single.cv;
+                    cvCount++;
+                }
+                
+                if (cvCount > 0) {
+                    const avgCv = totalCv / cvCount;
+                    
+                    let targetStatus = 'excellent';
+                    if (avgCv >= 50) {
+                        targetStatus = 'caution';
+                    } else if (avgCv >= 40) {
+                        targetStatus = 'tired';
+                    } else if (avgCv >= 30) {
+                        targetStatus = 'good';
+                    } else {
+                        targetStatus = 'excellent';
+                    }
+                    
+                    document.querySelectorAll('.btn[onclick^="changeStatus"]').forEach(button => {
+                        button.style.display = 'none';
+                    });
+                    
+                    const buttons = document.querySelectorAll('.btn[onclick^="changeStatus"]');
+                    const targetBtn = Array.from(buttons).find(b => b.getAttribute('onclick').includes(targetStatus));
+                    if (targetBtn) {
+                        targetBtn.style.display = 'inline-block';
+                    }
+                    
+                    changeStatus(targetStatus);
+                    
+                    // Show actual CV metric
+                    const stabilityValue = document.getElementById('stabilityValue');
+                    if (stabilityValue) {
+                        stabilityValue.textContent = (100 - avgCv).toFixed(1) + "%";
+                    }
+                }
+            }
         }
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -1018,6 +1091,11 @@
             const leftLegTask = urlParams.get('leftLegTask');
             const cmjTask = urlParams.get('cmjTask');
             const singleTask = urlParams.get('task'); // For non-grouped tests
+
+            // Hide buttons initially
+            document.querySelectorAll('.btn[onclick^="changeStatus"]').forEach(button => {
+                button.style.display = 'none';
+            });
 
             if (rightLegTask || leftLegTask || cmjTask || singleTask) {
                 document.getElementById('analysisDashboard').style.display = 'block';
@@ -1032,36 +1110,40 @@
             }
 
             if (rightLegTask) {
+                requiredTasksCount++;
                 const progressEl = document.getElementById('rightLegProgress');
                 const textEl = document.getElementById('rightLegText');
                 const videoEl = document.getElementById('rightLegVideo');
                 const spinnerEl = progressEl.querySelector('.spinner');
-                pollTask(rightLegTask, progressEl, textEl, videoEl, spinnerEl);
+                pollTask(rightLegTask, progressEl, textEl, videoEl, spinnerEl, 'rightLeg');
             } else if (!singleTask) {
                 document.getElementById('rightLegProgress').parentElement.style.display = 'none';
             }
 
             if (leftLegTask) {
+                requiredTasksCount++;
                 const progressEl = document.getElementById('leftLegProgress');
                 const textEl = document.getElementById('leftLegText');
                 const videoEl = document.getElementById('leftLegVideo');
                 const spinnerEl = progressEl.querySelector('.spinner');
-                pollTask(leftLegTask, progressEl, textEl, videoEl, spinnerEl);
+                pollTask(leftLegTask, progressEl, textEl, videoEl, spinnerEl, 'leftLeg');
             } else if (!singleTask) {
                 document.getElementById('leftLegProgress').parentElement.style.display = 'none';
             }
 
             if (cmjTask) {
+                requiredTasksCount++;
                 const progressEl = document.getElementById('cmjProgress');
                 const textEl = document.getElementById('cmjText');
                 const videoEl = document.getElementById('cmjVideo');
                 const spinnerEl = progressEl.querySelector('.spinner');
-                pollTask(cmjTask, progressEl, textEl, videoEl, spinnerEl);
+                pollTask(cmjTask, progressEl, textEl, videoEl, spinnerEl, 'cmj');
             } else if (!singleTask) {
                 document.getElementById('cmjProgress').parentElement.style.display = 'none';
             }
 
             if (singleTask && !leftLegTask && !rightLegTask && !cmjTask) {
+                requiredTasksCount++;
                 // If it's a single test, just repurpose the Right Leg UI to show it
                 const progressEl = document.getElementById('rightLegProgress');
                 const textEl = document.getElementById('rightLegText');
@@ -1072,7 +1154,15 @@
                 progressEl.parentElement.querySelector('h3').innerText = "独立测试处理状态";
                 document.getElementById('leftLegProgress').parentElement.style.display = 'none';
                 document.getElementById('cmjProgress').parentElement.style.display = 'none';
-                pollTask(singleTask, progressEl, textEl, videoEl, spinnerEl);
+                pollTask(singleTask, progressEl, textEl, videoEl, spinnerEl, 'single');
+            }
+            
+            // If no tasks, show default status
+            if (requiredTasksCount === 0) {
+                const buttons = document.querySelectorAll('.btn[onclick^="changeStatus"]');
+                const defaultBtn = Array.from(buttons).find(b => b.getAttribute('onclick').includes('excellent'));
+                if (defaultBtn) defaultBtn.style.display = 'inline-block';
+                changeStatus('excellent');
             }
         });
     </script>

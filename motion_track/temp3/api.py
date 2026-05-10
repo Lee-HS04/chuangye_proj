@@ -48,10 +48,26 @@ async def analyze_in_background(task_id: str, file_path: str, exercise_name: str
             # run_analysis is a blocking CPU-bound function, call in thread to not block event loop
             loop = asyncio.get_event_loop()
             out_path = await loop.run_in_executor(None, run_analysis, file_path, task_id, exercise_name)
+            
+            # Read metrics file
+            metrics_path = os.path.join(OUTPUT_DIR, f"{task_id}_metrics.csv")
+            cv_val = None
+            if os.path.exists(metrics_path):
+                import csv
+                with open(metrics_path, "r") as f:
+                    reader = csv.reader(f)
+                    next(reader) # Skip header
+                    try:
+                        row = next(reader)
+                        cv_val = float(row[1])
+                    except (StopIteration, ValueError):
+                        pass
+            
             jobs[task_id] = {
                 "status": "completed", 
                 # Changed to .webm for native browser playback compatibility
-                "result_video": f"/videos/{task_id}_annotated.webm" 
+                "result_video": f"/videos/{task_id}_annotated.webm",
+                "cv": cv_val
             }
         except Exception as e:
             print(f"Error processing task {task_id}: {e}")
