@@ -1,4 +1,5 @@
-from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
@@ -8,6 +9,7 @@ import base64
 import cv2
 import numpy as np
 import asyncio
+import json
 
 from engine import run_analysis
 from body_tracking import get_yolo26_keypoints
@@ -33,6 +35,17 @@ UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Frontend directories
+PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
+FRONTEND_DIR = os.path.join(PROJECT_ROOT, "Fronted_newest", "Fronted")
+PATH_OPTION_1 = os.path.join(FRONTEND_DIR, "111", "personaldata_storage", "user_data.json")
+PATH_OPTION_2 = os.path.join(FRONTEND_DIR, "personaldata_storage", "user_data.json")
+
+def get_user_data_path():
+    if os.path.exists(PATH_OPTION_1):
+        return PATH_OPTION_1
+    return PATH_OPTION_2
 
 # Mount outputs so the frontend can stream the generated videos
 app.mount("/videos", StaticFiles(directory=OUTPUT_DIR), name="videos")
@@ -97,6 +110,31 @@ async def get_status(task_id: str):
         return jobs[task_id]
     return {"status": "not_found"}
 
+# --- USER DATA MANAGEMENT ENDPOINTS (Merged from server.py) ---
+@app.get("/api/get_user_data")
+async def get_user_data():
+    path = get_user_data_path()
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data
+    except FileNotFoundError:
+        return {"users": []}
+
+@app.post("/api/update_user_data")
+async def update_user_data(request: Request):
+    data = await request.json()
+    path = get_user_data_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    return {"success": True, "message": "数据已成功更新"}
+
+@app.get("/")
+async def root_redirect():
+    return RedirectResponse(url="/111/auth/app_login_register.html")
+# --------------------------------------------------------------
+
 @app.websocket("/ws/form-check/{exercise}")
 async def websocket_form_check(websocket: WebSocket, exercise: str):
     await websocket.accept()
@@ -138,6 +176,9 @@ async def websocket_form_check(websocket: WebSocket, exercise: str):
     except WebSocketDisconnect:
         print("WebSocket client disconnected")
         
+# Mount the frontend directory to serve HTML/CSS/JS (Must be at the bottom)
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
