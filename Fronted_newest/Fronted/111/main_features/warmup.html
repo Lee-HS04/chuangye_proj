@@ -500,92 +500,17 @@
             </div>
         </header>
 
-        <div class="nav-bar">
-            <div class="nav-item">赛前评估</div>
-            <div class="nav-item active">运动准备</div>
-            <div class="nav-item">疲劳恢复</div>
-        </div>
-
-        <div class="main-content">
-            <!-- 状态切换器 -->
-            <div style="margin-bottom: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
-                <button class="btn btn-primary" onclick="changeStatus('excellent')">状态超过平均水平</button>
-                <button class="btn btn-secondary" onclick="changeStatus('good')">状态良好</button>
-                <button class="btn btn-secondary" onclick="changeStatus('tired')">些许疲惫</button>
-                <button class="btn btn-secondary" onclick="changeStatus('cautious')">谨慎注意</button>
-            </div>
-            
-            <!-- 状态评估卡片 -->
-            <div class="status-card">
-                <div class="card-header">
-                    <h2 class="card-title">训练前状态评分</h2>
-                    <span class="assessment-time">评估时间: 2026-04-12 14:30</span>
-                </div>
-
-                <div class="status-indicator">
-                    <div class="status-light green" id="statusLight">绿</div>
-                    <div class="status-details">
-                        <h3 class="status-title" id="statusTitle">状态超过平均水平</h3>
-                        <p class="status-description" id="statusDescription">身体状态极佳，远超平均水平，适合进行高强度训练</p>
-                        <div class="warmup-recommendation">
-                            <h4 class="recommendation-title">热身建议</h4>
-                            <ul class="recommendation-list" id="recommendationList">
-                                <li class="recommendation-item">
-                                    <div class="recommendation-icon">1</div>
-                                    <span>可以适当增加热身强度</span>
-                                </li>
-                                <li class="recommendation-item">
-                                    <div class="recommendation-icon">2</div>
-                                    <span>重点关注专项动作的激活</span>
-                                </li>
-                                <li class="recommendation-item">
-                                    <div class="recommendation-icon">3</div>
-                                    <span>保持常规热身流程</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 视频播放器 -->
-                <div class="video-container" style="margin-bottom: 32px;">
-                    <h3 style="margin-bottom: 16px; color: #1d1d1f;">动作分析视频</h3>
-                    <video controls style="width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
-                        <source src="微信视频2026-04-12_110559_172.mp4" type="video/mp4">
-                        您的浏览器不支持视频播放。
-                    </video>
-                </div>
-
-                <!-- 指标网格 -->
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-value" id="muscleValue">105%</div>
-                        <div class="metric-label">肌肉状态</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value" id="jointValue">102%</div>
-                        <div class="metric-label">关节灵活度</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value" id="cardioValue">103%</div>
-                        <div class="metric-label">心肺功能</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value" id="overallValue">110%</div>
-                        <div class="metric-label">整体状态</div>
-                    </div>
-                </div>
-            </div>
-
+      <div class="main-content">
             <!-- 热身计划 -->
-            <div class="warmup-plan">
+            <div class="warmup-plan" id="warmupSection">
                 <div class="plan-header">
                     <h2 class="plan-title">个性化热身方案</h2>
-                    <span class="plan-duration" id="planDuration">7分钟</span>
+                    <span class="plan-duration" id="planDuration">12分钟</span>
                 </div>
-
-                <div class="warmup-exercises" id="warmupExercises">
-                    <div class="exercise-item" onclick="viewExerciseVideo(0)">
+            
+            <div class="warmup-exercises" id="warmupExercises">
+                    <!-- 动态拉伸 -->
+                    <div class="exercise-item" onclick="viewExerciseVideo('动态拉伸')">
                         <div class="exercise-icon">🏃</div>
                         <div class="exercise-details">
                             <div class="exercise-name">动态拉伸</div>
@@ -593,45 +518,77 @@
                         </div>
                         <div class="exercise-duration">7分钟</div>
                     </div>
-                    <div class="exercise-item" onclick="viewExerciseVideo(7)">
+                    <!-- core1: 四足支撑对侧摸肩 -->
+                    <div class="exercise-item" onclick="viewExerciseVideo('四足支撑对侧摸肩')">
+                        <div class="exercise-icon">🦾</div>
+                        <div class="exercise-details">
+                            <div class="exercise-name">四足支撑对侧摸肩</div>
+                            <div class="exercise-description">核心抗旋转能力：当单臂离地摸肩时，腹斜肌和深层核心强力收缩阻止身体晃动或转动</div>
+                        </div>
+                        <div class="exercise-duration">1.5分钟</div>
+                    </div>
+                    <!-- core2: 鸟狗伸展 -->
+                    <div class="exercise-item" onclick="viewExerciseVideo('鸟狗伸展')">
+                        <div class="exercise-icon">🐶</div>
+                        <div class="exercise-details">
+                            <div class="exercise-name">鸟狗伸展</div>
+                            <div class="exercise-description">核心抗旋转与抗伸展能力：抬起对侧手脚时，腹横肌和腹斜肌维持骨盆和肩膀稳定</div>
+                        </div>
+                        <div class="exercise-duration">1.5分钟</div>
+                    </div>
+                    <!-- core3: 仰卧直腿抬起 -->
+                    <div class="exercise-item" onclick="viewExerciseVideo('仰卧直腿抬起')">
                         <div class="exercise-icon">🦵</div>
                         <div class="exercise-details">
-                            <div class="exercise-name">高抬腿</div>
-                            <div class="exercise-description">提高心率和下肢灵活性</div>
+                            <div class="exercise-name">仰卧直腿抬起</div>
+                            <div class="exercise-description">锻炼下腹部肌肉和髂腰肌，增强核心稳定性和下肢控制能力</div>
                         </div>
-                        <div class="exercise-duration">2分钟</div>
+                        <div class="exercise-duration">1分钟</div>
                     </div>
-                    <div class="exercise-item" onclick="viewExerciseVideo(8)">
-                        <div class="exercise-icon">🤸</div>
+                    <!-- core4: 骨盆后倾蹬腿 -->
+                    <div class="exercise-item" onclick="viewExerciseVideo('骨盆后倾蹬腿')">
+                        <div class="exercise-icon">🍑</div>
                         <div class="exercise-details">
-                            <div class="exercise-name">侧弓步</div>
-                            <div class="exercise-description">增强髋部和腿部肌肉</div>
+                            <div class="exercise-name">骨盆后倾蹬腿</div>
+                            <div class="exercise-description">激活核心肌群和臀部肌肉，改善骨盆稳定性和下肢力量</div>
                         </div>
-                        <div class="exercise-duration">2分钟</div>
+                        <div class="exercise-duration">1分钟</div>
                     </div>
-                    <div class="exercise-item" onclick="viewExerciseVideo(9)">
+                    <!-- core5: 俄罗斯转体 -->
+                    <div class="exercise-item" onclick="viewExerciseVideo('俄罗斯转体')">
+                        <div class="exercise-icon">🌀</div>
+                        <div class="exercise-details">
+                            <div class="exercise-name">俄罗斯转体</div>
+                            <div class="exercise-description">锻炼腹斜肌和核心旋转能力，提高躯干灵活性和爆发力</div>
+                        </div>
+                        <div class="exercise-duration">1分钟</div>
+                    </div>
+                    <!-- core6: 死虫式 -->
+                    <div class="exercise-item" onclick="viewExerciseVideo('死虫式')">
+                        <div class="exercise-icon">🐛</div>
+                        <div class="exercise-details">
+                            <div class="exercise-name">死虫式</div>
+                            <div class="exercise-description">深层核心稳定性训练，增强腹横肌控制能力，保护腰椎</div>
+                        </div>
+                        <div class="exercise-duration">1分钟</div>
+                    </div>
+                    <!-- core7: 直腿交替举腿 -->
+                    <div class="exercise-item" onclick="viewExerciseVideo('直腿交替举腿')">
+                        <div class="exercise-icon">🦶</div>
+                        <div class="exercise-details">
+                            <div class="exercise-name">直腿交替举腿</div>
+                            <div class="exercise-description">强化下腹部肌肉和核心控制，提高下肢协调能力</div>
+                        </div>
+                        <div class="exercise-duration">1分钟</div>
+                    </div>
+                    <!-- core8: 臀桥支撑 -->
+                    <div class="exercise-item" onclick="viewExerciseVideo('臀桥支撑')">
                         <div class="exercise-icon">🏋️</div>
                         <div class="exercise-details">
-                            <div class="exercise-name">轻重量深蹲</div>
-                            <div class="exercise-description">激活下肢肌肉群</div>
+                            <div class="exercise-name">臀桥支撑</div>
+                            <div class="exercise-description">激活和强化臀大肌、核心肌群，改善骨盆前倾问题</div>
                         </div>
-                        <div class="exercise-duration">1分钟</div>
-                    </div>
-                    <div class="exercise-item" onclick="viewExerciseVideo(10)">
-                        <div class="exercise-icon">🧘</div>
-                        <div class="exercise-details">
-                            <div class="exercise-name">动态平衡训练</div>
-                            <div class="exercise-description">提高核心稳定性</div>
-                        </div>
-                        <div class="exercise-duration">2分钟</div>
-                    </div>
-                    <div class="exercise-item" onclick="viewExerciseVideo(11)">
-                        <div class="exercise-icon">💨</div>
-                        <div class="exercise-details">
-                            <div class="exercise-name">冲刺跑</div>
-                            <div class="exercise-description">提高爆发力和反应速度</div>
-                        </div>
-                        <div class="exercise-duration">1分钟</div>
+                        <div class="exercise-duration">1.5分钟</div>
                     </div>
                 </div>
 
@@ -639,7 +596,7 @@
                     <button class="btn btn-primary" onclick="startWarmup()">开始热身</button>
                     <a href="#" class="btn btn-secondary">调整方案</a>
                 </div>
-
+            </div>
                 <!-- 倒计时弹窗 -->
                 <div class="countdown" id="countdown" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; display: none;">
                     <div class="countdown-number" id="countdownNumber" style="font-size: 120px; font-weight: 700; color: white;">3</div>
@@ -663,6 +620,106 @@
 
     <script>
         // 热身方案数据
+        const coreExercises = [
+            {
+                name: "四足支撑对侧摸肩",
+                description: "核心抗旋转能力：当你单臂离地摸肩时，身体会因为失去一侧支撑而产生旋转的趋势，这时你的腹斜肌和深层核心必须强力收缩来阻止身体晃动或转动。肩部稳定性：支撑侧的肩膀（三角肌、肩袖肌群）需要提供稳定支撑。髋关节灵活性：保持膝盖离地的姿态对髋屈肌有一定要求。",
+                duration: "1.5分钟",
+                icon: "🦾",
+                video: "core1.mp4",
+                parts: ["core", "shoulder", "hip"]
+            },
+            {
+                name: "鸟狗伸展",
+                description: "核心抗旋转与抗伸展能力：当你抬起对侧手脚时，身体会因为失去两点支撑而面临旋转和塌陷的趋势，你的腹横肌、腹斜肌必须非常用力才能维持骨盆和肩膀的稳定。后侧链肌肉：抬起的腿主要锻炼臀大肌和大腿后侧腘绳肌；抬起的背主要锻炼背部的竖脊肌。肩部与髋部协调性：改善神经对肌肉的控制能力。",
+                duration: "1.5分钟",
+                icon: "🐶",
+                video: "core2.mp4",
+                parts: ["core", "back", "hip"]
+            },
+            {
+                name: "仰卧直腿抬起",
+                description: "主要锻炼下腹部肌肉和髂腰肌，增强核心稳定性和下肢控制能力。",
+                duration: "1分钟",
+                icon: "🦵",
+                video: "core3.mp4",
+                parts: ["core", "leg"]
+            },
+            {
+                name: "骨盆后倾蹬腿",
+                description: "激活核心肌群和臀部肌肉，改善骨盆稳定性和下肢力量。",
+                duration: "1分钟",
+                icon: "🍑",
+                video: "core4.mp4",
+                parts: ["core", "hip", "leg"]
+            },
+            {
+                name: "俄罗斯转体",
+                description: "锻炼腹斜肌和核心旋转能力，提高躯干灵活性和爆发力。",
+                duration: "1分钟",
+                icon: "🌀",
+                video: "core5.mp4",
+                parts: ["core"]
+            },
+            {
+                name: "死虫式",
+                description: "深层核心稳定性训练，增强腹横肌控制能力，保护腰椎。",
+                duration: "1分钟",
+                icon: "🐛",
+                video: "core6.mp4",
+                parts: ["core", "back"]
+            },
+            {
+                name: "直腿交替举腿",
+                description: "强化下腹部肌肉和核心控制，提高下肢协调能力。",
+                duration: "1分钟",
+                icon: "�",
+                video: "core7.mp4",
+                parts: ["core", "leg"]
+            },
+            {
+                name: "臀桥支撑",
+                description: "激活和强化臀大肌、核心肌群，改善骨盆前倾问题。",
+                duration: "1.5分钟",
+                icon: "🏋️",
+                video: "core8.mp4",
+                parts: ["core", "hip", "back"]
+            }
+        ];
+
+        // 随机从数组中选择指定数量的元素
+        function selectRandom(arr, count) {
+            const shuffled = [...arr].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+
+        // 根据伤病部位筛选安全的动作
+        function getSafeExercises(injuryParts) {
+            if (!injuryParts || injuryParts.length === 0) {
+                return coreExercises;
+            }
+            
+            // 定义各部位受伤时应避免的动作
+            const avoidByPart = {
+                shoulder: ["四足支撑对侧摸肩"],
+                back: ["鸟狗伸展", "死虫式", "臀桥支撑"],
+                hip: ["四足支撑对侧摸肩", "鸟狗伸展", "骨盆后倾蹬腿", "臀桥支撑"],
+                leg: ["仰卧直腿抬起", "骨盆后倾蹬腿", "直腿交替举腿"],
+                knee: ["仰卧直腿抬起", "骨盆后倾蹬腿", "直腿交替举腿"],
+                ankle: ["仰卧直腿抬起", "骨盆后倾蹬腿", "直腿交替举腿"]
+            };
+            
+            const avoidList = [];
+            injuryParts.forEach(part => {
+                if (avoidByPart[part]) {
+                    avoidList.push(...avoidByPart[part]);
+                }
+            });
+            
+            return coreExercises.filter(ex => !avoidList.includes(ex.name));
+        }
+
+        // 热身方案数据
         const warmupData = {
             excellent: {
                 title: "状态超过平均水平",
@@ -673,51 +730,18 @@
                     "重点关注专项动作的激活",
                     "保持常规热身流程"
                 ],
-                metrics: {
-                    muscle: 105,
-                    joint: 102,
-                    cardio: 103,
-                    overall: 110
-                },
                 warmupPlan: {
-                    duration: "7分钟",
+                    duration: "12分钟",
                     exercises: [
                         {
                             name: "动态拉伸",
                             description: "针对下肢肌肉群的动态拉伸（7个动作）",
                             duration: "7分钟",
-                            icon: "🏃"
+                            icon: "🏃",
+                            video: "动态拉伸.mp4",
+                            parts: ["leg", "hip", "joint"]
                         },
-                        {
-                            name: "高抬腿",
-                            description: "提高心率和下肢灵活性",
-                            duration: "2分钟",
-                            icon: "🦵"
-                        },
-                        {
-                            name: "侧弓步",
-                            description: "增强髋部和腿部肌肉",
-                            duration: "2分钟",
-                            icon: "🤸"
-                        },
-                        {
-                            name: "轻重量深蹲",
-                            description: "激活下肢肌肉群",
-                            duration: "1分钟",
-                            icon: "�️"
-                        },
-                        {
-                            name: "动态平衡训练",
-                            description: "提高核心稳定性",
-                            duration: "2分钟",
-                            icon: "🧘"
-                        },
-                        {
-                            name: "冲刺跑",
-                            description: "提高爆发力和反应速度",
-                            duration: "1分钟",
-                            icon: "💨"
-                        }
+                        ...selectRandom(coreExercises, 3)
                     ]
                 }
             },
@@ -730,51 +754,18 @@
                     "重点关注主要肌肉群的激活",
                     "适当调整训练强度"
                 ],
-                metrics: {
-                    muscle: 95,
-                    joint: 90,
-                    cardio: 88,
-                    overall: 92
-                },
                 warmupPlan: {
-                    duration: "7分钟",
+                    duration: "12分钟",
                     exercises: [
                         {
                             name: "动态拉伸",
                             description: "针对下肢肌肉群的动态拉伸（7个动作）",
                             duration: "7分钟",
-                            icon: "🏃"
+                            icon: "🏃",
+                            video: "动态拉伸.mp4",
+                            parts: ["leg", "hip", "joint"]
                         },
-                        {
-                            name: "高抬腿",
-                            description: "提高心率和下肢灵活性",
-                            duration: "2分钟",
-                            icon: "🦵"
-                        },
-                        {
-                            name: "侧弓步",
-                            description: "增强髋部和腿部肌肉",
-                            duration: "2分钟",
-                            icon: "🤸"
-                        },
-                        {
-                            name: "轻重量深蹲",
-                            description: "激活下肢肌肉群",
-                            duration: "1分钟",
-                            icon: "�️"
-                        },
-                        {
-                            name: "动态平衡训练",
-                            description: "提高核心稳定性",
-                            duration: "2分钟",
-                            icon: "🧘"
-                        },
-                        {
-                            name: "冲刺跑",
-                            description: "提高爆发力和反应速度",
-                            duration: "1分钟",
-                            icon: "💨"
-                        }
+                        ...selectRandom(coreExercises, 3)
                     ]
                 }
             },
@@ -787,51 +778,18 @@
                     "重点关注疲劳部位的拉伸",
                     "训练中注意休息"
                 ],
-                metrics: {
-                    muscle: 75,
-                    joint: 70,
-                    cardio: 78,
-                    overall: 75
-                },
                 warmupPlan: {
-                    duration: "7分钟",
+                    duration: "11.5分钟",
                     exercises: [
                         {
                             name: "动态拉伸",
                             description: "针对下肢肌肉群的动态拉伸（7个动作）",
                             duration: "7分钟",
-                            icon: "🏃"
+                            icon: "🏃",
+                            video: "动态拉伸.mp4",
+                            parts: ["leg", "hip", "joint"]
                         },
-                        {
-                            name: "高抬腿",
-                            description: "提高心率和下肢灵活性",
-                            duration: "2分钟",
-                            icon: "🦵"
-                        },
-                        {
-                            name: "侧弓步",
-                            description: "增强髋部和腿部肌肉",
-                            duration: "2分钟",
-                            icon: "🤸"
-                        },
-                        {
-                            name: "轻重量深蹲",
-                            description: "激活下肢肌肉群",
-                            duration: "1分钟",
-                            icon: "�️"
-                        },
-                        {
-                            name: "动态平衡训练",
-                            description: "提高核心稳定性",
-                            duration: "2分钟",
-                            icon: "🧘"
-                        },
-                        {
-                            name: "冲刺跑",
-                            description: "提高爆发力和反应速度",
-                            duration: "1分钟",
-                            icon: "💨"
-                        }
+                        ...selectRandom(coreExercises, 3)  // 黄灯8选3
                     ]
                 }
             },
@@ -844,88 +802,107 @@
                     "重点关注受伤风险部位",
                     "考虑调整训练计划"
                 ],
-                metrics: {
-                    muscle: 55,
-                    joint: 60,
-                    cardio: 65,
-                    overall: 60
-                },
                 warmupPlan: {
-                    duration: "7分钟",
+                    duration: "13.5分钟",
                     exercises: [
                         {
                             name: "动态拉伸",
                             description: "针对下肢肌肉群的动态拉伸（7个动作）",
                             duration: "7分钟",
-                            icon: "🏃"
+                            icon: "🏃",
+                            video: "动态拉伸.mp4",
+                            parts: ["leg", "hip", "joint"]
                         },
-                        {
-                            name: "高抬腿",
-                            description: "提高心率和下肢灵活性",
-                            duration: "2分钟",
-                            icon: "🦵"
-                        },
-                        {
-                            name: "侧弓步",
-                            description: "增强髋部和腿部肌肉",
-                            duration: "2分钟",
-                            icon: "🤸"
-                        },
-                        {
-                            name: "轻重量深蹲",
-                            description: "激活下肢肌肉群",
-                            duration: "1分钟",
-                            icon: "�️"
-                        },
-                        {
-                            name: "动态平衡训练",
-                            description: "提高核心稳定性",
-                            duration: "2分钟",
-                            icon: "🧘"
-                        },
-                        {
-                            name: "冲刺跑",
-                            description: "提高爆发力和反应速度",
-                            duration: "1分钟",
-                            icon: "💨"
-                        }
+                        ...selectRandom(coreExercises, 5)  // 红灯8选5
                     ]
                 }
             }
         };
 
+
+        // Aliasing caution for consistency
+        warmupData.caution = warmupData.cautious;
+
         // 动态更新页面内容
         document.addEventListener('DOMContentLoaded', function() {
             console.log('页面加载完成，数据已准备就绪');
+            
+            // 检查URL参数中的状态
+            const urlParams = new URLSearchParams(window.location.search);
+            const status = urlParams.get('status');
+            if (status && warmupData[status]) {
+                changeStatus(status);
+            }
+            checkInjuryWarning();
         });
+
+        // 检查伤病警告
+        function checkInjuryWarning() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser || !currentUser.personal_info) {
+                return;
+            }
+            
+            const personalInfo = currentUser.personal_info;
+            let injuryParts = [];
+            
+            // 获取伤病部位
+            if (personalInfo.healthStatus && personalInfo.healthStatus.injuryParts) {
+                injuryParts = personalInfo.healthStatus.injuryParts;
+            } else if (personalInfo.injury === 'yes' && personalInfo.injury_location) {
+                injuryParts = [personalInfo.injury_location];
+            }
+            
+            if (injuryParts.length === 0) {
+                return;
+            }
+            
+            // 获取当前热身方案中的动作
+            const currentStatus = 'excellent'; // 默认使用excellent状态，可以根据实际情况修改
+            const plan = warmupData[currentStatus].warmupPlan;
+            
+            // 检查动作是否涉及伤病部位
+            const riskyExercises = [];
+            const partLabels = {
+                shoulder: '肩部',
+                back: '背部',
+                hip: '髋部',
+                leg: '腿部',
+                knee: '膝盖',
+                ankle: '脚踝',
+                core: '核心'
+            };
+            
+            plan.exercises.forEach(exercise => {
+                if (exercise.parts) {
+                    exercise.parts.forEach(part => {
+                        if (injuryParts.includes(part) && !riskyExercises.includes(exercise.name)) {
+                            riskyExercises.push(exercise.name);
+                        }
+                    });
+                }
+            });
+            
+            if (riskyExercises.length > 0) {
+                const injuryPartText = injuryParts.map(p => partLabels[p] || p).join('、');
+                const exerciseText = riskyExercises.join('、');
+                alert(`⚠️ 注意：您的${injuryPartText}有伤病记录，以下动作可能会对伤病部位造成压力：\n\n${exerciseText}\n\n建议咨询医生或教练后再进行训练。`);
+            }
+        }
 
         // 开始热身
         function startWarmup() {
-            // 显示倒计时
-            const countdown = document.getElementById('countdown');
-            const countdownNumber = document.getElementById('countdownNumber');
-            countdown.style.display = 'flex';
-            
-            let count = 3;
-            countdownNumber.textContent = count;
-            
-            // 倒计时逻辑
-            const interval = setInterval(function() {
-                count--;
-                if (count > 0) {
-                    countdownNumber.textContent = count;
-                } else {
-                    clearInterval(interval);
-                    // 倒计时结束后跳转到热身视频播放页面
-                    window.location.href = 'warmup-videos.html';
-                }
-            }, 1000);
+             // 直接跳转到动作详情页面，从第一个动作开始
+            const firstExercise = document.querySelector('.exercise-item');
+            if (firstExercise) {
+                firstExercise.click();
+            }
         }
 
         // 查看单个动作视频
-        function viewExerciseVideo(index) {
-            // 跳转到动作详情页面，并传递动作索引
-            window.location.href = 'exercise-detail.html?index=' + index;
+        function viewExerciseVideo(exerciseName) {
+            // 跳转到动作详情页面，并传递动作名称
+            window.location.href = 'exercise-detail.html?name=' + encodeURIComponent(exerciseName);
         }
 
         // 切换状态

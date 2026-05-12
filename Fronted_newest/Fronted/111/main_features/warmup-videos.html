@@ -200,9 +200,9 @@
 
                 <div class="progress-container">
                     <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill" style="width: 8.33%;"></div>
+                        <div class="progress-fill" id="progressFill" style="width: 11.11%;"></div>
                     </div>
-                    <p class="progress-text" id="progressText">1/12 动作</p>
+                    <p class="progress-text" id="progressText">1/9 动作</p>
                 </div>
                 
                 <div class="video-container">
@@ -223,66 +223,53 @@
 
     <script>
         // 热身动作数据
-        const exercises = [
+         const exercises = [
+            // 核心动作示范视频（所有核心动作都用同一个示范视频）
             {
-                name: "动态拉伸3",
-                description: "针对下肢肌肉群的动态拉伸",
-                video: "../videos/动态拉伸3.mp4"
-            },
-            {
-                name: "动态拉伸6",
-                description: "针对下肢肌肉群的动态拉伸",
-                video: "../videos/动态拉伸6.mp4"
-            },
-            {
-                name: "动态拉伸4",
-                description: "针对下肢肌肉群的动态拉伸",
-                video: "../videos/动态拉伸4.mp4"
-            },
-            {
-                name: "动态拉伸7",
-                description: "针对下肢肌肉群的动态拉伸",
-                video: "../videos/动态拉伸7.mp4"
-            },
-            {
-                name: "动态拉伸2",
-                description: "针对下肢肌肉群的动态拉伸",
-                video: "../videos/动态拉伸2.mp4"
-            },
-            {
-                name: "动态拉伸1",
-                description: "针对下肢肌肉群的动态拉伸",
-                video: "../videos/动态拉伸1.mp4"
-            },
-            {
-                name: "动态拉伸5",
-                description: "针对下肢肌肉群的动态拉伸",
-                video: "../videos/动态拉伸5.mp4"
-            },
-            {
-                name: "高抬腿",
-                description: "提高心率和下肢灵活性",
+                name: "四足支撑对侧摸肩",
+                description: "核心抗旋转能力：当你单臂离地摸肩时，身体会因为失去一侧支撑而产生旋转的趋势，这时你的腹斜肌和深层核心必须强力收缩来阻止身体晃动或转动。",
                 video: "../videos/core1.mp4"
             },
             {
-                name: "侧弓步",
-                description: "增强髋部和腿部肌肉",
+                name: "鸟狗伸展",
+                description: "核心抗旋转与抗伸展能力：当你抬起对侧手脚时，身体会因为失去两点支撑而面临旋转和塌陷的趋势，你的腹横肌、腹斜肌必须非常用力才能维持骨盆和肩膀的稳定。",
                 video: "../videos/core2.mp4"
             },
             {
-                name: "轻重量深蹲",
-                description: "激活下肢肌肉群",
-                video: "../videos/示范视频.mp4"
+                name: "仰卧直腿抬起",
+                description: "主要锻炼下腹部肌肉和髂腰肌，增强核心稳定性和下肢控制能力。",
+                video: "../video/core3.mp4"
             },
             {
-                name: "动态平衡训练",
-                description: "提高核心稳定性",
-                video: "../videos/示范视频.mp4"
+                name: "骨盆后倾蹬腿",
+                description: "激活核心肌群和臀部肌肉，改善骨盆稳定性和下肢力量。",
+                video: "../videos/core4.mp4"
             },
             {
-                name: "冲刺跑",
-                description: "提高爆发力和反应速度",
-                video: "../videos/示范视频.mp4"
+                name: "俄罗斯转体",
+                description: "锻炼腹斜肌和核心旋转能力，提高躯干灵活性和爆发力。",
+                video: "../videos/core5.mp4"
+            },
+            {
+                name: "死虫式",
+                description: "深层核心稳定性训练，增强腹横肌控制能力，保护腰椎。",
+                video: "../videos/core6.mp4"
+            },
+            {
+                name: "直腿交替举腿",
+                description: "强化下腹部肌肉和核心控制，提高下肢协调能力。",
+                video: "../videos/core7.mp4"
+            },
+            {
+                name: "臀桥支撑",
+                description: "激活和强化臀大肌、核心肌群，改善骨盆前倾问题。",
+                video: "../videos/core8.mp4"
+            },
+            // 动态拉伸（最后播放）
+            {
+                name: "动态拉伸",
+                description: "针对下肢肌肉群的动态拉伸（7个动作）",
+                video: "../videos/动态拉伸.mp4"
             }
         ];
 

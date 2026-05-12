@@ -389,26 +389,123 @@
             background-color: #e0e0e0;
         }
 
-        @media (max-width: 768px) {
-            .container {
-                padding: 16px;
-            }
+        .analysis-dashboard {
+            display: none;
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            margin-bottom: 32px;
+        }
 
-            .status-card {
-                padding: 24px;
-            }
+        .analysis-dashboard h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #1d1d1f;
+        }
 
-            .status-title {
-                font-size: 24px;
-            }
+        .analysis-grid {
+            display: flex;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
 
-            .metrics-grid {
-                grid-template-columns: 1fr;
-            }
+        .analysis-item {
+            flex: 1;
+            min-width: 300px;
+            background: #fbfbfd;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #e0e0e0;
+        }
 
-            .btn-secondary {
-                margin-left: 0;
-            }
+        .analysis-item h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+
+        .analysis-progress {
+            font-weight: 600;
+            color: #ff9500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #ff9500;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .video-section {
+            margin-top: 32px;
+            margin-bottom: 32px;
+        }
+
+        .video-section h3 {
+            margin-bottom: 16px;
+            color: #1d1d1f;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .video-card {
+            padding: 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            background: #f5f5f7;
+        }
+
+        .video-card-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1d1d1f;
+        }
+
+        .video-card-desc {
+            font-size: 14px;
+            color: #86868b;
+            margin-bottom: 12px;
+        }
+
+        .help-icon {
+            cursor: pointer;
+            position: relative;
+            font-size: 16px;
+            color: #0071e3;
+        }
+
+        .help-tooltip {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1d1d1f;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            width: 250px;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            text-align: left;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -419,17 +516,11 @@
                 <a href="main.html" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;">返回主界面</a>
                 <div class="logo">R2P-Guard</div>
             </div>
-            <div class="user-info">
-                <span id="userName">张教练</span>
-                <div class="user-avatar" onclick="showPersonalInfo()" style="cursor: pointer;">张</div>
+            <div class="user-info" id="userInfo">
+                <span>加载中...</span>
+                <div class="user-avatar" onclick="showPersonalInfo()">...</div>
             </div>
         </header>
-
-        <div class="nav-bar">
-            <div class="nav-item active">赛前评估</div>
-            <div class="nav-item">运动准备</div>
-            <div class="nav-item">疲劳恢复</div>
-        </div>
 
         <div class="main-content">
             <!-- 骨骼处理排队进度 -->
@@ -543,6 +634,10 @@
                         <div class="metric-label">峰值功率</div>
                     </div>
 
+                </div>
+
+                <div style="margin-top: 32px; text-align: center;">
+                    <a href="warmup.html#warmupSection" class="btn btn-primary" id="warmupActionBtn" style="padding: 16px 32px; font-size: 18px;">查看个性化热身运动方案</a>
                 </div>
 
                 <!-- 动作分析视频（用户测试视频） -->
@@ -870,7 +965,7 @@
                     "比赛中可以适当提高强度",
                     "注意保持水分和能量补充"
                 ],
-                stability: "88%"
+                warmupUrl: "warmup.html?status=excellent#warmupSection"
             },
             good: {
                 title: "状态良好",
@@ -881,7 +976,7 @@
                     "比赛前保持充分水分摄入",
                     "注意比赛中的强度控制"
                 ],
-                stability: "83%"
+                warmupUrl: "warmup.html?status=good#warmupSection"
             },
             tired: {
                 title: "些许疲惫",
@@ -892,7 +987,7 @@
                     "比赛中注意休息，避免过度疲劳",
                     "赛后进行充分的恢复训练"
                 ],
-                stability: "78%"
+                warmupUrl: "warmup.html?status=tired#warmupSection"
             },
             caution: {
                 title: "谨慎注意",
@@ -903,9 +998,55 @@
                     "考虑是否参赛",
                     "如有不适立即停止比赛"
                 ],
-                stability: "72%"
+                warmupUrl: "warmup.html?status=caution#warmupSection"
             }
         };
+
+        function changeStatus(status) {
+            const data = statusData[status];
+            if (!data) return;
+
+            // 更新状态灯
+            const statusLights = document.getElementById('statusLights');
+            statusLights.innerHTML = '';
+            data.lights.forEach(color => {
+                const light = document.createElement('div');
+                light.className = `status-light ${color}`;
+                statusLights.appendChild(light);
+            });
+
+            // 更新标题和描述
+            document.getElementById('statusTitle').textContent = data.title;
+            document.getElementById('statusDescription').textContent = data.description;
+
+            // 更新建议列表
+            const recommendationList = document.getElementById('recommendationList');
+            recommendationList.innerHTML = '';
+            data.recommendations.forEach((rec, index) => {
+                const li = document.createElement('li');
+                li.className = 'recommendation-item';
+                li.innerHTML = `
+                    <div class="recommendation-icon">${index + 1}</div>
+                    <span>${rec}</span>
+                `;
+                recommendationList.appendChild(li);
+            });
+
+            // 更新热身方案按钮链接
+            const warmupBtn = document.getElementById('warmupActionBtn');
+            if (warmupBtn) {
+                warmupBtn.href = data.warmupUrl;
+            }
+
+            // 更新按钮激活状态
+            document.querySelectorAll('.btn[onclick^="changeStatus"]').forEach(btn => {
+                if (btn.getAttribute('onclick').includes(status)) {
+                    btn.className = 'btn btn-primary';
+                } else {
+                    btn.className = 'btn btn-secondary';
+                }
+            });
+        }
 
         // 获取颜色对应的样式
         function getColorStyle(color) {
@@ -1074,6 +1215,7 @@
                         targetBtn.style.display = 'inline-block';
                     }
                     
+                    // Call changeStatus to update the recommendation list and the "View Warmup" button link
                     changeStatus(targetStatus);
                     
                     // Show actual CV metric

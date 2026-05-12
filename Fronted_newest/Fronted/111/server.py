@@ -37,6 +37,12 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
 
     def do_GET(self):
+        if self.path == '/' or self.path == '/index.html':
+            self.send_response(302)
+            self.send_header('Location', '/111/auth/app_login_register.html')
+            self.end_headers()
+            return
+
         if self.path == '/api/get_user_data':
             try:
                 with open(USER_DATA_PATH, 'r', encoding='utf-8') as f:
