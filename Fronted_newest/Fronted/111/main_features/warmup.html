@@ -901,8 +901,13 @@
 
         // 查看单个动作视频
         function viewExerciseVideo(exerciseName) {
-            // 跳转到动作详情页面，并传递动作名称
-            window.location.href = 'exercise-detail.html?name=' + encodeURIComponent(exerciseName);
+            // If it's Dynamic Stretching, go to the generic page (triggers the grid)
+            if (exerciseName === '动态拉伸') {
+                window.location.href = 'exercise-detail.html';
+            } else {
+                // Otherwise, pass the name to view the specific exercise video
+                window.location.href = 'exercise-detail.html?name=' + encodeURIComponent(exerciseName);
+            }
         }
 
         // 切换状态
