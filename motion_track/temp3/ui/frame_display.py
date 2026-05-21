@@ -70,7 +70,8 @@ def process_frame(
     cmj_counter,
     sls_counter,
     sway_tracker,
-    r2p_scorer
+    r2p_scorer,
+    exercise_name="Balance"
 ):
 
     display_frame = frame.copy()
@@ -170,10 +171,22 @@ def process_frame(
     ankle = keypoints_3d[15]
     sls_counter.update(hip,knee,ankle)
 
+    # 11, 12 = hips; 5, 6 = shoulders
+    left_hip = keypoints_3d[11]
+    right_hip = keypoints_3d[12]
     left_ankle = keypoints_3d[15]
     right_ankle = keypoints_3d[16]
+    left_shoulder = keypoints_3d[5]
+    right_shoulder = keypoints_3d[6]
+
+    hip_y = (left_hip[1] + right_hip[1]) / 2
     ankle_y = (left_ankle[1] + right_ankle[1]) / 2
-    cmj_counter.update(ankle_y)
+    
+    # Calculate torso size as shoulder-to-hip vertical distance
+    shoulder_y = (left_shoulder[1] + right_shoulder[1]) / 2
+    torso_size = abs(hip_y - shoulder_y) if hip_y is not None and shoulder_y is not None else 1.0
+
+    cmj_counter.update(hip_y, ankle_y, torso_size)
 
 
 
@@ -190,38 +203,37 @@ def process_frame(
     y = 30
     font = cv2.FONT_HERSHEY_SIMPLEX
 
-    # ==========================================================
-    # CMJ METRICS
-    # ==========================================================
-    cv2.putText(display_frame, f"RSI: {rsi:.2f}", (10, y),
-                font, 0.7, (255, 255, 255), 2)
-    y += 25
+    if exercise_name == "CMJ":
+        # ==========================================================
+        # CMJ METRICS
+        # ==========================================================
+        jump_results = cmj_counter.get_jump_results()
+        height_cm = (jump_results["height_m"] * 100) if jump_results else 0.0
+        
+        cv2.putText(display_frame, f"RSI: {rsi:.2f}", (10, y),
+                    font, 0.7, (255, 255, 255), 2)
+        y += 25
+        cv2.putText(display_frame, f"Height: {height_cm:.1f} cm", (10, y),
+                    font, 0.7, (255, 255, 255), 2)
+        y += 30
+    elif exercise_name == "SLS":
+        # ==========================================================
+        # SLS METRIC
+        # ==========================================================
+        cv2.putText(display_frame, f"FPPA: {fppa:.1f} deg", (10, y),
+                    font, 0.7, (255, 255, 255), 2)
+        y += 30
+    else:
+        # ==========================================================
+        # SWAY METRICS
+        # ==========================================================
+        cv2.putText(display_frame, f"Sway Vel: {sway_velocity:.3f}", (10, y),
+                    font, 0.7, (255, 255, 255), 2)
+        y += 25
 
-    # cv2.putText(display_frame, f"Flight: {flight_time*1000:.0f} ms", (10, y),
-    #             font, 0.7, (255, 255, 255), 2)
-    # y += 25
-
-    # cv2.putText(display_frame, f"CT: {contraction_time*1000:.0f} ms", (10, y),
-    #             font, 0.7, (255, 255, 255), 2)
-    # y += 30
-
-    # ==========================================================
-    # SLS METRIC
-    # ==========================================================
-    cv2.putText(display_frame, f"FPPA: {fppa:.1f} deg", (10, y),
-                font, 0.7, (255, 255, 255), 2)
-    y += 30
-
-    # ==========================================================
-    # SWAY METRICS
-    # ==========================================================
-    cv2.putText(display_frame, f"Sway Vel: {sway_velocity:.3f}", (10, y),
-                font, 0.7, (255, 255, 255), 2)
-    y += 25
-
-    cv2.putText(display_frame, f"CV: {sway_cv:.1f}%", (10, y),
-                font, 0.7, (255, 255, 255), 2)
-    y += 30
+        cv2.putText(display_frame, f"CV: {sway_cv:.1f}%", (10, y),
+                    font, 0.7, (255, 255, 255), 2)
+        y += 30
 
     # # ==========================================================
     # # COACH OUTPUT (UNCHANGED)

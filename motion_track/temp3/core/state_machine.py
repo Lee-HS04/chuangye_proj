@@ -100,6 +100,9 @@ class StateMachineFSM:
         #calculate distance between ankles to check if one foot is in the air
         ankle_distance = abs(l_ankle[1]-r_ankle[1])
         
+        max_angle = 150
+        min_angle = 30
+        
         if self.exercise_name == "CMJ":
             # State 1: Standing (Knee > 160)
             # State 2: Squat (Knee < 120)
@@ -137,7 +140,7 @@ class StateMachineFSM:
                     self.state_history.append(3)
                     return "REP_COMPLETE", "Perfect Rep!", self.current_state
                 return "GOOD", "Finish jump.", self.current_state
-
+        
         elif self.exercise_name == "Balance":
             # State 1: Standing straight
             # State 2: Lift one leg (Balance) -> Hold for 5 seconds
@@ -146,11 +149,11 @@ class StateMachineFSM:
                 return "BAD", "Body not fully visible", self.current_state
             
             if self.current_state == 1:
-                if ankle_distance>torso_size*0.6 and r_elbow_angle<120 and r_elbow_angle>30 and l_elbow_angle<120 and l_elbow_angle>30 and self.is_near(r_wrist,r_hip, torso_size):
+                if ankle_distance>torso_size*0.4 and r_elbow_angle<max_angle and r_elbow_angle>min_angle and l_elbow_angle<max_angle and l_elbow_angle>min_angle and self.is_near(r_wrist,r_hip, torso_size):
                     self.current_state = 2
                     self.good_frames = 0
                     return "GOOD", "Balancing. Hold it!", self.current_state
-                elif knee_angle > 160 and r_elbow_angle<120 and r_elbow_angle>30 and l_elbow_angle<120 and l_elbow_angle>30 and self.is_near(r_wrist,r_hip, torso_size) :
+                elif r_elbow_angle<max_angle and r_elbow_angle>min_angle and l_elbow_angle<max_angle and l_elbow_angle>min_angle and self.is_near(r_wrist,r_hip, torso_size) :
                     self.good_frames += 1
                     if self.good_frames > 5:
                         return "GOOD", "Ready. Lift one leg.", self.current_state
@@ -158,7 +161,7 @@ class StateMachineFSM:
                 
             elif self.current_state == 2:
                 akimbo = False
-                if r_elbow_angle<120 and r_elbow_angle>30 and l_elbow_angle<120 and l_elbow_angle>30 and self.is_near(r_wrist,r_hip, torso_size):
+                if r_elbow_angle<max_angle and r_elbow_angle>min_angle and l_elbow_angle<max_angle and l_elbow_angle>min_angle and self.is_near(r_wrist,r_hip, torso_size):
                     akimbo = True
                 if akimbo and ankle_distance>torso_size*0.6:
                     self.good_frames += 1

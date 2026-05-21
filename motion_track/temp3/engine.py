@@ -125,7 +125,8 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
         # Process logic
         processed_frame = process_frame(
             annotated, keypoints_2d, keypoints_3d, selected_rules, rules_all,
-            500, cmj_counter, sls_counter, balance_tracker, r2p_scorer
+            500, cmj_counter, sls_counter, balance_tracker, r2p_scorer,
+            exercise_name=exercise_name
         )
         
         # Write frame to final video
@@ -139,13 +140,22 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
     # Save results similarly to main.py logic (merged partner functionality)
     # Using unique metrics file per task to avoid concurrent write corruption
     metrics_path = os.path.join(out_dir, f"{task_id}_metrics.csv")
-    cv_val = balance_tracker.get_cv()
-    one_minus_cv = balance_tracker.get_one_minus_cv()
     
     with open(metrics_path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["video", "cv", "one_minus_cv"])
-        writer.writerow([f"{task_id}_annotated.webm", cv_val, one_minus_cv])
+        if exercise_name == "CMJ":
+            jump_results = cmj_counter.get_jump_results()
+            if jump_results:
+                writer.writerow(["video", "rsi", "flight_time"])
+                writer.writerow([f"{task_id}_annotated.webm", jump_results["rsi_mod"], jump_results["t_flight"]])
+            else:
+                writer.writerow(["video", "rsi", "flight_time"])
+                writer.writerow([f"{task_id}_annotated.webm", 0, 0])
+        else:
+            cv_val = balance_tracker.get_cv()
+            one_minus_cv = balance_tracker.get_one_minus_cv()
+            writer.writerow(["video", "cv", "one_minus_cv"])
+            writer.writerow([f"{task_id}_annotated.webm", cv_val, one_minus_cv])
 
-    print(f"Task {task_id} complete! Saved {cv_val:.2f}% CV to {out_path}")
+    print(f"Task {task_id} completed for {exercise_name}. Results saved to {metrics_path}")
     return out_path

@@ -255,6 +255,7 @@ def _render_frame(cap: cv2.VideoCapture, frame_placeholder) -> bool:
         sls_counter,
         balance_tracker,
         st.session_state["r2p_scorer"],
+        exercise_name=exercise_name
     )
 
 

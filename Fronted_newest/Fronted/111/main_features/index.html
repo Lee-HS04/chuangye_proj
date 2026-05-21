@@ -526,6 +526,8 @@
             <!-- 骨骼处理排队进度 -->
             <div id="analysisDashboard" style="display: none; background: white; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); margin-bottom: 32px;">
                 <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 24px; color: #1d1d1f;">AI 生物力学数据处理</h2>
+                
+                <!-- Top Row: Balance Tests -->
                 <div style="display: flex; gap: 32px; flex-wrap: wrap;">
                     <!-- Right Leg Test -->
                     <div style="flex: 1; min-width: 300px; background: #fbfbfd; border-radius: 12px; padding: 24px; border: 1px solid #e0e0e0;">
@@ -546,7 +548,10 @@
                         </div>
                         <video id="leftLegVideo" controls style="width: 100%; border-radius: 8px; display: none; background: #000;"></video>
                     </div>
+                </div>
 
+                <!-- Bottom Row: CMJ Test -->
+                <div style="display: flex; gap: 32px; flex-wrap: wrap; margin-top: 24px;">
                     <!-- CMJ Test -->
                     <div style="flex: 1; min-width: 300px; background: #fbfbfd; border-radius: 12px; padding: 24px; border: 1px solid #e0e0e0;">
                         <h3 style="font-size: 18px; margin-bottom: 12px;">反向跳 (CMJ) 测试</h3>
@@ -1224,12 +1229,35 @@
                         stabilityValue.textContent = (100 - avgCv).toFixed(1) + "%";
                     }
                 }
+
+                // Update CMJ specific metrics if available
+                if (taskResults.cmj) {
+                    const jumpHeightEl = document.getElementById('jumpHeightValue');
+                    const rsiEl = document.getElementById('peakPowerValue'); // Reuse peak power for RSI for now
+                    
+                    if (taskResults.cmj.flight_time) {
+                        // Rough estimate: H = 1/2 * g * (T_flight/2)^2
+                        const g = 9.81;
+                        const h = 0.5 * g * Math.pow(taskResults.cmj.flight_time / 2, 2) * 100; // in cm
+                        if (jumpHeightEl) jumpHeightEl.textContent = h.toFixed(1) + " cm";
+                    }
+                    
+                    if (taskResults.cmj.rsi && rsiEl) {
+                        rsiEl.textContent = taskResults.cmj.rsi.toFixed(2);
+                        // Update the label to RSI if it was Peak Power
+                        const label = rsiEl.parentElement.querySelector('.metric-label');
+                        if (label) label.textContent = "反应强度 (RSI)";
+                    }
+                }
             }
         }
 
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const rightLegTask = urlParams.get('rightLegTask');
+            
+            // Normalize task parameters: balanceTask might contain the right leg task 
+            // if redirected from a single-entry balance test
+            const rightLegTask = urlParams.get('rightLegTask') || urlParams.get('balanceTask');
             const leftLegTask = urlParams.get('leftLegTask');
             const cmjTask = urlParams.get('cmjTask');
             const singleTask = urlParams.get('task'); // For non-grouped tests
@@ -1257,6 +1285,12 @@
                 const textEl = document.getElementById('rightLegText');
                 const videoEl = document.getElementById('rightLegVideo');
                 const spinnerEl = progressEl.querySelector('.spinner');
+                
+                // Update header text if it was from balanceTask
+                if (urlParams.get('balanceTask') && !urlParams.get('rightLegTask')) {
+                    progressEl.parentElement.querySelector('h3').innerText = "平衡测试处理";
+                }
+                
                 pollTask(rightLegTask, progressEl, textEl, videoEl, spinnerEl, 'rightLeg');
             } else if (!singleTask) {
                 document.getElementById('rightLegProgress').parentElement.style.display = 'none';
@@ -1282,6 +1316,15 @@
                 pollTask(cmjTask, progressEl, textEl, videoEl, spinnerEl, 'cmj');
             } else if (!singleTask) {
                 document.getElementById('cmjProgress').parentElement.style.display = 'none';
+            }
+            
+            // Clean up row visibility if entirely empty
+            if (!rightLegTask && !leftLegTask) {
+                // If top row is empty (only CMJ), we can hide the top row container if we had a class or id for it
+                // For now the padding/margin will handle it reasonably well via parent display:none logic above
+            }
+            if (!cmjTask) {
+                document.getElementById('cmjProgress').parentElement.parentElement.style.display = 'none';
             }
 
             if (singleTask && !leftLegTask && !rightLegTask && !cmjTask) {

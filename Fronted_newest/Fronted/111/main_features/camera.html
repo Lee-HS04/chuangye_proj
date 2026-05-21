@@ -591,11 +591,14 @@
                                     // After right leg, proceed to left leg capture
                                     window.location.href = `camera.html?type=${testType}&leg=left&rightLegTask=${taskId}`;
                                 } else if (leg === 'left') {
-                                    // After left leg, go to results with both leg tasks
+                                    // After left leg, proceed to CMJ if in assessment mode
                                     const urlParams = new URLSearchParams(window.location.search);
                                     const rightLegTaskId = urlParams.get('rightLegTask');
                                     
-                                    if (rightLegTaskId) {
+                                    if (testType === 'assessment' || testType === 'balance') {
+                                        // Chain to CMJ
+                                        window.location.href = `camera.html?type=cmj&rightLegTask=${rightLegTaskId || ''}&leftLegTask=${taskId}`;
+                                    } else if (rightLegTaskId) {
                                         window.location.href = `index.html?leftLegTask=${taskId}&rightLegTask=${rightLegTaskId}`;
                                     } else {
                                         window.location.href = `index.html?leftLegTask=${taskId}`;
@@ -610,19 +613,22 @@
                                     // Start CMJ while Balance processes in background
                                     window.location.href = 'camera.html?type=cmj&balanceTask=' + taskId;
                                 } 
-                                /* COMMENTED OUT: CMJ test transitions
+                                //CMJ test transitions
                                 else if (testType === 'cmj') {
                                     // Both done, go to index to poll
                                     const urlParams = new URLSearchParams(window.location.search);
                                     const balanceTaskId = urlParams.get('balanceTask');
+                                    const rightLegTask = urlParams.get('rightLegTask');
+                                    const leftLegTask = urlParams.get('leftLegTask');
                         
-                                    if (balanceTaskId) {
-                                        window.location.href = 'index.html?balanceTask=' + balanceTaskId + '&cmjTask=' + taskId;
-                                    } else {
-                                        window.location.href = 'index.html?task=' + taskId;
-                                    }
+                                    let redirectUrl = 'index.html?cmjTask=' + taskId;
+                                    if (balanceTaskId) redirectUrl += '&balanceTask=' + balanceTaskId;
+                                    if (rightLegTask) redirectUrl += '&rightLegTask=' + rightLegTask;
+                                    if (leftLegTask) redirectUrl += '&leftLegTask=' + leftLegTask;
+                                    
+                                    window.location.href = redirectUrl;
                                 } 
-                                */
+                                
                                 else {
                                     window.location.href = 'index.html?task=' + taskId;
                                 }

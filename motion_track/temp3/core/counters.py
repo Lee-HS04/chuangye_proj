@@ -175,6 +175,14 @@ class SLSDetector:
         if h.shape[0] < 3:
             return
 
+        # NEW: Handle 3D global data (meters) where Y increases upwards
+        # Heuristic: pixels are hundreds, 3D meters are small (< 5.0)
+        dist_h_k = np.linalg.norm(h - k)
+        if dist_h_k < 5.0:
+            h[1] = -h[1]
+            k[1] = -k[1]
+            a[1] = -a[1]
+
         # ----------------------------
         # vectors
         # ----------------------------
@@ -232,164 +240,177 @@ class SLSDetector:
 # CMJ TRACKER
 # ============================================================
 
+
 class CMJTracker:
-    def __init__(self, fps=60, alpha_v=0.8, threshold=0.02):
+    def __init__(self, fps=60, alpha_v=0.8):
         self.fps = fps
         self.alpha_v = alpha_v
-        self.threshold = threshold
+        
+        # State tracking
+        self.phase = "idle"
+        self.frame_count = 0
+        
+        # Physical Baselines
+        self.baseline_hip_y = None
+        self.baseline_ankle_y = None
+        self.torso_size = None
+        self.baseline_samples = []
 
-        self.prev_y = None
-        self.vy_ema = None
+        # Previous positions for velocity
+        self.prev_hip_y = None
+        self.hip_vy_ema = 0.0
 
-        self.y_history = []
+        # History for refinement
+        self.y_hip_history = []
         self.t_history = []
 
-        self.phase = "idle"
+        # Time markers
+        self.t_start_dip = None    # Start of downward movement
+        self.t_takeoff = None      # Feet leave ground
+        self.t_landing = None      # Feet touch ground
 
-        self.start_time = None
-        self.takeoff_time = None
-        self.landing_time = None
-
-        self.frame_count = 0
-
-    def update(self, ankle_y):
-        if ankle_y is None:
-            return
+    def update(self, hip_y, ankle_y, torso_size):
+        """
+        hip_y: Average of left and right hip Y
+        ankle_y: Average of left and right ankle Y
+        torso_size: Shoulder-to-Hip distance for normalizing thresholds
+        """
+        if hip_y is None or ankle_y is None: return
+        
+        # NEW: Handle 3D global data (meters) where Y increases upwards
+        # Check against torso_size (pixels are 100+, meters are < 1.0)
+        if torso_size is not None and torso_size < 5.0:
+            hip_y = -hip_y
+            ankle_y = -ankle_y
 
         t = self.frame_count / self.fps
         self.frame_count += 1
+        self.torso_size = torso_size
 
-        self.y_history.append(ankle_y)
-        self.t_history.append(t)
-
-        if self.prev_y is None:
-            self.prev_y = ankle_y
+        # 1. Capture Initial Standing Baseline (First 10 frames)
+        if len(self.baseline_samples) < 10:
+            self.baseline_samples.append((hip_y, ankle_y))
+            if len(self.baseline_samples) == 10:
+                self.baseline_hip_y = np.mean([s[0] for s in self.baseline_samples])
+                self.baseline_ankle_y = np.mean([s[1] for s in self.baseline_samples])
             return
 
-        # ----------------------------
-        # vertical velocity
-        # ----------------------------
-        vy = (ankle_y - self.prev_y) * self.fps
-        self.prev_y = ankle_y
+        # 2. Calculate Hip Velocity (Down is positive Y in image coords)
+        if self.prev_hip_y is not None:
+            raw_vy = (hip_y - self.prev_hip_y) * self.fps
+            self.hip_vy_ema = (self.alpha_v * self.hip_vy_ema) + (1 - self.alpha_v) * raw_vy
+        self.prev_hip_y = hip_y
 
-        # ----------------------------
-        # EMA smoothing
-        # ----------------------------
-        if self.vy_ema is None:
-            self.vy_ema = vy
-        else:
-            self.vy_ema = (
-                self.alpha_v * self.vy_ema +
-                (1 - self.alpha_v) * vy
-            )
+        self.y_hip_history.append(hip_y)
+        self.t_history.append(t)
 
-        # ----------------------------
-        # PHASE DETECTION
-        # ----------------------------
-
-        # start contraction (downward movement)
-        if self.phase == "idle" and self.vy_ema > self.threshold:
+        # 3. PHASE DETECTION
+        
+        # IDLE -> CONTRACTION (Hips move down > 5% of torso size per second)
+        if self.phase == "idle" and self.hip_vy_ema > (self.torso_size * 0.5):
             self.phase = "contraction"
-            self.start_time = t
+            self.t_start_dip = t
 
-        # takeoff (velocity flips strongly upward)
-        elif self.phase == "contraction" and self.vy_ema < -self.threshold:
+        # CONTRACTION -> FLIGHT (Ankles leave baseline height)
+        # We use a 5% torso buffer to avoid noise (was 10%)
+        elif self.phase == "contraction" and ankle_y < (self.baseline_ankle_y - self.torso_size * 0.05):
             self.phase = "flight"
-            self.takeoff_time = t
+            self.t_takeoff = t
 
-        # landing (velocity returns positive)
-        elif self.phase == "flight" and self.vy_ema > self.threshold:
+        # FLIGHT -> LANDED (Ankles return to baseline)
+        elif self.phase == "flight" and ankle_y >= (self.baseline_ankle_y - self.torso_size * 0.05):
             self.phase = "landed"
-            self.landing_time = t
+            self.t_landing = t
 
-    # ----------------------------
-    # RAW RSI
-    # ----------------------------
-    def get_rsi(self):
-        if self.start_time is None or self.takeoff_time is None or self.landing_time is None:
-            return 0.0
+    def get_jump_results(self):
+        """
+        Returns scientifically robust metrics:
+        Height (m), RSImod, and Time to Takeoff
+        """
+        if not self.t_start_dip or not self.t_takeoff:
+            return None
 
-        T_contraction = self.takeoff_time - self.start_time
-        T_flight = self.landing_time - self.takeoff_time
+        # Handle partial results if landing hasn't been reached yet
+        if not self.t_landing:
+            t_contraction = self.t_takeoff - self.t_start_dip
+            return {
+                "height_m": 0.0,
+                "rsi_mod": 0.0,
+                "t_flight": 0.0,
+                "t_takeoff_phase": t_contraction,
+                "status": "in_flight"
+            }
 
-        if T_contraction <= 0:
-            return 0.0
+        # 1. Air Time Calculation
+        # We use the refined flight time if possible
+        t_flight = self.get_refined_flight_time()
+        
+        # 2. Jump Height (Bosco Formula: h = (g * t^2) / 8)
+        # Source: Bosco et al. (1983)
+        g = 9.81
+        height = (g * (t_flight**2)) / 8
+        
+        # 3. Time to Takeoff (Contraction Phase)
+        t_contraction = self.t_takeoff - self.t_start_dip
+        
+        # 4. RSImod (Reactive Strength Index Modified)
+        # Source: Ebben & Petushek (2010)
+        rsi_mod = height / t_contraction if t_contraction > 0 else 0
+        
+        return {
+            "height_m": height,
+            "rsi_mod": rsi_mod,
+            "t_flight": t_flight,
+            "t_takeoff_phase": t_contraction
+        }
 
-        return T_flight / T_contraction
-
-    # def get_flight_time(self):
-    #     return self.T_flight
-    
-    # def get_contraction_time(self):
-    #     return self.T_contraction
-
-
-    # ----------------------------
-    # PARABOLA FIT (REFINED)
-    # ----------------------------
     def get_refined_flight_time(self):
-        if self.takeoff_time is None or self.landing_time is None:
-            return 0.0
-
-        # select flight phase data
+        """
+        Fits a parabola to the HIP Y-coordinates during flight.
+        The hip is a better proxy for Center of Mass than the ankle.
+        """
         t = np.array(self.t_history)
-        y = np.array(self.y_history)
+        y = np.array(self.y_hip_history)
+        mask = (t >= self.t_takeoff) & (t <= self.t_landing)
+        
+        t_f, y_f = t[mask], y[mask]
+        if len(t_f) < 5: return self.t_landing - self.t_takeoff
 
-        mask = (t >= self.takeoff_time) & (t <= self.landing_time)
+        # Fit parabola: y = at^2 + bt + c
+        a, b, c = np.polyfit(t_f, y_f, 2)
+        
+        # Solve for roots where hip returns to its takeoff height
+        y_takeoff = y_f[0]
+        roots = np.roots([a, b, c - y_takeoff])
+        
+        if len(roots) == 2:
+            t_roots = np.sort(roots)
+            return float(t_roots[1] - t_roots[0])
+        
+        return self.t_landing - self.t_takeoff
 
-        t_f = t[mask]
-        y_f = y[mask]
-
-        if len(t_f) < 5:
-            return self.landing_time - self.takeoff_time
-
-        # fit parabola y = at^2 + bt + c
-        coeffs = np.polyfit(t_f, y_f, 2)
-        a, b, c = coeffs
-
-        # solve y = ground level
-        y_ground = y_f[0]
-
-        roots = np.roots([a, b, c - y_ground])
-
-        if len(roots) != 2:
-            return self.landing_time - self.takeoff_time
-
-        t1, t2 = np.sort(roots)
-
-        return float(t2 - t1)
-
-    def reset(self):
-        self.prev_y = None
-        self.vy_ema = None
-
-        self.y_history.clear()
-        self.t_history.clear()
-
-        self.phase = "idle"
-
-        self.start_time = None
-        self.takeoff_time = None
-        self.landing_time = None
-
-        self.frame_count = 0
-
-    def get_one_minus_cv(self):
-        return self.one_minus_cv
-
-    def finalize(self):
-        self.final_cv = self.cv
-        self.final_one_minus_cv = self.one_minus_cv
+    def get_condition_score(self, current_height, baseline_height):
+        """
+        Maps performance drop to a 1-10 scale based on 
+        the Coefficient of Variation logic in Claudino et al. (2017).
+        """
+        ratio = current_height / baseline_height
+        
+        if ratio >= 0.98: return 10  # Optimal
+        if ratio >= 0.95: return 8   # Mild Fatigue (within typical CV)
+        if ratio >= 0.90: return 6   # Significant Fatigue (Moderate Effect Size)
+        if ratio >= 0.85: return 4   # High Suppression (Large Effect Size)
+        return 2                     # Severe Overload
 
     def reset(self):
-        self.positions.clear()
-        self.vel_history.clear()
-        self.sway_velocity = 0.0
-        self.cv = 0.0
+        self.__init__(self.fps, self.alpha_v)
 
-        # IMPORTANT: reset EMA state
-        if hasattr(self, "vel_ema"):
-            del self.vel_ema
+    def get_rsi(self):
+        """Compatibility method for the real-time UI."""
+        results = self.get_jump_results()
+        if results and "rsi_mod" in results:
+            return results["rsi_mod"]
+        return 0.0
 
 
 # ============================================================
@@ -448,155 +469,6 @@ def calculate_jump_height(joints, baseline_feet_y):
 
     except:
         return None
-
-
-# ============================================================
-# CMJ TRACKER
-# ============================================================
-
-class CMJTracker:
-    def __init__(self, fps=60, alpha_v=0.8, threshold=0.02):
-        self.fps = fps
-        self.alpha_v = alpha_v
-        self.threshold = threshold
-
-        self.prev_y = None
-        self.vy_ema = None
-
-        self.y_history = []
-        self.t_history = []
-
-        self.phase = "idle"
-
-        self.start_time = None
-        self.takeoff_time = None
-        self.landing_time = None
-
-        self.frame_count = 0
-
-    def update(self, ankle_y):
-        if ankle_y is None:
-            return
-
-        t = self.frame_count / self.fps
-        self.frame_count += 1
-
-        self.y_history.append(ankle_y)
-        self.t_history.append(t)
-
-        if self.prev_y is None:
-            self.prev_y = ankle_y
-            return
-
-        # ----------------------------
-        # vertical velocity
-        # ----------------------------
-        vy = (ankle_y - self.prev_y) * self.fps
-        self.prev_y = ankle_y
-
-        # ----------------------------
-        # EMA smoothing
-        # ----------------------------
-        if self.vy_ema is None:
-            self.vy_ema = vy
-        else:
-            self.vy_ema = (
-                self.alpha_v * self.vy_ema +
-                (1 - self.alpha_v) * vy
-            )
-
-        # ----------------------------
-        # PHASE DETECTION
-        # ----------------------------
-
-        # start contraction (downward movement)
-        if self.phase == "idle" and self.vy_ema > self.threshold:
-            self.phase = "contraction"
-            self.start_time = t
-
-        # takeoff (velocity flips strongly upward)
-        elif self.phase == "contraction" and self.vy_ema < -self.threshold:
-            self.phase = "flight"
-            self.takeoff_time = t
-
-        # landing (velocity returns positive)
-        elif self.phase == "flight" and self.vy_ema > self.threshold:
-            self.phase = "landed"
-            self.landing_time = t
-
-    # ----------------------------
-    # RAW RSI
-    # ----------------------------
-    def get_rsi(self):
-        if self.start_time is None or self.takeoff_time is None or self.landing_time is None:
-            return 0.0
-
-        T_contraction = self.takeoff_time - self.start_time
-        T_flight = self.landing_time - self.takeoff_time
-
-        if T_contraction <= 0:
-            return 0.0
-
-        return T_flight / T_contraction
-
-    # def get_flight_time(self):
-    #     return self.T_flight
-    
-    # def get_contraction_time(self):
-    #     return self.T_contraction
-
-
-    # ----------------------------
-    # PARABOLA FIT (REFINED)
-    # ----------------------------
-    def get_refined_flight_time(self):
-        if self.takeoff_time is None or self.landing_time is None:
-            return 0.0
-
-        # select flight phase data
-        t = np.array(self.t_history)
-        y = np.array(self.y_history)
-
-        mask = (t >= self.takeoff_time) & (t <= self.landing_time)
-
-        t_f = t[mask]
-        y_f = y[mask]
-
-        if len(t_f) < 5:
-            return self.landing_time - self.takeoff_time
-
-        # fit parabola y = at^2 + bt + c
-        coeffs = np.polyfit(t_f, y_f, 2)
-        a, b, c = coeffs
-
-        # solve y = ground level
-        y_ground = y_f[0]
-
-        roots = np.roots([a, b, c - y_ground])
-
-        if len(roots) != 2:
-            return self.landing_time - self.takeoff_time
-
-        t1, t2 = np.sort(roots)
-
-        return float(t2 - t1)
-
-    def reset(self):
-        self.prev_y = None
-        self.vy_ema = None
-
-        self.y_history.clear()
-        self.t_history.clear()
-
-        self.phase = "idle"
-
-        self.start_time = None
-        self.takeoff_time = None
-        self.landing_time = None
-
-        self.frame_count = 0
-
-
 
 # ============================================================
 # FEATURE EXTRACTION FROM TRACKER OUTPUT

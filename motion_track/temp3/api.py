@@ -64,24 +64,27 @@ async def analyze_in_background(task_id: str, file_path: str, exercise_name: str
             
             # Read metrics file
             metrics_path = os.path.join(OUTPUT_DIR, f"{task_id}_metrics.csv")
-            cv_val = None
+            result_data = {
+                "status": "completed",
+                "result_video": f"/videos/{task_id}_annotated.webm"
+            }
+            
             if os.path.exists(metrics_path):
                 import csv
                 with open(metrics_path, "r") as f:
                     reader = csv.reader(f)
-                    next(reader) # Skip header
+                    header = next(reader)
                     try:
                         row = next(reader)
-                        cv_val = float(row[1])
-                    except (StopIteration, ValueError):
+                        if "rsi" in header:
+                            result_data["rsi"] = float(row[1])
+                            result_data["flight_time"] = float(row[2])
+                        else:
+                            result_data["cv"] = float(row[1])
+                    except (StopIteration, ValueError, IndexError):
                         pass
             
-            jobs[task_id] = {
-                "status": "completed", 
-                # Changed to .webm for native browser playback compatibility
-                "result_video": f"/videos/{task_id}_annotated.webm",
-                "cv": cv_val
-            }
+            jobs[task_id] = result_data
         except Exception as e:
             print(f"Error processing task {task_id}: {e}")
             jobs[task_id] = {"status": "failed", "error": str(e)}
