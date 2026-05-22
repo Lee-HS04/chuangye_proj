@@ -36,14 +36,19 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
     raw_fps = cap.get(cv2.CAP_PROP_FPS)
     cap.release()
     
+    # Analysis FPS must match video metadata for physical timing accuracy (CMJ)
+    # But we keep a legacy 60fps baseline for Balance CV calculations if requested
     if raw_fps <= 0 or raw_fps > 240 or str(raw_fps) == "nan":
         analysis_fps = 30
     else:
         analysis_fps = int(raw_fps)
 
-    # Initialize trackers with the legacy 60 fps baseline.
-    cmj_counter = CMJTracker(fps=tracker_fps)
+    # Initialize trackers. 
+    # CMJ MUST use actual analysis_fps for the Bosco formula (h = g*t^2 / 8)
+    cmj_counter = CMJTracker(fps=analysis_fps)
     sls_counter = SLSDetector()
+    # Balance typically stays at 60 for consistency in sway metrics, 
+    # but for true physical velocity analysis_fps is safer.
     balance_tracker = SwayTracker(fps=tracker_fps)
     r2p_scorer = R2PScorer()
 
@@ -62,7 +67,7 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
     print(f"Video Writer Params: File={out_path}, FPS={analysis_fps}, Width={width}, Height={height}")
     print(
         f"[CVDEBUG][engine] input_meta_fps={raw_fps:.6f} "
-        f"writer_fps={analysis_fps} tracker_fps={analysis_fps}"
+        f"writer_fps={analysis_fps} cmj_fps={analysis_fps} balance_fps={tracker_fps}"
     )
 
     set_runtime_state_values(

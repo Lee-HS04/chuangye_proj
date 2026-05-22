@@ -9,10 +9,17 @@ class StateMachineFSM:
         self.state_history = []
         self.good_frames = 0
         
+        # Baselines for landing detection
+        self.baseline_ankle_y = None
+        self.baseline_samples = []
+        self.is_3d_engine = False
+        
     def reset(self):
         self.current_state = 1
         self.state_history = []
         self.good_frames = 0
+        self.baseline_samples = []
+        self.baseline_ankle_y = None
 
     def compute_angle(self, p1, p2, p3):
         """ Calculate angle between 3 points (p2 is the vertex) """
@@ -91,6 +98,14 @@ class StateMachineFSM:
         
         torso_size = min(self.get_pixel_distance(r_hip, r_shoulder), self.get_pixel_distance(l_hip,l_shoulder))
         
+        # Handle 3D engine vs 2D pixels (Sign flip for Y)
+        curr_l_ankle_y = l_ankle[1]
+        curr_r_ankle_y = r_ankle[1]
+        if torso_size is not None and torso_size < 5.0:
+            curr_l_ankle_y = -curr_l_ankle_y
+            curr_r_ankle_y = -curr_r_ankle_y
+        avg_ankle_y = (curr_l_ankle_y + curr_r_ankle_y) / 2.0
+
         if r_knee_angle is None or l_knee_angle is None:
             return "BAD", "Legs not visible", self.current_state
             
@@ -104,11 +119,19 @@ class StateMachineFSM:
         min_angle = 30
         
         if self.exercise_name == "CMJ":
-            # State 1: Standing (Knee > 160)
-            # State 2: Squat (Knee < 120)
-            # State 3: Jump/Extend (Knee > 160)
+            # State 1: Standing / Sampling Baseline
+            # State 2: Squatting (Knee < 130)
+            # State 3: Flight (Knee > 150 and ankles above ground)
+            # State 4: Landed (Ankles back to ground)
             
             if self.current_state == 1:
+                # Collect first 10 frames of standing as baseline
+                if len(self.baseline_samples) < 10:
+                    self.baseline_samples.append(avg_ankle_y)
+                    if len(self.baseline_samples) == 10:
+                        self.baseline_ankle_y = np.mean(self.baseline_samples)
+                    return "GOOD", "Sampling baseline...", self.current_state
+
                 if knee_angle > 150:
                     self.good_frames += 1
                     if self.good_frames > 5: # Stable standing for a bit
@@ -123,12 +146,12 @@ class StateMachineFSM:
                 # Need to hit a not too deep squat before jumping
                 if knee_angle > 100 and knee_angle < 150:
                     return "GOOD", "Good depth. JUMP!", self.current_state
-                # Check for jump
+                # Check for jump (Straightening knees)
                 if knee_angle > 140:
                     if len(self.state_history) > 0 and self.state_history[-1] == 1:
                         self.current_state = 3
                         self.state_history.append(2)
-                        return "GOOD", "Jumping!", self.current_state
+                        return "GOOD", "In Flight!", self.current_state
                     else:
                         # Bad form jump
                         self.reset()
@@ -136,10 +159,24 @@ class StateMachineFSM:
                 return "GOOD", "Go deeper.", self.current_state
                 
             elif self.current_state == 3:
-                if knee_angle > 150:
+                # In State 3 (Flight), wait until ankles return to baseline
+                is_on_ground = False
+                if self.baseline_ankle_y is not None:
+                    # Feet are back near ground (not more than 3% torso size above)
+                    if avg_ankle_y >= (self.baseline_ankle_y - torso_size * 0.03):
+                        is_on_ground = True
+                
+                if is_on_ground:
+                    # We have touched the ground. Completion triggered.
+                    self.current_state = 4
                     self.state_history.append(3)
-                    return "REP_COMPLETE", "Perfect Rep!", self.current_state
-                return "GOOD", "Finish jump.", self.current_state
+                    return "REP_COMPLETE", "Landed! Perfect Rep.", self.current_state
+                
+                return "GOOD", "In Air... Landing.", self.current_state
+
+            elif self.current_state == 4:
+                return "REP_COMPLETE", "Perfect Rep!", self.current_state
+
         
         elif self.exercise_name == "Balance":
             # State 1: Standing straight
