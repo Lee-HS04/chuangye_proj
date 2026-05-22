@@ -163,7 +163,7 @@ class StateMachineFSM:
                 akimbo = False
                 if r_elbow_angle<max_angle and r_elbow_angle>min_angle and l_elbow_angle<max_angle and l_elbow_angle>min_angle and self.is_near(r_wrist,r_hip, torso_size):
                     akimbo = True
-                if akimbo and ankle_distance>torso_size*0.6:
+                if akimbo and ankle_distance>torso_size*0.4:
                     self.good_frames += 1
                     if self.good_frames >= 50: # roughly 5 seconds at 10fps
                         return "REP_COMPLETE", "Balance Complete!", self.current_state
