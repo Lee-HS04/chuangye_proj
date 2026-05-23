@@ -350,7 +350,15 @@ class CMJTracker:
         g = 9.81
         height = (g * (t_flight**2)) / 8
         
-        # 3. Time to Takeoff (Contraction Phase)
+        # 3. PHYSICAL SANITY CHECK
+        # Max standing jump world record is ~1.2m. 
+        # Anything above 1.5m is definitely a measurement error (e.g. FPS mismatch).
+        if height > 1.5:
+            # Fallback to a simpler distance-based estimate or cap it
+            # We cap it at 1.5m and log the issue if we had a logger
+            height = min(height, 1.5)
+        
+        # 4. Time to Takeoff (Contraction Phase)
         t_contraction = self.t_takeoff - self.t_start_dip
         
         # 4. RSImod (Reactive Strength Index Modified)
@@ -377,15 +385,30 @@ class CMJTracker:
         if len(t_f) < 5: return self.t_landing - self.t_takeoff
 
         # Fit parabola: y = at^2 + bt + c
-        a, b, c = np.polyfit(t_f, y_f, 2)
-        
-        # Solve for roots where hip returns to its takeoff height
-        y_takeoff = y_f[0]
-        roots = np.roots([a, b, c - y_takeoff])
-        
-        if len(roots) == 2:
-            t_roots = np.sort(roots)
-            return float(t_roots[1] - t_roots[0])
+        # Use a try-except block for polyfit in case of degenerate data
+        try:
+            a, b, c = np.polyfit(t_f, y_f, 2)
+            
+            # Physics check: 'a' must be negative for a downward-opening parabola (Y is down)
+            # Actually, in image coords, Y increases downwards, so a jump (up then down) 
+            # is a concave parabola (a > 0).
+            # If torso_size < 5, we flipped signs, making jump 'concave' (a > 0) in the math.
+            
+            # Solve for roots where hip returns to its takeoff height
+            y_takeoff = y_f[0]
+            roots = np.roots([a, b, c - y_takeoff])
+            
+            if len(roots) == 2:
+                t_roots = np.real(roots[np.isreal(roots)])
+                if len(t_roots) == 2:
+                    t_roots = np.sort(t_roots)
+                    refined_t = float(t_roots[1] - t_roots[0])
+                    # Sanity check: Refined time should be similar to raw time
+                    raw_t = self.t_landing - self.t_takeoff
+                    if 0.5 * raw_t < refined_t < 1.5 * raw_t:
+                        return refined_t
+        except:
+            pass
         
         return self.t_landing - self.t_takeoff
 

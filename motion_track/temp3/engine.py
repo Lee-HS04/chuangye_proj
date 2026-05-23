@@ -31,25 +31,35 @@ def run_analysis(video_path, task_id, exercise_name="Balance", f_mm=24):
     # across the old and new frontend paths.
     tracker_fps = 60
 
-    # Read input metadata fps for diagnostics only.
+    # Read input metadata fps and detect real frame rate for physics accuracy.
     cap = cv2.VideoCapture(video_path)
     raw_fps = cap.get(cv2.CAP_PROP_FPS)
-    cap.release()
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     
-    # Analysis FPS must match video metadata for physical timing accuracy (CMJ)
-    # But we keep a legacy 60fps baseline for Balance CV calculations if requested
-    if raw_fps <= 0 or raw_fps > 240 or str(raw_fps) == "nan":
-        analysis_fps = 30
+    # WebM from browsers (MediaRecorder) often has corrupted/missing FPS metadata.
+    # If raw_fps is too high (e.g. 1000), too low, or NaN, we calculate it manually.
+    if raw_fps <= 5 or raw_fps > 150 or str(raw_fps) == "nan":
+        # Measure duration using the last frame's timestamp if possible
+        cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, frame_count - 1))
+        duration_ms = cap.get(cv2.CAP_PROP_POS_MSEC)
+        if duration_ms > 0:
+            analysis_fps = int(round((frame_count / duration_ms) * 1000))
+        else:
+            # Fallback to standard 30 if metadata fails entirely
+            analysis_fps = 30
     else:
         analysis_fps = int(raw_fps)
+    
+    cap.release()
 
     # Initialize trackers. 
     # CMJ MUST use actual analysis_fps for the Bosco formula (h = g*t^2 / 8)
     cmj_counter = CMJTracker(fps=analysis_fps)
     sls_counter = SLSDetector()
-    # Balance typically stays at 60 for consistency in sway metrics, 
-    # but for true physical velocity analysis_fps is safer.
-    balance_tracker = SwayTracker(fps=tracker_fps)
+    
+    # We synchronize the balance tracker to use the same analysis_fps 
+    # as the other trackers to ensure temporal consistency.
+    balance_tracker = SwayTracker(fps=analysis_fps)
     r2p_scorer = R2PScorer()
 
     # Open video again for processing
