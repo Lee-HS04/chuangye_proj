@@ -96,7 +96,15 @@ class StateMachineFSM:
         r_elbow_angle = self.compute_angle(r_shoulder, r_elbow, r_wrist)
         l_elbow_angle = self.compute_angle(l_shoulder, l_elbow, l_wrist)
         
-        torso_size = min(self.get_pixel_distance(r_hip, r_shoulder), self.get_pixel_distance(l_hip,l_shoulder))
+        # Determine torso size safely (handle missing keypoints)
+        r_torso = self.get_pixel_distance(r_hip, r_shoulder)
+        l_torso = self.get_pixel_distance(l_hip, l_shoulder)
+        
+        valid_dists = [d for d in [r_torso, l_torso] if d is not None]
+        if not valid_dists:
+            return "BAD", "Body not fully visible", self.current_state
+            
+        torso_size = min(valid_dists)
         
         # Handle 3D engine vs 2D pixels (Sign flip for Y)
         curr_l_ankle_y = l_ankle[1]
@@ -122,7 +130,8 @@ class StateMachineFSM:
             # State 1: Standing / Sampling Baseline
             # State 2: Squatting (Knee < 130)
             # State 3: Flight (Knee > 150 and ankles above ground)
-            # State 4: Landed (Ankles back to ground)
+            # State 4: Landed / Recovering (Ankles back to ground)
+            # State 5: Complete (Stands back up)
             
             if self.current_state == 1:
                 # Collect first 10 frames of standing as baseline
@@ -146,8 +155,12 @@ class StateMachineFSM:
                 # Need to hit a not too deep squat before jumping
                 if knee_angle > 100 and knee_angle < 150:
                     return "GOOD", "Good depth. JUMP!", self.current_state
-                # Check for jump (Straightening knees)
-                if knee_angle > 140:
+                
+                # Check for jump (Straightening knees AND ankles leaving ground)
+                # We use a 5% torso buffer to ensure actual takeoff
+                is_off_ground = avg_ankle_y < (self.baseline_ankle_y - torso_size * 0.05)
+                
+                if knee_angle > 145 and is_off_ground:
                     if len(self.state_history) > 0 and self.state_history[-1] == 1:
                         self.current_state = 3
                         self.state_history.append(2)
@@ -167,15 +180,24 @@ class StateMachineFSM:
                         is_on_ground = True
                 
                 if is_on_ground:
-                    # We have touched the ground. Completion triggered.
+                    # Feet touched ground, enter recovery phase
                     self.current_state = 4
                     self.state_history.append(3)
-                    return "REP_COMPLETE", "Landed! Perfect Rep.", self.current_state
+                    return "GOOD", "Landed! Now stand up.", 4
                 
                 return "GOOD", "In Air... Landing.", self.current_state
 
             elif self.current_state == 4:
-                return "REP_COMPLETE", "Perfect Rep!", self.current_state
+                # Wait for user to stand back up for a clean recording finish
+                if knee_angle > 150:
+                    self.current_state = 5
+                    self.state_history.append(4)
+                    return "REP_COMPLETE", "Perfect Rep!", 5
+                return "GOOD", "Stand up to complete.", 4
+            
+            elif self.current_state == 5:
+                # Terminal state
+                return "REP_COMPLETE", "Perfect Rep!", 5
 
         
         elif self.exercise_name == "Balance":

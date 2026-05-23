@@ -306,19 +306,22 @@ class CMJTracker:
 
         # 3. PHASE DETECTION
         
-        # IDLE -> CONTRACTION (Hips move down > 5% of torso size per second)
-        if self.phase == "idle" and self.hip_vy_ema > (self.torso_size * 0.5):
+        # IDLE -> CONTRACTION
+        if self.phase == "idle" and hip_y > (self.baseline_hip_y + self.torso_size * 0.05):
+            print(f"DEBUG: PHASE idle -> contraction at t={t:.2f}")
             self.phase = "contraction"
             self.t_start_dip = t
 
         # CONTRACTION -> FLIGHT (Ankles leave baseline height)
         # We use a 5% torso buffer to avoid noise (was 10%)
         elif self.phase == "contraction" and ankle_y < (self.baseline_ankle_y - self.torso_size * 0.05):
+            print(f"DEBUG: PHASE contraction -> flight at t={t:.2f}")
             self.phase = "flight"
             self.t_takeoff = t
 
         # FLIGHT -> LANDED (Ankles return to baseline)
         elif self.phase == "flight" and ankle_y >= (self.baseline_ankle_y - self.torso_size * 0.05):
+            print(f"DEBUG: PHASE flight -> landed at t={t:.2f}")
             self.phase = "landed"
             self.t_landing = t
 
