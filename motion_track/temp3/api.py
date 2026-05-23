@@ -113,6 +113,31 @@ async def get_status(task_id: str):
         return jobs[task_id]
     return {"status": "not_found"}
 
+@app.get("/batch_status")
+async def get_batch_status(task_ids: str):
+    ids = task_ids.split(",")
+    results = {}
+    all_completed = True
+    any_failed = False
+    
+    for tid in ids:
+        if not tid: continue
+        if tid in jobs:
+            results[tid] = jobs[tid]
+            if jobs[tid].get("status") != "completed":
+                all_completed = False
+            if jobs[tid].get("status") == "failed":
+                any_failed = True
+        else:
+            results[tid] = {"status": "not_found"}
+            all_completed = False
+            
+    return {
+        "all_completed": all_completed,
+        "any_failed": any_failed,
+        "tasks": results
+    }
+
 # --- USER DATA MANAGEMENT ENDPOINTS (Merged from server.py) ---
 @app.get("/api/get_user_data")
 async def get_user_data():

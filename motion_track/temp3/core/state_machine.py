@@ -202,7 +202,7 @@ class StateMachineFSM:
                     akimbo = True
                 if akimbo and ankle_distance>torso_size*0.4:
                     self.good_frames += 1
-                    if self.good_frames >= 50: # roughly 5 seconds at 10fps
+                    if self.good_frames >= 30: # roughly 5 seconds at 10fps
                         return "REP_COMPLETE", "Balance Complete!", self.current_state
                     return "GOOD", f"Holding... {self.good_frames/10:.1f}s", self.current_state
                 else:
