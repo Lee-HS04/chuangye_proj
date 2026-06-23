@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2P · IMU Skeleton Test (multi-mode)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#07090d; --panel:#0c0f15cc; --border:#1c2230;
+    --accent:#00ffe0; --accent2:#ff3c6e; --warn:#ffb800;
+    --text:#d4dde8; --muted:#4a5568;
+  }
+  html, body { width:100%; height:100%; background:var(--bg); overflow:hidden; font-family:'Space Mono',monospace; color:var(--text); }
+  #canvas-container { position:absolute; inset:0; }
+  #three-canvas { display:block; width:100%; height:100%; }
+
+  #topbar {
+    position:absolute; top:0; left:0; right:0; height:48px;
+    display:flex; align-items:center; padding:0 20px; gap:16px;
+    background:linear-gradient(180deg,#07090dee 0%,transparent 100%); z-index:10;
+  }
+  #logo { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.15em; color:var(--accent); text-shadow:0 0 12px #00ffe080; }
+  .sep { flex:1; }
+  #conn-label { font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
+  #conn-label.on  { color:var(--accent); text-shadow:0 0 8px var(--accent); }
+  #conn-label.off { color:var(--accent2); text-shadow:0 0 8px var(--accent2); }
+  #mode-badge {
+    font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+    padding:4px 10px; border-radius:4px; border:1px solid var(--warn); color:var(--warn);
+  }
+
+  #info-panel {
+    position:absolute; top:60px; left:16px; background:var(--panel);
+    border:1px solid var(--border); border-radius:8px; padding:12px 16px;
+    z-index:10; backdrop-filter:blur(12px); min-width:200px;
+  }
+  .info-row { display:flex; justify-content:space-between; gap:16px; margin-bottom:4px; }
+  .info-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .info-val { font-size:11px; color:var(--text); }
+  .info-val.mono { font-variant-numeric:tabular-nums; }
+
+  #sensor-panel {
+    position:absolute; top:60px; right:16px; background:var(--panel);
+    border:1px solid var(--border); border-radius:8px; padding:12px 14px;
+    min-width:230px; z-index:10; backdrop-filter:blur(12px);
+    max-height:62vh; overflow-y:auto;
+  }
+  #sensor-panel h4 { font-size:10px; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; margin:8px 0 6px; font-weight:400; }
+  #sensor-panel h4:first-child { margin-top:0; }
+  .sensor-row { display:flex; align-items:center; gap:8px; margin-bottom:4px; font-size:10px; }
+  .sensor-dot { width:8px; height:8px; border-radius:50%; background:var(--muted); flex-shrink:0; transition:all .2s; }
+  .sensor-dot.live { background:var(--accent); box-shadow:0 0 8px var(--accent); }
+  .sensor-name { flex:1; color:var(--muted); letter-spacing:.04em; }
+  .sensor-name.live { color:var(--text); }
+  .sensor-src { font-size:8px; color:var(--muted); }
+  .sensor-src.real { color:var(--accent); }
+  .mini-btn { font-family:'Space Mono',monospace; font-size:8px; letter-spacing:.04em; padding:3px 6px; border-radius:3px; border:1px solid var(--border); background:#0c0f15; color:var(--muted); cursor:pointer; text-transform:uppercase; }
+  .mini-btn:hover { border-color:var(--warn); color:var(--warn); }
+
+  #controls {
+    position:absolute; bottom:0; left:0; right:0; padding:12px 24px 16px;
+    background:linear-gradient(0deg,#07090df8 0%,transparent 100%); z-index:10;
+    display:flex; flex-direction:column; gap:8px; align-items:center;
+  }
+  .ctrl-row { display:flex; gap:7px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  .label-sep { font-size:9px; color:var(--muted); letter-spacing:.12em; min-width:86px; text-align:right; }
+  .btn {
+    font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.05em;
+    padding:6px 12px; border-radius:4px; border:1px solid var(--border);
+    background:#0c0f15; color:var(--muted); cursor:pointer; transition:all .15s;
+    text-transform:uppercase; min-width:62px; text-align:center;
+  }
+  .btn:hover { border-color:var(--accent); color:var(--accent); box-shadow:0 0 8px #00ffe040; }
+  .btn.active { border-color:var(--accent); color:var(--accent); background:#00ffe010; box-shadow:0 0 12px #00ffe050; }
+  .btn.go { border-color:var(--warn); color:var(--warn); }
+  .btn.danger { border-color:var(--accent2); color:var(--accent2); }
+  .btn kbd { font-size:8px; color:var(--muted); background:#1c2230; border-radius:3px; padding:1px 3px; margin-left:3px; }
+
+  #test-overlay {
+    position:fixed; inset:0; z-index:100;
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    background:#07090dcc; backdrop-filter:blur(6px);
+  }
+  #test-overlay.visible { display:flex; }
+  #ov-label { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:.25em; color:var(--muted); text-transform:uppercase; margin-bottom:12px; }
+  #ov-big { font-family:'Bebas Neue',sans-serif; font-size:140px; line-height:1; color:var(--accent); text-shadow:0 0 60px var(--accent); transition:transform .15s; }
+  #ov-big.pulse { transform:scale(1.08); }
+  #ov-sub { font-size:13px; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; margin-top:8px; }
+  #ov-bar-wrap { width:320px; height:6px; background:var(--border); border-radius:3px; margin-top:28px; overflow:hidden; display:none; }
+  #ov-bar { height:100%; width:100%; background:var(--accent); border-radius:3px; transform-origin:left; }
+  #ov-skip { margin-top:28px; font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:.08em; cursor:pointer; background:none; border:1px solid var(--border); border-radius:4px; padding:6px 14px; text-transform:uppercase; }
+  #ov-skip:hover { border-color:var(--accent2); color:var(--accent2); }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="three-canvas"></canvas></div>
+
+<div id="test-overlay">
+  <div id="ov-label">GET READY</div>
+  <div id="ov-big">3</div>
+  <div id="ov-sub">stand still and face forward</div>
+  <div id="ov-bar-wrap"><div id="ov-bar"></div></div>
+  <button id="ov-skip" onclick="skipTest()">Skip (Esc)</button>
+</div>
+
+<div id="topbar">
+  <div id="logo">R2P</div>
+  <span style="color:var(--muted);font-size:11px;letter-spacing:.12em">IMU SKELETON TEST</span>
+  <div id="mode-badge">PELVIS_ONLY</div>
+  <div class="sep"></div>
+  <div id="conn-label" class="off">DISCONNECTED</div>
+</div>
+
+<div id="info-panel">
+  <div class="info-row"><span class="info-lbl">Action</span><span class="info-val" id="iv-action">idle</span></div>
+  <div class="info-row"><span class="info-lbl">Detected</span><span class="info-val" id="iv-detected">idle</span></div>
+  <div class="info-row"><span class="info-lbl">Jump phase</span><span class="info-val mono" id="iv-jump">none</span></div>
+  <div class="info-row"><span class="info-lbl">Cadence</span><span class="info-val mono" id="iv-cadence">0.0 Hz</span></div>
+  <div class="info-row"><span class="info-lbl">H-accel</span><span class="info-val mono" id="iv-haccel">0.0</span></div>
+  <div class="info-row"><span class="info-lbl">Confidence</span><span class="info-val mono" id="iv-conf">0%</span></div>
+  <div class="info-row"><span class="info-lbl">Gait phase</span><span class="info-val mono" id="iv-gait">—</span></div>
+  <div class="info-row"><span class="info-lbl">Symmetry</span><span class="info-val mono" id="iv-symmetry">—</span></div>
+  <div class="info-row"><span class="info-lbl">Mode (auto)</span><span class="info-val" id="iv-mode">pelvis_only</span></div>
+  <div class="info-row"><span class="info-lbl">Live IMUs</span><span class="info-val mono" id="iv-count">0</span></div>
+  <div class="info-row"><span class="info-lbl">Preset</span><span class="info-val" id="iv-preset">identity</span></div>
+  <div class="info-row"><span class="info-lbl">Rate</span><span class="info-val mono" id="iv-rate">0 Hz</span></div>
+  <hr style="border:none;border-top:1px solid var(--border);margin:7px 0">
+  <div class="info-row"><span class="info-lbl">Pelvis yaw</span><span class="info-val mono" id="iv-yaw">0°</span></div>
+  <div class="info-row"><span class="info-lbl">Pelvis pitch</span><span class="info-val mono" id="iv-pitch">0°</span></div>
+  <div class="info-row"><span class="info-lbl">Root X / Z</span><span class="info-val mono" id="iv-root">0.0 / 0.0</span></div>
+  <hr style="border:none;border-top:1px solid var(--border);margin:7px 0">
+  <div style="font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">Analytics</div>
+  <div class="info-row"><span class="info-lbl">Stability</span><span class="info-val mono" id="iv-stab">—</span></div>
+  <div class="info-row"><span class="info-lbl">Balance</span><span class="info-val mono" id="iv-bal">—</span></div>
+  <div class="info-row"><span class="info-lbl">Fatigue</span><span class="info-val mono" id="iv-fat">—</span></div>
+  <div class="info-row"><span class="info-lbl">Explosive</span><span class="info-val mono" id="iv-exp">—</span></div>
+  <div class="info-row"><span class="info-lbl">Mobility</span><span class="info-val mono" id="iv-mob">—</span></div>
+</div>
+
+<div id="sensor-panel">
+  <h4>Sensors (real = cyan · preset = amber)</h4>
+  <div id="sensor-list"></div>
+</div>
+
+<div id="controls">
+  <div class="ctrl-row">
+    <span class="label-sep">MODE</span>
+    <button class="btn" id="mode-auto"        onclick="apiMode('auto')">Auto</button>
+    <button class="btn" id="mode-pelvis_only" onclick="apiMode('pelvis_only')">Pelvis</button>
+    <button class="btn" id="mode-consumer"    onclick="apiMode('consumer')">Consumer 6</button>
+    <button class="btn" id="mode-pro"         onclick="apiMode('pro')">Pro 15</button>
+    <button class="btn" id="btn-override"     onclick="toggleOverride()">Preset-All: off</button>
+  </div>
+  <div class="ctrl-row">
+    <span class="label-sep">ACTION</span>
+    <button class="btn active" id="btn-auto" onclick="toggleAuto()">Auto-Detect: on</button>
+    <button class="btn" id="act-walk_fwd"  onclick="setAction('walk_fwd')">Walk <kbd>W</kbd></button>
+    <button class="btn" id="act-walk_back" onclick="setAction('walk_back')">Back <kbd>S</kbd></button>
+    <button class="btn" id="act-strafe_l"  onclick="setAction('strafe_l')">Strafe L <kbd>A</kbd></button>
+    <button class="btn" id="act-strafe_r"  onclick="setAction('strafe_r')">Strafe R <kbd>D</kbd></button>
+    <button class="btn danger" id="act-run" onclick="setAction('run')">Run <kbd>R</kbd></button>
+    <button class="btn" id="act-jump"  onclick="setAction('jump')">Jump <kbd>J</kbd></button>
+    <button class="btn" id="act-squat" onclick="setAction('squat')">Squat <kbd>Q</kbd></button>
+    <button class="btn active" id="act-idle" onclick="setAction('idle')">Idle <kbd>Spc</kbd></button>
+  </div>
+  <div class="ctrl-row">
+    <span class="label-sep">DETECT</span>
+    <button class="btn" id="btn-calib" onclick="toggleCalib()">Calib Floor</button>
+    <span class="label-sep" style="min-width:auto">sensitivity</span>
+    <input type="range" id="travel-slider" min="0.4" max="4.0" step="0.1" value="1.2"
+           oninput="onTravelSlider(this.value)" style="width:120px;accent-color:var(--accent)">
+    <span class="info-val mono" id="travel-val" style="min-width:48px">1.2</span>
+    <button class="btn" onclick="apiDetectReset()">Reset Det</button>
+  </div>
+  <div class="ctrl-row">
+    <span class="label-sep">CALIBRATE</span>
+    <button class="btn go" onclick="apiZero()">Zero All</button>
+    <button class="btn" onclick="apiUnzero()">Clear Zeros</button>
+    <button class="btn" onclick="resetCam()">Reset Cam</button>
+    <span class="label-sep" style="min-width:70px">REMAP</span>
+    <span id="preset-buttons"></span>
+  </div>
+  <div class="ctrl-row">
+    <span class="label-sep">LOG</span>
+    <button class="btn go" id="btn-log" onclick="toggleLog()">⏺ Record</button>
+    <button class="btn" id="btn-label-still"    onclick="startTest('still')"    title="Key 1">Still <kbd>1</kbd></button>
+    <button class="btn" id="btn-label-turn_l"   onclick="startTest('turn_left')"  title="Key 2">Turn L <kbd>2</kbd></button>
+    <button class="btn" id="btn-label-turn_r"   onclick="startTest('turn_right')" title="Key 3">Turn R <kbd>3</kbd></button>
+    <button class="btn" id="btn-label-walk"     onclick="startTest('walk_fwd')"   title="Key 4">Walk <kbd>4</kbd></button>
+    <button class="btn" id="btn-label-tilt_fwd" onclick="startTest('tilt_fwd')"   title="Key 5">Tilt Fwd <kbd>5</kbd></button>
+    <button class="btn" id="btn-label-squat"    onclick="startTest('squat')"      title="Key 6">Squat <kbd>6</kbd></button>
+    <button class="btn" id="btn-label-jump"     onclick="startTest('jump')"       title="Key 7">Jump <kbd>7</kbd></button>
+    <button class="btn" id="btn-label-strafe_l" onclick="startTest('strafe_l')"   title="Key 8">Strafe L <kbd>8</kbd></button>
+    <button class="btn" id="btn-label-strafe_r" onclick="startTest('strafe_r')"   title="Key 9">Strafe R <kbd>9</kbd></button>
+    <button class="btn" id="btn-run-all" onclick="runAllTests()" style="border-color:#a78bfa;color:#a78bfa">Run All</button>
+    <span class="info-val mono" id="log-status" style="font-size:9px;color:var(--muted)">not recording</span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ══════════════════════════════════════════════════ SCENE SETUP
+const canvas = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x07090d, 1);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(52, 1, 0.01, 100);
+scene.fog = new THREE.Fog(0x07090d, 6, 22);
+scene.add(new THREE.AmbientLight(0x0d1a2a, 3));
+const dir1 = new THREE.DirectionalLight(0x00ffe0, 1.4); dir1.position.set(3, 5, 3); scene.add(dir1);
+const dir2 = new THREE.DirectionalLight(0xff3c6e, 0.5); dir2.position.set(-4, 2, -2); scene.add(dir2);
+const pt = new THREE.PointLight(0x00ffe0, 0.6, 5); pt.position.set(0, 2, 0); scene.add(pt);
+const grid = new THREE.GridHelper(40, 80, 0x1c2230, 0x1c2230); grid.position.y = -0.92; scene.add(grid);
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 40),
+  new THREE.MeshBasicMaterial({ color: 0x00ffe0, transparent: true, opacity: 0.02, side: THREE.DoubleSide })
+);
+floor.rotation.x = -Math.PI / 2; floor.position.y = -0.91; scene.add(floor);
+const arrow = new THREE.Mesh(
+  new THREE.ConeGeometry(0.12, 0.4, 4),
+  new THREE.MeshBasicMaterial({ color: 0xffb800, transparent: true, opacity: 0.5 })
+);
+arrow.rotation.x = Math.PI / 2; arrow.position.set(0, -0.9, -0.9); scene.add(arrow);
+
+function onResize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', onResize); onResize();
+
+let isDrag = false, pMouse = { x: 0, y: 0 };
+let sph = { theta: 0.3, phi: Math.PI / 3.2, r: 3.6 };
+let camTarget = new THREE.Vector3(0, 0.4, 0);
+function updateCam() {
+  camera.position.set(
+    camTarget.x + sph.r * Math.sin(sph.phi) * Math.sin(sph.theta),
+    camTarget.y + sph.r * Math.cos(sph.phi),
+    camTarget.z + sph.r * Math.sin(sph.phi) * Math.cos(sph.theta)
+  );
+  camera.lookAt(camTarget);
+}
+canvas.addEventListener('mousedown', e => { isDrag = true; pMouse = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('mouseup', () => isDrag = false);
+canvas.addEventListener('mousemove', e => {
+  if (!isDrag) return;
+  sph.theta -= (e.clientX - pMouse.x) * 0.006;
+  sph.phi = Math.max(0.1, Math.min(Math.PI - 0.1, sph.phi + (e.clientY - pMouse.y) * 0.006));
+  pMouse = { x: e.clientX, y: e.clientY };
+  updateCam();
+});
+canvas.addEventListener('wheel', e => { sph.r = Math.max(1, Math.min(12, sph.r + e.deltaY * 0.004)); updateCam(); }, { passive: true });
+function resetCam() { sph = { theta: 0.3, phi: Math.PI / 3.2, r: 3.6 }; updateCam(); }
+updateCam();
+
+// ══════════════════════════════════════════════════ SKELETON MESHES
+const BONE_DEFS = [
+  ['pelvis','lumbar','c'],['lumbar','chest','c'],['chest','neck','c'],['neck','head','c'],['head','head_top','c'],
+  ['pelvis','hip_l','l'],['hip_l','knee_l','l'],['knee_l','ankle_l','l'],['ankle_l','foot_l','l'],
+  ['pelvis','hip_r','r'],['hip_r','knee_r','r'],['knee_r','ankle_r','r'],['ankle_r','foot_r','r'],
+  ['chest','shoulder_l','l'],['shoulder_l','elbow_l','l'],['elbow_l','wrist_l','l'],['wrist_l','hand_l','l'],
+  ['chest','shoulder_r','r'],['shoulder_r','elbow_r','r'],['elbow_r','wrist_r','r'],['wrist_r','hand_r','r'],
+  ['shoulder_l','shoulder_r','c'],['hip_l','hip_r','c'],
+];
+const JOINT_NAMES = [...new Set(BONE_DEFS.flatMap(b => [b[0], b[1]]))];
+const COLS = { c: 0x38bdf8, l: 0x34d399, r: 0xf472b6 };
+const JCOLS = { c: 0x00ffe0, l: 0x34d399, r: 0xf472b6 };
+const jointMeshes = {};
+JOINT_NAMES.forEach(n => {
+  const s = n.endsWith('_l') ? 'l' : n.endsWith('_r') ? 'r' : 'c';
+  const m = new THREE.MeshPhongMaterial({ color: JCOLS[s], emissive: JCOLS[s], emissiveIntensity: 0.5, transparent: true, opacity: 0.9 });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 10), m);
+  mesh.visible = false; scene.add(mesh); jointMeshes[n] = mesh;
+});
+const boneMeshes = {};
+BONE_DEFS.forEach(([pa, ch, s]) => {
+  const m = new THREE.MeshPhongMaterial({ color: COLS[s], emissive: COLS[s], emissiveIntensity: 0.2, transparent: true, opacity: 0.82 });
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 1, 8), m);
+  mesh.visible = false; scene.add(mesh); boneMeshes[`${pa}-${ch}`] = mesh;
+});
+const _va = new THREE.Vector3(), _vb = new THREE.Vector3();
+function updateBone(mesh, pa, pb) {
+  _va.set(...pa); _vb.set(...pb);
+  const dir = _vb.clone().sub(_va), len = dir.length();
+  if (len < 0.001) { mesh.visible = false; return; }
+  mesh.visible = true;
+  mesh.position.copy(_va).addScaledVector(dir.normalize(), len / 2);
+  mesh.scale.set(1, len, 1);
+  mesh.setRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize()));
+}
+
+// ══════════════════════════════════════════════════ QUATERNION MATH [w,x,y,z]
+function qmul(a, b) {
+  const [w1,x1,y1,z1] = a, [w2,x2,y2,z2] = b;
+  return [w1*w2-x1*x2-y1*y2-z1*z2, w1*x2+x1*w2+y1*z2-z1*y2, w1*y2-x1*z2+y1*w2+z1*x2, w1*z2+x1*y2-y1*x2+z1*w2];
+}
+function qconj(q) { return [q[0],-q[1],-q[2],-q[3]]; }
+function qrot(q, v) { const r = qmul(qmul(q,[0,...v]),qconj(q)); return [r[1],r[2],r[3]]; }
+function qnorm(q) { const n = Math.hypot(...q); return n<1e-9?[1,0,0,0]:q.map(x=>x/n); }
+function add(a, b) { return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
+function sc(v, s) { return [v[0]*s, v[1]*s, v[2]*s]; }
+function axAngle(ax, a) { const h=a/2, s=Math.sin(h); return qnorm([Math.cos(h),ax[0]*s,ax[1]*s,ax[2]*s]); }
+function slerp(a, b, t) {
+  let d = a[0]*b[0]+a[1]*b[1]+a[2]*b[2]+a[3]*b[3];
+  if (d < 0) { b = b.map(x=>-x); d = -d; }
+  if (d > 0.9995) return qnorm(a.map((v,i)=>v+(b[i]-v)*t));
+  const th0 = Math.acos(d), th = th0*t, s0=Math.cos(th)-d*Math.sin(th)/Math.sin(th0), s1=Math.sin(th)/Math.sin(th0);
+  return qnorm(a.map((v,i)=>v*s0+b[i]*s1));
+}
+function quatToEuler(q) {
+  const [w,x,y,z] = q, d = 180/Math.PI;
+  const roll = Math.atan2(2*(w*x+y*z), 1-2*(x*x+y*y));
+  const sp = 2*(w*y-z*x);
+  const pitch = Math.abs(sp)>=1 ? Math.sign(sp)*Math.PI/2 : Math.asin(sp);
+  const yaw = Math.atan2(2*(w*z+x*y), 1-2*(y*y+z*z));
+  return { yaw: yaw*d, pitch: pitch*d, roll: roll*d };
+}
+
+// ── Decompose the pelvis quaternion into YAW-only and TILT components ──────
+// This is the KEY fix. The raw pelvis quat encodes both the heading (yaw)
+// and the forward/lateral tilt. For FK we need to:
+//   1. Apply the FULL quat to the pelvis so the body faces the right way AND tilts
+//   2. Apply only the YAW part to limbs that shouldn't tilt (hip joints, leg roots)
+//   3. Compose the tilt offset with preset deltas properly (just rotate in local space)
+//
+// qYaw  = rotation about world Y only (heading)
+// qTilt = qconj(qYaw) * qFull  = everything EXCEPT the heading
+//         → this is the forward/sideways lean in a yaw-removed frame
+function decomposeQuat(q) {
+  const e = quatToEuler(q);
+  const qYaw = axAngle([0,1,0], e.yaw * Math.PI/180);
+  const qTilt = qmul(qconj(qYaw), q); // local tilt after removing heading
+  return { qYaw, qTilt, euler: e };
+}
+
+// ══════════════════════════════════════════════════ LIMB LENGTHS
+const LL = {
+  pelvis_h: 0.92, pelvis_to_lumbar: 0.10, lumbar: 0.15, chest: 0.20,
+  neck: 0.10, head: 0.13, thigh: 0.42, shin: 0.40, foot: 0.17,
+  clavicle: 0.175, upper_arm: 0.30, forearm: 0.26, hand: 0.09
+};
+
+// ══════════════════════════════════════════════════ IMPROVED FK
+// KEY CHANGE: FK is now split into three layers:
+//
+//   Layer 1 — SPINE: driven by the FULL pelvis quat (both yaw and tilt).
+//             This correctly leans the torso when you bow forward.
+//
+//   Layer 2 — LEGS:  driven by qYaw only as their orientation base.
+//             Legs stand straight under the body regardless of forward tilt.
+//             Preset deltas (squat, walk swing) are then added in local space.
+//
+//   Layer 3 — ARMS:  driven by the CHEST orientation (which inherits from
+//             the full pelvis quat + any spine preset delta).
+//
+// Preset deltas are always LOCAL rotations relative to the segment's parent.
+// They are composed AFTER the base orientation: q_final = qBase * qLocalDelta
+// This means walk swing angles are always relative to the current facing direction,
+// not absolute world angles — so the avatar walks correctly when turned.
+function computeJoints(qp, rootX, rootY, rootZ, preset) {
+  preset = preset || {};
+  const I = [1,0,0,0];
+  const qFull = qp || I;
+  const { qYaw, qTilt } = decomposeQuat(qFull);
+
+  // ── Helper: compose a base quat with an optional local preset delta ──────
+  // q_world_segment = qBase * qLocalDelta
+  function compose(qBase, qDelta) {
+    return qDelta ? qnorm(qmul(qBase, qDelta)) : qBase;
+  }
+
+  // ── Spine chain: full orientation (yaw + tilt) ──────────────────────────
+  // The spine rotates the entire upper body as a rigid unit. The preset
+  // chest delta (e.g. slight lateral sway during walk) is on top of this.
+  const qSpine  = qFull;
+  const qChest  = compose(qSpine, preset.chest);
+  const qHead   = compose(qChest, preset.head);
+
+  // ── Legs: yaw-only base (stand upright regardless of forward tilt) ───────
+  // Walk/squat preset deltas rotate the limb around its own axis in local space.
+  const qThighL = compose(qYaw, preset.thigh_l);
+  const qThighR = compose(qYaw, preset.thigh_r);
+  const qShinL  = compose(qYaw, preset.shin_l);
+  const qShinR  = compose(qYaw, preset.shin_r);
+
+  // ── Arms: inherit from chest orientation (which includes tilt) ───────────
+  const qUAL = compose(qChest, preset.l_upper_arm);
+  const qUAR = compose(qChest, preset.r_upper_arm);
+  const qFAL = compose(qUAL,   preset.l_forearm);
+  const qFAR = compose(qUAR,   preset.r_forearm);
+
+  const up = [0,1,0], dn = [0,-1,0];
+  const px = rootX, py = LL.pelvis_h + rootY, pz = rootZ;
+  const J = {};
+
+  // Root
+  J.pelvis = [px, py, pz];
+
+  // Spine goes up using the FULL orientation (tilt is preserved here)
+  J.lumbar    = add(J.pelvis,   qrot(qSpine, sc(up, LL.pelvis_to_lumbar)));
+  J.chest     = add(J.lumbar,   qrot(qSpine, sc(up, LL.lumbar)));
+  J.neck      = add(J.chest,    qrot(qChest, sc(up, LL.chest)));
+  J.head      = add(J.neck,     qrot(qHead,  sc(up, LL.neck)));
+  J.head_top  = add(J.head,     qrot(qHead,  sc(up, LL.head)));
+
+  // Hips are offset from pelvis using full orientation (keeps them under the body)
+  // but legs then point downward from the YAW-only base. This means the hip
+  // position can deviate from pure vertical but the thighs hang straight down.
+  J.hip_l   = add(J.pelvis, qrot(qFull, [-0.105, -0.05, 0]));
+  J.knee_l  = add(J.hip_l,  qrot(qThighL, sc(dn, LL.thigh)));
+  J.ankle_l = add(J.knee_l, qrot(qShinL,  sc(dn, LL.shin)));
+  J.foot_l  = add(J.ankle_l, qrot(qShinL, [0, -LL.foot*0.08/LL.foot, LL.foot]));
+
+  J.hip_r   = add(J.pelvis, qrot(qFull, [ 0.105, -0.05, 0]));
+  J.knee_r  = add(J.hip_r,  qrot(qThighR, sc(dn, LL.thigh)));
+  J.ankle_r = add(J.knee_r, qrot(qShinR,  sc(dn, LL.shin)));
+  J.foot_r  = add(J.ankle_r, qrot(qShinR, [0, -LL.foot*0.08/LL.foot, LL.foot]));
+
+  // Shoulders off the chest (inherit chest orientation fully)
+  J.shoulder_l = add(J.chest, qrot(qChest, [-LL.clavicle, 0, 0]));
+  J.elbow_l    = add(J.shoulder_l, qrot(qUAL, sc(dn, LL.upper_arm)));
+  J.wrist_l    = add(J.elbow_l,    qrot(qFAL, sc(dn, LL.forearm)));
+  J.hand_l     = add(J.wrist_l,    qrot(qFAL, sc(dn, LL.hand)));
+
+  J.shoulder_r = add(J.chest, qrot(qChest, [ LL.clavicle, 0, 0]));
+  J.elbow_r    = add(J.shoulder_r, qrot(qUAR, sc(dn, LL.upper_arm)));
+  J.wrist_r    = add(J.elbow_r,    qrot(qFAR, sc(dn, LL.forearm)));
+  J.hand_r     = add(J.wrist_r,    qrot(qFAR, sc(dn, LL.hand)));
+
+  return J;
+}
+
+// ══════════════════════════════════════════════════ PRESET ACTIONS
+// All angles are LOCAL to the segment's parent frame (body-relative).
+// They get composed onto the base orientation inside computeJoints.
+function actIdle(t) {
+  const s = Math.sin(t * 0.8) * 0.02;
+  return {
+    chest: axAngle([0,0,1], -s * 0.5),
+    l_upper_arm: axAngle([1,0,0], -0.05 + Math.sin(t*0.8)*0.02),
+    r_upper_arm: axAngle([1,0,0], -0.05 - Math.sin(t*0.8)*0.02),
+    l_forearm: axAngle([1,0,0], 0.08),
+    r_forearm: axAngle([1,0,0], 0.08),
+  };
+}
+
+function actWalk(t, cadHz, back) {
+  const phi = 2 * Math.PI * cadHz * t;
+  const amp = back ? -0.42 : 0.42;
+  // Slight forward lean and body sway — LOCAL to body frame so it works in any heading
+  return {
+    chest: qmul(axAngle([1,0,0], back ? 0.04 : -0.04), axAngle([0,1,0], 0.06 * Math.sin(phi))),
+    thigh_l: axAngle([1,0,0], amp * Math.sin(phi)),
+    thigh_r: axAngle([1,0,0], amp * Math.sin(phi + Math.PI)),
+    shin_l:  axAngle([1,0,0], -0.42 * Math.max(0, Math.sin(phi))),
+    shin_r:  axAngle([1,0,0], -0.42 * Math.max(0, Math.sin(phi + Math.PI))),
+    l_upper_arm: axAngle([1,0,0], 0.30 * Math.sin(phi + Math.PI)),
+    r_upper_arm: axAngle([1,0,0], 0.30 * Math.sin(phi)),
+    l_forearm: axAngle([1,0,0], -0.14 * Math.max(0, Math.sin(phi))),
+    r_forearm: axAngle([1,0,0], -0.14 * Math.max(0, Math.sin(phi + Math.PI))),
+  };
+}
+
+function actRun(t) {
+  const phi = 2 * Math.PI * 1.8 * t;
+  return {
+    chest: qmul(axAngle([1,0,0], -0.15), axAngle([0,1,0], 0.10 * Math.sin(phi))),
+    thigh_l: axAngle([1,0,0], 0.75 * Math.sin(phi)),
+    thigh_r: axAngle([1,0,0], 0.75 * Math.sin(phi + Math.PI)),
+    shin_l:  axAngle([1,0,0], -0.9 * Math.max(0, Math.sin(phi))),
+    shin_r:  axAngle([1,0,0], -0.9 * Math.max(0, Math.sin(phi + Math.PI))),
+    l_upper_arm: axAngle([1,0,0], 0.7 * Math.sin(phi + Math.PI)),
+    r_upper_arm: axAngle([1,0,0], 0.7 * Math.sin(phi)),
+    l_forearm: axAngle([1,0,0], -0.4 * Math.max(0, Math.sin(phi))),
+    r_forearm: axAngle([1,0,0], -0.4 * Math.max(0, Math.sin(phi + Math.PI))),
+  };
+}
+
+function actStrafe(t, sign) {
+  const phi = 2 * Math.PI * 1.1 * t;
+  const lead  = Math.max(0, Math.sin(phi));
+  const trail = Math.max(0, Math.sin(phi + Math.PI));
+  const legOut = 0.38 * sign;
+  const qLead  = axAngle([0,0,1], sign > 0 ? -legOut*lead  :  legOut*lead);
+  const qTrail = axAngle([0,0,1], sign > 0 ?  legOut*0.5*trail : -legOut*0.5*trail);
+  const qShin  = axAngle([1,0,0], -0.22*lead);
+  return {
+    chest: axAngle([0,0,1], 0.03 * sign * Math.sin(phi)),
+    thigh_r: sign > 0 ? qLead  : qTrail,
+    thigh_l: sign > 0 ? qTrail : qLead,
+    shin_r: sign > 0 ? qShin : I_QUAT,
+    shin_l: sign > 0 ? I_QUAT : qShin,
+    l_upper_arm: axAngle([0,0,1],  0.16*sign),
+    r_upper_arm: axAngle([0,0,1],  0.16*sign),
+  };
+}
+const I_QUAT = [1,0,0,0];
+
+function actSquat(t) {
+  const depth = (1 - Math.cos(2 * Math.PI * 0.6 * t)) * 0.5;
+  return {
+    chest: axAngle([1,0,0], -0.15*depth),
+    thigh_l: axAngle([1,0,0], 1.05*depth),
+    thigh_r: axAngle([1,0,0], 1.05*depth),
+    shin_l:  axAngle([1,0,0], -0.98*depth),
+    shin_r:  axAngle([1,0,0], -0.98*depth),
+    l_upper_arm: axAngle([1,0,0], -0.5*depth),
+    r_upper_arm: axAngle([1,0,0], -0.5*depth),
+    l_forearm: axAngle([1,0,0], 0.12*depth),
+    r_forearm: axAngle([1,0,0], 0.12*depth),
+    _yOff: -0.34*depth,
+  };
+}
+
+let jumpPhase = 0, inJump = false;
+function actJump(dt) {
+  jumpPhase += dt;
+  const p = Math.min(jumpPhase / 0.9, 1);
+  const tuck = Math.sin(Math.PI * p);
+  const out = {
+    thigh_l: axAngle([1,0,0], 0.6*tuck),
+    thigh_r: axAngle([1,0,0], 0.6*tuck),
+    shin_l:  axAngle([1,0,0], -0.7*tuck),
+    shin_r:  axAngle([1,0,0], -0.7*tuck),
+    l_upper_arm: axAngle([1,0,0], -0.8*Math.sin(Math.PI*Math.min(p*2,1))),
+    r_upper_arm: axAngle([1,0,0], -0.8*Math.sin(Math.PI*Math.min(p*2,1))),
+    _yOff: 0.55*Math.sin(Math.PI*p),
+  };
+  if (p >= 1) { inJump = false; setAction('idle'); jumpPhase = 0; }
+  return out;
+}
+
+// ══════════════════════════════════════════════════ ROOT TRANSLATION
+// The skeleton root position integrates the detector's move_dir output.
+// move_dir is [x_right, z_forward] in the BODY frame.
+// We convert it to world frame using the current yaw, then accumulate position.
+// This makes the figure actually travel when walking/running is detected.
+const MOVE_SPEED = { walk_fwd: 1.4, walk_back: 1.0, strafe_l: 1.1, strafe_r: 1.1, run: 3.4 };
+const ROOT_DECAY = 0.97; // gentle drift back to centre when idle (optional — comment out if unwanted)
+let rootX = 0, rootZ = 0;
+const ROOT_MAX = 3.5; // metres from centre before clamping
+
+function integrateRoot(dt, qp, detMoveDir, currentAct, detected) {
+  // Only translate when the detector confirms travel (not just marching in place)
+  if (!detMoveDir || (detMoveDir[0] === 0 && detMoveDir[1] === 0)) return;
+  if (detected && detected.action === 'idle') return;
+  if (detected && detected.in_place) return;
+
+  const speed = MOVE_SPEED[currentAct] || 1.0;
+
+  // move_dir from the detector is already in body frame [right, forward].
+  // Convert to world frame using only the yaw part of the pelvis quaternion.
+  const { euler } = decomposeQuat(qp);
+  const yawRad = euler.yaw * Math.PI / 180;
+  const sinY = Math.sin(yawRad), cosY = Math.cos(yawRad);
+
+  // body frame: [right, forward] where forward = -Z world at zero heading
+  const bodyRight   = detMoveDir[0];
+  const bodyForward = -detMoveDir[1]; // negate: detector forward = positive, world forward = -Z
+
+  // Rotate body frame into world XZ
+  const worldX = bodyRight * cosY + bodyForward * sinY;
+  const worldZ = -bodyRight * sinY + bodyForward * cosY;
+
+  rootX = Math.max(-ROOT_MAX, Math.min(ROOT_MAX, rootX + worldX * speed * dt));
+  rootZ = Math.max(-ROOT_MAX, Math.min(ROOT_MAX, rootZ + worldZ * speed * dt));
+}
+
+// ══════════════════════════════════════════════════ STATE
+const targetQuat = {}, smoothQuat = {}, lastSeen = {}, zeroed = {};
+let TIERS = { pelvis_only: ['pelvis'], consumer: [], pro: [] };
+let effMode = 'pelvis_only', modeSetting = 'auto', presetOverride = false;
+let currentAction = 'idle';
+let t = 0, frameCount = 0, rateWindow = [];
+let rootY = 0;
+const STALE_MS = 400;
+
+let autoDetect = true;
+let detected = { action: 'idle', move_dir: [0, 0], cadence_hz: 0, h_accel: 0, confidence: 0, in_place: false };
+let detMoveDir = [0, 0];
+let calibrating = false;
+
+// ══════════════════════════════════════════════════ WEBSOCKET
+const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+let latestAnalytics = null;
+let latestGait      = null;
+let ws;
+function connect() {
+  ws = new WebSocket(`${wsProto}://${location.host}/ws/imu`);
+  ws.onopen = () => setConn(true);
+  ws.onclose = () => { setConn(false); setTimeout(connect, 1500); };
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.type === 'init') {
+      TIERS = m.tiers; effMode = m.mode; modeSetting = m.mode_setting; presetOverride = m.preset_override;
+      (m.zeroed || []).forEach(s => zeroed[s] = true);
+      buildPresetButtons(m.presets); setPresetUI(m.preset);
+      buildSensorList(); updateModeUI();
+    } else if (m.type === 'frame') {
+      const sid = m.sensor; targetQuat[sid] = qnorm(m.quat);
+      if (!smoothQuat[sid]) smoothQuat[sid] = targetQuat[sid].slice();
+      lastSeen[sid] = performance.now(); zeroed[sid] = !!m.zeroed;
+      effMode = m.mode; modeSetting = m.mode_setting; presetOverride = m.preset_override;
+      if (m.detected) {
+        detected = m.detected;
+        detMoveDir = m.detected.move_dir || [0, 0];
+        // Auto-detect: map detector action to viewer action
+        if (autoDetect) {
+          const DET2ACT = {
+            idle: 'idle', march_in_place: 'idle',
+            walk: 'walk_fwd', run: 'run',
+            walk_back: 'walk_back',
+            strafe_left: 'strafe_l', strafe_right: 'strafe_r',
+            squat: 'squat', jump: 'jump', tilt_fwd: 'idle',
+          };
+          const mapped = DET2ACT[m.detected.action];
+          if (mapped && mapped !== currentAction) {
+            currentAction = mapped;
+            syncActionButtons(currentAction);
+            if (mapped === 'jump' && !inJump) { jumpPhase = 0; inJump = true; }
+          }
+        }
+      }
+      if (m.analytics) latestAnalytics = m.analytics;
+      if (m.gait)      latestGait      = m.gait;
+      if (typeof m.calibrating === 'boolean') { calibrating = m.calibrating; updateCalibUI(); }
+      setPresetUI(m.preset); frameCount++;
+      const now = performance.now(); rateWindow.push(now);
+      rateWindow = rateWindow.filter(x => now - x < 1000);
+    } else if (m.type === 'mode_update') {
+      effMode = m.mode; modeSetting = m.mode_setting; updateModeUI();
+    } else if (m.type === 'zeroed') {
+      zeroed[m.sensor] = true;
+    } else if (m.type === 'unzeroed') {
+      if (m.sensor === 'all') Object.keys(zeroed).forEach(k => zeroed[k] = false);
+      else zeroed[m.sensor] = false;
+    } else if (m.type === 'remap') {
+      setPresetUI(m.preset);
+    } else if (m.type === 'preset_override') {
+      presetOverride = m.enabled; updateOverrideUI();
+    } else if (['log_started','log_stopped','log_label'].includes(m.type)) {
+      handleLogMsg(m);
+    }
+  };
+}
+function setConn(on) { const el = document.getElementById('conn-label'); el.textContent = on?'CONNECTED':'DISCONNECTED'; el.className = on?'on':'off'; }
+connect();
+
+// ══════════════════════════════════════════════════ REST
+async function apiZero(s)    { await fetch('/zero'+(s?`?sensor=${s}`:''), {method:'POST'}); }
+async function apiUnzero(s)  { await fetch('/unzero'+(s?`?sensor=${s}`:''), {method:'POST'}); }
+async function apiRemap(p)   { await fetch(`/remap?preset=${p}`, {method:'POST'}); }
+async function apiMode(m)    { await fetch(`/mode?mode=${m}`, {method:'POST'}); }
+async function toggleOverride() { await fetch(`/preset_override?enabled=${!presetOverride}`, {method:'POST'}); }
+
+let logActive = false, logRows = 0, logLabel = '';
+async function toggleLog() {
+  if (!logActive) {
+    const r = await fetch('/log/start?label=still', {method:'POST'});
+    const d = await r.json(); logActive = true; logRows = 0;
+    updateLogUI(`recording → ${d.path.split(/[\\/]/).pop()}`);
+  } else {
+    const r = await fetch('/log/stop', {method:'POST'});
+    const d = await r.json(); logActive = false;
+    updateLogUI(`saved: ${d.path?d.path.split(/[\\/]/).pop():'?'} (${d.rows} rows)`);
+  }
+}
+async function setLogLabel(lbl) {
+  logLabel = lbl;
+  document.querySelectorAll('[id^="btn-label-"]').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('btn-label-'+lbl.replace('_','_'));
+  if (el) el.classList.add('active');
+  if (logActive) await fetch(`/log/label?label=${lbl}`, {method:'POST'});
+}
+function updateLogUI(msg) {
+  const b = document.getElementById('btn-log'), s = document.getElementById('log-status');
+  if (b) { b.textContent = logActive?'⏹ Stop':'⏺ Record'; b.classList.toggle('danger',logActive); b.classList.toggle('go',!logActive); }
+  if (s) s.textContent = msg||'';
+}
+function handleLogMsg(m) {
+  if (m.type==='log_started') { logActive=true; updateLogUI(`recording → ${m.path.split(/[\\/]/).pop()}`); }
+  else if (m.type==='log_stopped') { logActive=false; updateLogUI(`saved: ${m.path?m.path.split(/[\\/]/).pop():'?'} (${m.rows} rows)`); }
+  else if (m.type==='log_label') { logLabel=m.label; }
+}
+
+function buildPresetButtons(presets) {
+  const w = document.getElementById('preset-buttons'); w.innerHTML='';
+  presets.forEach(p => {
+    const b = document.createElement('button'); b.className='btn'; b.id='preset-'+p; b.textContent=p; b.style.minWidth='58px'; b.onclick=()=>apiRemap(p); w.appendChild(b);
+  });
+}
+function setPresetUI(p) {
+  document.getElementById('iv-preset').textContent = p;
+  document.querySelectorAll('#preset-buttons .btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('preset-'+p); if (el) el.classList.add('active');
+}
+function updateOverrideUI() {
+  const b = document.getElementById('btn-override');
+  if (b) { b.textContent='Preset-All: '+(presetOverride?'on':'off'); b.classList.toggle('active',presetOverride); }
+}
+function updateModeUI() {
+  document.getElementById('mode-badge').textContent = effMode.toUpperCase();
+  document.getElementById('iv-mode').textContent = effMode;
+  ['auto','pelvis_only','consumer','pro'].forEach(m => {
+    const el = document.getElementById('mode-'+m); if (el) el.classList.toggle('active', modeSetting===m);
+  });
+  buildSensorList();
+}
+function buildSensorList() {
+  const list = document.getElementById('sensor-list'); list.innerHTML='';
+  const groups = [
+    ['Core / Consumer', TIERS.consumer||[]],
+    ['Pro extras', (TIERS.pro||[]).filter(s=>!(TIERS.consumer||[]).includes(s))],
+  ];
+  groups.forEach(([title, arr]) => {
+    if (!arr.length) return;
+    const h = document.createElement('h4'); h.textContent=title; list.appendChild(h);
+    arr.forEach(sid => {
+      const row = document.createElement('div'); row.className='sensor-row';
+      row.innerHTML=`<span class="sensor-dot" id="dot-${sid}"></span><span class="sensor-name" id="name-${sid}">${sid}</span><span class="sensor-src" id="src-${sid}">—</span><button class="mini-btn" onclick="apiZero('${sid}')">zero</button>`;
+      list.appendChild(row);
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════ MAIN LOOP
+let lastTime = performance.now() / 1000;
+
+function tick() {
+  requestAnimationFrame(tick);
+  const now = performance.now();
+  const nowS = now / 1000;
+  const dt = Math.min(nowS - lastTime, 0.05);
+  lastTime = nowS;
+  t += dt;
+
+  // Smooth incoming quaternions
+  for (const sid in targetQuat) {
+    if (!smoothQuat[sid]) smoothQuat[sid] = targetQuat[sid].slice();
+    smoothQuat[sid] = slerp(smoothQuat[sid], targetQuat[sid], 0.35);
+  }
+
+  const liveReal = {}; let liveCount = 0;
+  (TIERS.pro||[]).forEach(sid => {
+    const live = (now - (lastSeen[sid]||-1e9)) < STALE_MS;
+    if (live) { liveReal[sid] = true; liveCount++; }
+  });
+
+  // Get the processed pelvis quaternion
+  const qp = smoothQuat['pelvis'] || [1,0,0,0];
+
+  // Compute the preset for current action
+  let preset = {}, yOff = 0;
+  const cadHz = detected ? (detected.cadence_hz || 0.9) : 0.9;
+
+  if      (currentAction === 'idle')      preset = actIdle(t);
+  else if (currentAction === 'walk_fwd')  preset = actWalk(t, cadHz, false);
+  else if (currentAction === 'walk_back') preset = actWalk(t, cadHz, true);
+  else if (currentAction === 'strafe_l')  preset = actStrafe(t, -1);
+  else if (currentAction === 'strafe_r')  preset = actStrafe(t, +1);
+  else if (currentAction === 'run')       preset = actRun(t);
+  else if (currentAction === 'squat')     { preset = actSquat(t); yOff = preset._yOff || 0; }
+  else if (currentAction === 'jump')      { preset = actJump(dt); yOff = preset._yOff || 0; }
+
+  // Integrate root position from detector output
+  if (currentAction !== 'idle' && currentAction !== 'squat' && currentAction !== 'jump') {
+    integrateRoot(dt, qp, detMoveDir, currentAction, detected);
+  }
+
+  // Smoothly follow the root position with the camera
+  const targetCamX = rootX, targetCamZ = rootZ;
+  camTarget.x += (targetCamX - camTarget.x) * 0.05;
+  camTarget.z += (targetCamZ - camTarget.z) * 0.05;
+
+  // Compute FK
+  const J = computeJoints(qp, rootX, yOff, rootZ, preset);
+
+  // Update joint sphere positions
+  JOINT_NAMES.forEach(n => {
+    const p = J[n], m = jointMeshes[n];
+    if (p) { m.position.set(p[0], p[1], p[2]); m.visible = true; }
+    else m.visible = false;
+  });
+
+  // Update bone cylinders
+  BONE_DEFS.forEach(([pa, ch]) => {
+    const m = boneMeshes[`${pa}-${ch}`], a = J[pa], b = J[ch];
+    if (a && b) updateBone(m, a, b);
+    else m.visible = false;
+  });
+
+  // Move the point light to follow chest
+  if (J.chest) pt.position.set(J.chest[0], J.chest[1]+0.3, J.chest[2]);
+
+  updateCam();
+
+  // Sensor panel dots
+  (TIERS.pro||[]).forEach(sid => {
+    const live = !!liveReal[sid];
+    const dot = document.getElementById('dot-'+sid);
+    const nm  = document.getElementById('name-'+sid);
+    const src = document.getElementById('src-'+sid);
+    if (dot) dot.className = 'sensor-dot'+(live?' live':'');
+    if (nm)  nm.className  = 'sensor-name'+(live?' live':'');
+    if (src) { src.textContent = live?'real':'—'; src.className = 'sensor-src'+(live?' real':''); }
+  });
+
+  // HUD updates
+  document.getElementById('iv-count').textContent = liveCount;
+  document.getElementById('iv-rate').textContent  = rateWindow.length+' Hz';
+  const ivAction = document.getElementById('iv-action');
+  if (ivAction) ivAction.textContent = currentAction.replace(/_/g,' ');
+  const detEl = document.getElementById('iv-detected');
+  if (detEl) {
+    detEl.textContent = detected.action ? detected.action.replace(/_/g,' ') : 'idle';
+    detEl.style.color = detected.in_place ? 'var(--warn)' : detected.is_squat ? '#a78bfa' : detected.is_jump ? 'var(--accent2)' : 'var(--text)';
+  }
+  document.getElementById('iv-cadence').textContent = (detected.cadence_hz||0).toFixed(1)+' Hz';
+  document.getElementById('iv-haccel').textContent  = (detected.h_accel||0).toFixed(2);
+  document.getElementById('iv-conf').textContent    = Math.round((detected.confidence||0)*100)+'%';
+
+  // Jump phase
+  const jumpEl = document.getElementById('iv-jump');
+  if (jumpEl) {
+    const jp = detected.jump_phase || 'none';
+    jumpEl.textContent = jp;
+    jumpEl.style.color = jp !== 'none' ? 'var(--accent2)' : 'var(--muted)';
+  }
+
+  // Gait state
+  const gaitEl = document.getElementById('iv-gait');
+  if (gaitEl && latestGait) {
+    gaitEl.textContent = (latestGait.phase||'—').replace(/_/g,' ').toLowerCase();
+  }
+  const symEl = document.getElementById('iv-symmetry');
+  if (symEl && latestGait) {
+    symEl.textContent = (latestGait.symmetry_index||0).toFixed(0)+'%';
+    symEl.style.color = (latestGait.symmetry_index||0) > 85 ? 'var(--accent)' : 'var(--warn)';
+  }
+
+  // Analytics scores
+  function scoreColor(v) {
+    if (v >= 75) return 'var(--accent)';
+    if (v >= 45) return 'var(--warn)';
+    return 'var(--accent2)';
+  }
+  if (latestAnalytics) {
+    const an = latestAnalytics;
+    const stabEl = document.getElementById('iv-stab');
+    const balEl  = document.getElementById('iv-bal');
+    const fatEl  = document.getElementById('iv-fat');
+    const expEl  = document.getElementById('iv-exp');
+    const mobEl  = document.getElementById('iv-mob');
+    if (stabEl) { stabEl.textContent = an.stability_score.toFixed(0); stabEl.style.color = scoreColor(an.stability_score); }
+    if (balEl)  { balEl.textContent  = an.balance_score.toFixed(0);   balEl.style.color  = scoreColor(an.balance_score); }
+    if (fatEl)  { fatEl.textContent  = an.fatigue_score.toFixed(0);   fatEl.style.color  = scoreColor(100 - an.fatigue_score); }
+    if (expEl)  { expEl.textContent  = an.explosive_score.toFixed(0); expEl.style.color  = scoreColor(an.explosive_score); }
+    if (mobEl)  { mobEl.textContent  = an.mobility_score.toFixed(0);  mobEl.style.color  = scoreColor(an.mobility_score); }
+  }
+
+  const e = quatToEuler(qp);
+  document.getElementById('iv-yaw').textContent   = e.yaw.toFixed(0)+'°';
+  document.getElementById('iv-pitch').textContent = e.pitch.toFixed(0)+'°';
+  document.getElementById('iv-root').textContent  = rootX.toFixed(2)+' / '+rootZ.toFixed(2);
+
+  renderer.render(scene, camera);
+}
+tick();
+
+// ══════════════════════════════════════════════════ ACTION UI
+function syncActionButtons(a) {
+  document.querySelectorAll('#controls .ctrl-row .btn[id^="act-"]').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('act-'+a); if (el) el.classList.add('active');
+}
+function setAction(a) {
+  if (autoDetect) { autoDetect = false; updateAutoUI(); }
+  currentAction = a;
+  syncActionButtons(a);
+  // Reset root position when stopping locomotion so the avatar doesn't
+  // drift off into the distance while idle
+  if (a === 'idle' || a === 'squat') { rootX = 0; rootZ = 0; }
+  if (a === 'jump' && !inJump) { jumpPhase = 0; inJump = true; }
+}
+function toggleAuto() { autoDetect = !autoDetect; updateAutoUI(); }
+function updateAutoUI() {
+  const b = document.getElementById('btn-auto');
+  if (b) { b.textContent='Auto-Detect: '+(autoDetect?'on':'off'); b.classList.toggle('active',autoDetect); }
+}
+async function apiCalib(on) { await fetch(`/detect/calibrate?enabled=${on}`, {method:'POST'}); }
+function toggleCalib() { apiCalib(!calibrating); }
+function updateCalibUI() {
+  const b = document.getElementById('btn-calib');
+  if (b) { b.textContent = calibrating?'Calibrating… (stop)':'Calib Floor'; b.classList.toggle('go',calibrating); }
+}
+async function onTravelSlider(v) {
+  document.getElementById('travel-val').textContent = (+v).toFixed(1);
+  await fetch(`/detect/params?travel_thresh=${v}`, {method:'POST'});
+}
+async function apiDetectReset() { await fetch('/detect/reset', {method:'POST'}); }
+updateOverrideUI(); updateAutoUI();
+
+// ══════════════════════════════════════════════════ COUNTDOWN + TIMED TESTS
+const COUNTDOWN_S = 3, RECORD_S = 5;
+const TEST_SEQUENCE = ['still','turn_left','turn_right','walk_fwd','tilt_fwd','squat','jump','strafe_l','strafe_r'];
+const TEST_INSTRUCTIONS = {
+  still:      'Stand still, facing forward',
+  turn_left:  'Slowly turn LEFT and hold',
+  turn_right: 'Slowly turn RIGHT and hold',
+  walk_fwd:   'Walk forward naturally',
+  tilt_fwd:   'Tilt body / bow forward',
+  squat:      'Bend knees into a squat and hold',
+  jump:       'Jump repeatedly — small hops OK',
+  strafe_l:   'Step sideways to the LEFT (shuffle)',
+  strafe_r:   'Step sideways to the RIGHT (shuffle)',
+};
+let _testAbort = false;
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function startTest(label, keepLogOpen = false) {
+  _testAbort = false;
+  const ov = document.getElementById('test-overlay');
+  const ovL = document.getElementById('ov-label');
+  const ovB = document.getElementById('ov-big');
+  const ovS = document.getElementById('ov-sub');
+  const ovBarWrap = document.getElementById('ov-bar-wrap');
+  const ovBar = document.getElementById('ov-bar');
+
+  ovBarWrap.style.display = 'none';
+  ovS.textContent = TEST_INSTRUCTIONS[label] || label.replace(/_/g,' ');
+  ov.classList.add('visible');
+
+  for (let i = COUNTDOWN_S; i >= 1; i--) {
+    if (_testAbort) break;
+    ovL.textContent = 'GET READY · '+label.replace(/_/g,' ').toUpperCase();
+    ovB.style.color = 'var(--accent)';
+    ovB.style.textShadow = '0 0 60px var(--accent)';
+    ovB.textContent = i;
+    ovB.classList.add('pulse');
+    await sleep(120); ovB.classList.remove('pulse'); await sleep(880);
+  }
+  if (_testAbort) { hideOverlay(); return; }
+
+  if (!logActive) {
+    const r = await fetch(`/log/start?label=${label}`, {method:'POST'});
+    const d = await r.json(); logActive=true; logRows=0;
+    updateLogUI(`recording → ${d.path.split(/[\\/]/).pop()}`);
+  } else {
+    await fetch(`/log/label?label=${label}`, {method:'POST'}); logLabel=label;
+  }
+
+  ovL.textContent = label.replace(/_/g,' ').toUpperCase();
+  ovB.textContent = 'GO'; ovB.style.color='var(--warn)'; ovB.style.textShadow='0 0 60px var(--warn)';
+  ovS.textContent = TEST_INSTRUCTIONS[label]||'';
+  ovBarWrap.style.display = 'block';
+  ovBar.style.transition = 'none'; ovBar.style.transform = 'scaleX(1)';
+  ovBar.getBoundingClientRect();
+  ovBar.style.transition = `transform ${RECORD_S}s linear`; ovBar.style.transform = 'scaleX(0)';
+
+  const start = performance.now();
+  const tickTimer = setInterval(() => {
+    if (_testAbort) { clearInterval(tickTimer); return; }
+    const remain = Math.max(0, RECORD_S - (performance.now()-start)/1000);
+    ovB.textContent = remain > 0.05 ? Math.ceil(remain) : '✓';
+    ovB.style.color = remain > 1 ? 'var(--warn)' : 'var(--accent2)';
+    ovB.style.textShadow = `0 0 60px ${remain>1?'var(--warn)':'var(--accent2)'}`;
+  }, 100);
+
+  await sleep(RECORD_S * 1000);
+  clearInterval(tickTimer);
+
+  if (!_testAbort) {
+    if (!keepLogOpen) {
+      const r = await fetch('/log/stop', {method:'POST'});
+      const d = await r.json(); logActive=false;
+      updateLogUI(`saved: ${d.path?d.path.split(/[\\/]/).pop():'?'} (${d.rows} rows)`);
+    } else {
+      await fetch('/log/label?label=between', {method:'POST'}); logLabel='between';
+    }
+  }
+  hideOverlay();
+}
+
+function hideOverlay() {
+  document.getElementById('test-overlay').classList.remove('visible');
+  document.getElementById('ov-bar-wrap').style.display = 'none';
+  const bar = document.getElementById('ov-bar');
+  bar.style.transition = 'none'; bar.style.transform = 'scaleX(1)';
+}
+function skipTest() { _testAbort=true; setLogLabel('still'); hideOverlay(); }
+
+async function runAllTests() {
+  _testAbort = false;
+  const r = await fetch('/log/start?label=between', {method:'POST'});
+  const d = await r.json(); logActive=true; logRows=0;
+  updateLogUI(`recording → ${d.path.split(/[\\/]/).pop()}`);
+  for (const lbl of TEST_SEQUENCE) {
+    if (_testAbort) break;
+    await startTest(lbl, true);
+    if (_testAbort) break;
+    await sleep(800);
+  }
+  if (logActive) {
+    const r2 = await fetch('/log/stop', {method:'POST'});
+    const d2 = await r2.json(); logActive=false;
+    updateLogUI(`saved: ${d2.path?d2.path.split(/[\\/]/).pop():'?'} (${d2.rows} rows)`);
+  }
+}
+
+// ══════════════════════════════════════════════════ KEYBOARD
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k==='w') setAction('walk_fwd'); if (k==='s') setAction('walk_back');
+  if (k==='a') setAction('strafe_l'); if (k==='d') setAction('strafe_r');
+  if (k==='r') setAction('run'); if (k==='j') setAction('jump'); if (k==='q') setAction('squat');
+  if (k===' ') { e.preventDefault(); setAction('idle'); }
+  if (k==='c') resetCam();
+  if (k==='1') startTest('still');
+  if (k==='2') startTest('turn_left');
+  if (k==='3') startTest('turn_right');
+  if (k==='4') startTest('walk_fwd');
+  if (k==='5') startTest('tilt_fwd');
+  if (k==='6') startTest('squat');
+  if (k==='7') startTest('jump');
+  if (k==='8') startTest('strafe_l');
+  if (k==='9') startTest('strafe_r');
+  if (e.key==='Escape') skipTest();
+});
+window.addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  if (['w','s','a','d','r'].includes(k) && !['jump','squat'].includes(currentAction)) setAction('idle');
+});
+</script>
+</body>
+</html>

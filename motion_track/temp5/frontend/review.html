@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2P — Session Review</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0f1117; --surface:#181c27; --border:rgba(255,255,255,0.08);
+    --text:#e8e6de; --muted:#888680; --accent:#4f9cf9;
+    --green:#3ecf8e; --amber:#f5a623; --red:#e74c3c; --radius:10px; --gap:14px;
+  }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; font-size:14px; min-height:100vh; }
+
+  header { display:flex; align-items:center; justify-content:space-between; padding:12px 24px; border-bottom:1px solid var(--border); background:var(--surface); gap:12px; flex-wrap:wrap; }
+  header h1 { font-size:16px; font-weight:600; }
+  .nav-links { display:flex; align-items:center; gap:4px; }
+  .nav-link { font-size:12px; padding:5px 11px; border-radius:6px; border:1px solid transparent; color:var(--muted); text-decoration:none; transition:all .15s; white-space:nowrap; }
+  .nav-link:hover { background:rgba(255,255,255,.06); color:var(--text); }
+  .nav-link.active { background:rgba(79,156,249,.12); border-color:rgba(79,156,249,.3); color:var(--accent); }
+  .nav-sep { width:1px; height:16px; background:var(--border); margin:0 4px; }
+
+  .shell { display:flex; height:calc(100vh - 49px); overflow:hidden; }
+
+  #sidebar { width:240px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+  #sidebar-header { padding:12px 14px 8px; flex-shrink:0; }
+  #sidebar-title { font-size:11px; font-weight:600; letter-spacing:.8px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+
+  #cal-trigger { display:flex; align-items:center; justify-content:space-between; margin:0 8px 8px; padding:7px 10px; border-radius:7px; border:1px solid var(--border); background:rgba(255,255,255,.03); cursor:pointer; transition:all .15s; flex-shrink:0; user-select:none; }
+  #cal-trigger:hover { background:rgba(255,255,255,.06); border-color:rgba(79,156,249,.3); }
+  #cal-trigger.open { border-color:rgba(79,156,249,.4); background:rgba(79,156,249,.06); }
+  #cal-trigger-date { font-size:12px; font-weight:600; color:var(--text); }
+  #cal-trigger-icon { font-size:11px; color:var(--muted); transition:transform .2s; }
+  #cal-trigger.open #cal-trigger-icon { transform:rotate(180deg); color:var(--accent); }
+
+  #cal-wrap {
+    overflow:hidden; max-height:0; opacity:0;
+    transition: max-height .28s cubic-bezier(.4,0,.2,1), opacity .2s ease, padding .28s;
+    flex-shrink:0; border-bottom:0px solid var(--border); padding:0 8px;
+  }
+  #cal-wrap.open { max-height:260px; opacity:1; padding:0 8px 10px; border-bottom:1px solid var(--border); }
+  #cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; padding-top:4px; }
+  #cal-month-label { font-size:12px; font-weight:600; color:var(--text); }
+  .cal-nav-btn { background:none; border:1px solid var(--border); color:var(--muted); border-radius:5px; width:22px; height:22px; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; transition:all .15s; padding:0; }
+  .cal-nav-btn:hover { background:rgba(255,255,255,.06); color:var(--text); }
+  #cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+  .cal-dow { text-align:center; font-size:9px; color:var(--muted); padding:2px 0 4px; font-weight:600; letter-spacing:.5px; }
+  .cal-day { text-align:center; font-size:11px; padding:4px 2px; border-radius:5px; cursor:pointer; color:var(--muted); transition:all .12s; position:relative; line-height:1; }
+  .cal-day:hover { background:rgba(255,255,255,.06); color:var(--text); }
+  .cal-day.has-sessions { color:var(--text); }
+  .cal-day.has-sessions::after { content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:var(--accent); }
+  .cal-day.selected { background:var(--accent); color:#fff !important; font-weight:600; }
+  .cal-day.selected::after { background:#fff; }
+  .cal-day.today:not(.selected) { color:var(--accent); font-weight:600; }
+  .cal-day.other-month { opacity:.3; }
+  .cal-day.empty { cursor:default; }
+
+  #cal-date-label { font-size:11px; font-weight:600; color:var(--muted); padding:8px 14px 4px; flex-shrink:0; letter-spacing:.5px; text-transform:uppercase; }
+  #sidebar-list { flex:1; overflow-y:auto; padding:0 6px 8px; display:flex; flex-direction:column; gap:3px; }
+  #sidebar-list::-webkit-scrollbar { width:4px; }
+  #sidebar-list::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:2px; }
+  .sb-item { padding:9px 10px; border-radius:7px; cursor:pointer; transition:background .12s; border:1px solid transparent; }
+  .sb-item:hover { background:rgba(255,255,255,.05); }
+  .sb-item.active { background:rgba(79,156,249,.1); border-color:rgba(79,156,249,.3); }
+  .sb-name { font-size:12px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sb-meta { font-size:10px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sb-pills { display:flex; gap:4px; margin-top:4px; flex-wrap:wrap; }
+  .sb-pill { font-size:9px; padding:1px 6px; border-radius:20px; background:rgba(255,255,255,.06); color:var(--muted); }
+  .sb-pill.ok   { background:rgba(62,207,142,.12); color:var(--green); }
+  .sb-pill.warn { background:rgba(245,166,35,.12);  color:var(--amber); }
+  .sb-pill.bad  { background:rgba(231,76,60,.12);   color:var(--red); }
+  .sb-empty { padding:20px 10px; text-align:center; font-size:12px; color:var(--muted); font-style:italic; }
+
+  #content { flex:1; overflow-y:auto; padding:20px var(--gap); display:flex; flex-direction:column; gap:var(--gap); }
+  #content::-webkit-scrollbar { width:5px; }
+  #content::-webkit-scrollbar-thumb { background:rgba(255,255,255,.08); border-radius:3px; }
+
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px; }
+  .card-title { font-size:11px; font-weight:600; letter-spacing:.8px; text-transform:uppercase; color:var(--muted); margin-bottom:14px; }
+
+  #content-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:10px; color:var(--muted); font-size:13px; text-align:center; padding:60px 20px; min-height:300px; }
+
+  #skel-wrap { position:relative; width:100%; height:300px; border-radius:8px; overflow:hidden; background:#0d111a; }
+  #skel-canvas { display:block; width:100%; height:100%; }
+  #skel-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; background:rgba(13,17,26,0.8); font-size:12px; color:var(--muted); transition:opacity .4s; }
+  #skel-overlay.hidden { opacity:0; pointer-events:none; }
+  /* Root position HUD */
+  #skel-pos-hud {
+    position:absolute; top:8px; left:8px; font-size:10px; color:rgba(136,134,128,0.7);
+    pointer-events:none; z-index:2; line-height:1.7; font-variant-numeric:tabular-nums;
+    background:rgba(13,17,26,0.55); padding:3px 6px; border-radius:4px;
+  }
+  .spin { width:26px; height:26px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  #pb-bar { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+  #pb-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  #pb-scrubber { flex:1; min-width:100px; accent-color:var(--accent); cursor:pointer; }
+  #pb-time { font-size:11px; color:var(--muted); min-width:90px; text-align:right; white-space:nowrap; }
+  .pb-btn { padding:5px 12px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--text); font-size:12px; cursor:pointer; transition:background .15s; }
+  .pb-btn:hover { background:rgba(255,255,255,.07); }
+  .pb-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(79,156,249,.1); }
+  .pb-btn:disabled { opacity:.4; cursor:not-allowed; }
+  .pb-speed { display:flex; gap:4px; }
+  .speed-btn { padding:3px 7px; font-size:10px; border-radius:5px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all .15s; }
+  .speed-btn.on { background:rgba(79,156,249,.12); border-color:var(--accent); color:var(--accent); }
+
+  .metrics-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .metric-cell { background:rgba(255,255,255,.03); border-radius:8px; padding:12px 14px; }
+  .metric-name  { font-size:11px; color:var(--muted); margin-bottom:4px; }
+  .metric-value { font-size:22px; font-weight:700; line-height:1; }
+  .metric-grade { font-size:11px; margin-top:4px; }
+  .grade-excellent,.grade-smooth,.grade-good { color:var(--green); }
+  .grade-moderate { color:var(--amber); }
+  .grade-poor,.grade-rough { color:var(--red); }
+
+  .tier-pill { display:inline-block; font-size:12px; font-weight:600; padding:3px 10px; border-radius:20px; margin-top:6px; }
+  .tier-Peak        { background:rgba(62,207,142,.15);  color:#3ecf8e; }
+  .tier-Fresh       { background:rgba(62,207,142,.10);  color:#3ecf8e; }
+  .tier-Ready       { background:rgba(79,156,249,.12);  color:#4f9cf9; }
+  .tier-Loaded      { background:rgba(245,166,35,.12);  color:#f5a623; }
+  .tier-Strained    { background:rgba(245,166,35,.18);  color:#f5a623; }
+  .tier-Fatigued    { background:rgba(231,76,60,.12);   color:#e74c3c; }
+  .tier-Overreached { background:rgba(231,76,60,.18);   color:#e74c3c; }
+  .tier-Critical    { background:rgba(231,76,60,.25);   color:#ff2f2f; }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:var(--muted); font-weight:500; padding:6px 10px; border-bottom:1px solid var(--border); }
+  td { padding:7px 10px; border-bottom:1px solid rgba(255,255,255,.04); }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:rgba(255,255,255,.03); }
+
+  #line-graph-canvas { width:100%; height:200px; display:block; border-radius:6px; cursor:crosshair; }
+  .graph-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .metric-toggle { display:flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all .15s; user-select:none; }
+  .metric-toggle.on { color:var(--text); background:rgba(255,255,255,.06); }
+  .mt-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+  #graph-tooltip {
+    position:fixed; pointer-events:none; background:rgba(20,24,36,0.95);
+    border:1px solid rgba(255,255,255,0.12); border-radius:8px;
+    padding:8px 12px; font-size:12px; color:var(--text);
+    display:none; z-index:999; line-height:1.6; min-width:130px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.5);
+  }
+  #graph-tooltip .tt-time { font-size:10px; color:var(--muted); margin-bottom:4px; }
+  #graph-tooltip .tt-row { display:flex; align-items:center; gap:6px; }
+  #graph-tooltip .tt-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+
+  canvas#fatigue-chart { width:100%; height:160px; display:block; }
+
+  .report-box { background:rgba(79,156,249,.05); border:1px solid rgba(79,156,249,.2); border-radius:var(--radius); padding:18px; font-size:14px; line-height:1.7; color:var(--text); min-height:120px; white-space:pre-wrap; word-break:break-word; }
+  .report-box.loading { color:var(--muted); font-style:italic; }
+
+  .btn { padding:9px 18px; border-radius:var(--radius); border:1px solid var(--border); background:transparent; color:var(--text); font-size:13px; font-weight:500; cursor:pointer; transition:background .15s; }
+  .btn:hover { background:rgba(255,255,255,.06); }
+  .btn.primary { background:var(--accent); color:#fff; border-color:transparent; }
+  .btn.primary:hover { filter:brightness(1.1); }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+
+  @media (max-width:760px) { .row { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>R2P · Session Review</h1>
+  <nav class="nav-links">
+    <a href="/calibrate" class="nav-link">Calibrate</a>
+    <a href="/select"    class="nav-link">Select test</a>
+    <a href="/"          class="nav-link">Live</a>
+    <a href="/review"    class="nav-link active">Review</a>
+    <div class="nav-sep"></div>
+    <a href="/settings"  class="nav-link">⚙ Settings</a>
+  </nav>
+</header>
+
+<div id="graph-tooltip">
+  <div class="tt-time" id="tt-time"></div>
+  <div id="tt-rows"></div>
+</div>
+
+<div class="shell">
+
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div id="sidebar-title">Sessions</div>
+    </div>
+
+    <div id="cal-trigger" onclick="toggleCalendar()">
+      <span id="cal-trigger-date">—</span>
+      <span id="cal-trigger-icon">▾</span>
+    </div>
+
+    <div id="cal-wrap">
+      <div id="cal-nav">
+        <button class="cal-nav-btn" onclick="calShiftMonth(-1)">&#8249;</button>
+        <span id="cal-month-label"></span>
+        <button class="cal-nav-btn" onclick="calShiftMonth(1)">&#8250;</button>
+      </div>
+      <div id="cal-grid"></div>
+    </div>
+
+    <div id="cal-date-label"></div>
+    <div id="sidebar-list"><div class="sb-empty">Loading&hellip;</div></div>
+  </div>
+
+  <div id="content">
+    <div id="content-empty">
+      <div style="font-size:32px">📂</div>
+      <div style="font-weight:500">Select a session</div>
+      <div>Choose a session from the list on the left.</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════
+   BONE / JOINT DEFS
+══════════════════════════════════════════════════════ */
+const BONE_DEFS = [
+  ['pelvis','lumbar','c'],['lumbar','chest','c'],['chest','neck','c'],
+  ['neck','head','c'],['head','head_top','c'],
+  ['pelvis','hip_l','l'],['hip_l','knee_l','l'],['knee_l','ankle_l','l'],['ankle_l','foot_l','l'],
+  ['pelvis','hip_r','r'],['hip_r','knee_r','r'],['knee_r','ankle_r','r'],['ankle_r','foot_r','r'],
+  ['chest','shoulder_l','l'],['shoulder_l','elbow_l','l'],['elbow_l','wrist_l','l'],['wrist_l','hand_l','l'],
+  ['chest','shoulder_r','r'],['shoulder_r','elbow_r','r'],['elbow_r','wrist_r','r'],['wrist_r','hand_r','r'],
+  ['shoulder_l','shoulder_r','c'],['hip_l','hip_r','c'],
+];
+const JOINT_NAMES  = [...new Set(BONE_DEFS.flatMap(b => [b[0], b[1]]))];
+const BONE_COLORS  = { c:0x38bdf8, l:0x22c55e, r:0xff4d6d };
+const JOINT_COLORS = { c:0x00e5ff, l:0x22c55e, r:0xff4d6d };
+
+/* ══════════════════════════════════════════════════════
+   LINE GRAPH CONFIG
+══════════════════════════════════════════════════════ */
+const GRAPH_METRICS = {
+  stability: { label:'Stability %', color:'#4f9cf9', min:0, max:100, key:m=>m.sway_stability },
+  knee_l:    { label:'Knee L°',     color:'#22c55e', min:0, max:130, key:m=>m.knee_l_deg },
+  knee_r:    { label:'Knee R°',     color:'#ff4d6d', min:0, max:130, key:m=>m.knee_r_deg },
+  asym:      { label:'Asymmetry°',  color:'#f5a623', min:0, max:30,  key:m=>m.knee_asymmetry_deg },
+  sway:      { label:'Sway vel',    color:'#3ecf8e', min:0, max:0.5, key:m=>m.sway_velocity },
+};
+const graphEnabled = { stability:true, knee_l:true, knee_r:true, asym:true, sway:true };
+
+/* ══════════════════════════════════════════════════════
+   TIER CONFIG
+══════════════════════════════════════════════════════ */
+const TIER_STYLES = {
+  Peak:        ['rgba(62,207,142,.15)',  '#3ecf8e'],
+  Fresh:       ['rgba(62,207,142,.10)',  '#3ecf8e'],
+  Ready:       ['rgba(79,156,249,.12)',  '#4f9cf9'],
+  Loaded:      ['rgba(245,166,35,.12)',  '#f5a623'],
+  Strained:    ['rgba(245,166,35,.18)',  '#f5a623'],
+  Fatigued:    ['rgba(231,76,60,.12)',   '#e74c3c'],
+  Overreached: ['rgba(231,76,60,.18)',   '#e74c3c'],
+  Critical:    ['rgba(231,76,60,.25)',   '#ff2f2f'],
+};
+
+/* ══════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════ */
+let activeSessionId = new URLSearchParams(location.search).get('sid') || '';
+let sessionFrames = [], summaryData = null, sessionFPS = 50;
+let tsMode = 'frame', t0Ms = 0, tEndMs = 0;
+
+// Three.js
+let THREE_renderer, THREE_scene, THREE_camera;
+let jointMeshes = {}, boneMeshes = {};
+let THREE_grid = null;
+
+// Camera orbit — user can drag
+let skelSpherical = { theta:0.3, phi:1.05, r:2.6 };
+
+// skelTarget smoothly follows the pelvis during playback
+let skelTarget, skelInited = false;
+let isDragging = false, prevMouse = { x:0, y:0 };
+
+// Playback
+let replayTimer = null, playheadFrame = 0, isPlaying = false;
+let playbackSpeed = 1;
+let currentJoints = null;
+let isGraphScrubbing = false;
+
+/* ══════════════════════════════════════════════════════
+   TIME AXIS HELPERS
+══════════════════════════════════════════════════════ */
+function resolveTimeAxis(frames) {
+  if (!frames.length) { tsMode='frame'; t0Ms=0; tEndMs=0; return; }
+  const first = frames[0].ts, last = frames[frames.length-1].ts;
+  if (first == null || last == null || !isFinite(first) || !isFinite(last)) {
+    tsMode='frame'; t0Ms=0; tEndMs=(frames.length-1)*(1000/sessionFPS); return;
+  }
+  const span = last - first;
+  if (span <= 0) { tsMode='frame'; t0Ms=0; tEndMs=(frames.length-1)*(1000/sessionFPS); return; }
+  if (span > 1e9)                          { tsMode='epoch_ms';    t0Ms=0; tEndMs=span; }
+  else if (span > 1e6)                     { tsMode='epoch_sec';   t0Ms=0; tEndMs=span*1000; }
+  else if (span < frames.length * 0.5)     { tsMode='elapsed_sec'; t0Ms=0; tEndMs=span*1000; }
+  else                                     { tsMode='elapsed_ms';  t0Ms=0; tEndMs=span; }
+}
+
+function tsToElapsedMs(ts, frameIdx) {
+  if (tsMode==='frame' || ts==null) return frameIdx*(1000/sessionFPS);
+  const rawFirst = sessionFrames[0].ts, raw = ts - rawFirst;
+  if (tsMode==='epoch_ms'  || tsMode==='elapsed_ms')  return raw;
+  if (tsMode==='epoch_sec' || tsMode==='elapsed_sec') return raw*1000;
+  return frameIdx*(1000/sessionFPS);
+}
+
+/* ══════════════════════════════════════════════════════
+   SESSION PICKER + CALENDAR
+══════════════════════════════════════════════════════ */
+let allSessions = [], calYear = 0, calMonth = 0, selectedDate = '';
+
+function getSessionStamp(sid) {
+  try { const raw = localStorage.getItem('r2p_session_'+sid); return raw ? JSON.parse(raw) : null; }
+  catch(_) { return null; }
+}
+function sessionDateKey(s) {
+  const sid = s.session_id||'', raw = s.date||s.created_at||s.start_time||'';
+  if (raw) { const d=new Date(raw); if (!isNaN(d)) return localDateStr(d); }
+  const stamp = getSessionStamp(sid);
+  if (stamp&&stamp.started_at) { const d=new Date(stamp.started_at); if (!isNaN(d)) return localDateStr(d); }
+  const m1=sid.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m1) return m1[1]+'-'+m1[2]+'-'+m1[3];
+  const m2=sid.match(/^(\d{4})(\d{2})(\d{2})/);   if (m2) return m2[1]+'-'+m2[2]+'-'+m2[3];
+  return '';
+}
+function sessionTimeStr(s) {
+  const sid=s.session_id||'', raw=s.created_at||s.start_time||s.date||'';
+  if (raw) { const d=new Date(raw); if (!isNaN(d)) return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false}); }
+  const stamp=getSessionStamp(sid);
+  if (stamp&&stamp.started_at) { const d=new Date(stamp.started_at); if (!isNaN(d)) return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false}); }
+  return '';
+}
+function localDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function loadSessionList() {
+  let sessions = [];
+  try {
+    const res=await fetch('/profile/history'); const data=await res.json(); sessions=data.history||[];
+  } catch(_) {
+    try { const res=await fetch('/sessions'); const data=await res.json(); sessions=data.sessions||[]; }
+    catch(e) { console.warn('Could not load session list:',e); }
+  }
+  allSessions = sessions;
+  const today = new Date();
+  calYear=today.getFullYear(); calMonth=today.getMonth(); selectedDate=localDateStr(today);
+  renderCalendar(); renderSessionsForDate(selectedDate);
+  if (!sessionsForDate(selectedDate).length && allSessions.length) {
+    const dateable=allSessions.map(s=>sessionDateKey(s)).filter(Boolean);
+    if (dateable.length) {
+      const latest=dateable.sort().reverse()[0]; selectedDate=latest;
+      const d=new Date(latest+'T00:00:00'); calYear=d.getFullYear(); calMonth=d.getMonth();
+      renderCalendar(); renderSessionsForDate(selectedDate);
+    }
+  }
+}
+function sessionsForDate(dateKey) {
+  return allSessions.filter(s=>sessionDateKey(s)===dateKey)
+    .sort((a,b)=>{
+      const ta=new Date(a.created_at||a.start_time||a.date||0).getTime();
+      const tb=new Date(b.created_at||b.start_time||b.date||0).getTime();
+      return tb-ta;
+    });
+}
+function renderCalendar() {
+  const label=document.getElementById('cal-month-label'), grid=document.getElementById('cal-grid');
+  if (!label||!grid) return;
+  label.textContent=new Date(calYear,calMonth,1).toLocaleString([],{month:'short',year:'numeric'});
+  const triggerLbl=document.getElementById('cal-trigger-date');
+  if (triggerLbl&&selectedDate) {
+    const sd=new Date(selectedDate+'T00:00:00'), todayKey=localDateStr(new Date());
+    triggerLbl.textContent=selectedDate===todayKey
+      ? 'Today · '+sd.toLocaleDateString([],{month:'short',day:'numeric'})
+      : isNaN(sd)?selectedDate:sd.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});
+  }
+  const hasSessions=new Set(allSessions.map(s=>sessionDateKey(s)).filter(Boolean));
+  const todayKey=localDateStr(new Date()), DOW_LABELS=['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const daysInMon=new Date(calYear,calMonth+1,0).getDate();
+  const daysInPrev=new Date(calYear,calMonth,0).getDate();
+  let html=DOW_LABELS.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for (let i=0;i<firstDay;i++) {
+    const day=daysInPrev-firstDay+1+i;
+    const key=localDateStr(new Date(calYear,calMonth-1,day));
+    const cls=['cal-day','other-month',hasSessions.has(key)?'has-sessions':''].filter(Boolean).join(' ');
+    html+=`<div class="${cls}" onclick="selectCalDate('${key}')">${day}</div>`;
+  }
+  for (let day=1;day<=daysInMon;day++) {
+    const key=localDateStr(new Date(calYear,calMonth,day));
+    const cls=['cal-day',hasSessions.has(key)?'has-sessions':'',key===selectedDate?'selected':'',key===todayKey&&key!==selectedDate?'today':''].filter(Boolean).join(' ');
+    html+=`<div class="${cls}" onclick="selectCalDate('${key}')">${day}</div>`;
+  }
+  const totalCells=firstDay+daysInMon, trailing=totalCells%7===0?0:7-(totalCells%7);
+  for (let i=1;i<=trailing;i++) {
+    const key=localDateStr(new Date(calYear,calMonth+1,i));
+    const cls=['cal-day','other-month',hasSessions.has(key)?'has-sessions':''].filter(Boolean).join(' ');
+    html+=`<div class="${cls}" onclick="selectCalDate('${key}')">${i}</div>`;
+  }
+  grid.innerHTML=html;
+}
+function calShiftMonth(delta) {
+  calMonth+=delta;
+  if (calMonth>11){calMonth=0;calYear++;} if (calMonth<0){calMonth=11;calYear--;}
+  renderCalendar();
+}
+function toggleCalendar() {
+  const wrap=document.getElementById('cal-wrap'), trigger=document.getElementById('cal-trigger');
+  if (!wrap||!trigger) return;
+  const isOpen=wrap.classList.toggle('open'); trigger.classList.toggle('open',isOpen);
+}
+function selectCalDate(dateKey) {
+  selectedDate=dateKey;
+  const d=new Date(dateKey+'T00:00:00');
+  if (!isNaN(d)){calYear=d.getFullYear();calMonth=d.getMonth();}
+  renderCalendar(); renderSessionsForDate(dateKey);
+  const wrap=document.getElementById('cal-wrap'), trigger=document.getElementById('cal-trigger');
+  if (wrap) wrap.classList.remove('open'); if (trigger) trigger.classList.remove('open');
+}
+function renderSessionsForDate(dateKey) {
+  const lbl=document.getElementById('cal-date-label');
+  if (lbl) {
+    const d=new Date(dateKey+'T00:00:00'), todayKey=localDateStr(new Date());
+    lbl.textContent=dateKey===todayKey?'Today':isNaN(d)?dateKey:d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});
+  }
+  renderSessionList(sessionsForDate(dateKey));
+}
+function renderSessionList(sessions) {
+  const list=document.getElementById('sidebar-list'); if (!list) return;
+  if (!sessions.length){list.innerHTML='<div class="sb-empty">No sessions on this day.</div>';return;}
+  list.innerHTML=sessions.map(s=>{
+    const sid=s.session_id||'', testId=(s.test_id||'session').replaceAll('_',' ');
+    const stab=s.sway?.stability_score, reps=s.total_reps!=null?s.total_reps+' reps':'';
+    const dur=s.duration_s?s.duration_s+'s':'', timeStr=sessionTimeStr(s);
+    const stabPill=stab!=null?`<span class="sb-pill ${stab>=80?'ok':stab>=60?'warn':'bad'}">${stab}%</span>`:'';
+    const repPill=reps?`<span class="sb-pill">${reps}</span>`:'';
+    const durPill=dur?`<span class="sb-pill">${dur}</span>`:'';
+    const isActive=sid===activeSessionId;
+    return `<div class="sb-item${isActive?' active':''}" data-sid="${sid}" onclick="loadSession('${sid}')">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
+        <div class="sb-name">${testId}</div>
+        ${timeStr?`<span style="font-size:10px;color:var(--accent);font-variant-numeric:tabular-nums;flex-shrink:0">${timeStr}</span>`:''}
+      </div>
+      <div class="sb-meta">${sid.slice(0,12)}&hellip;</div>
+      <div class="sb-pills">${stabPill}${repPill}${durPill}</div>
+    </div>`;
+  }).join('');
+  const activeEl=list.querySelector('.sb-item.active');
+  if (activeEl) activeEl.scrollIntoView({block:'nearest'});
+}
+
+/* ══════════════════════════════════════════════════════
+   LOAD SESSION
+══════════════════════════════════════════════════════ */
+async function loadSession(sid) {
+  if (!sid) return;
+  activeSessionId=sid;
+  history.replaceState(null,'','?sid='+sid);
+  document.querySelectorAll('.sb-item').forEach(el=>el.classList.toggle('active',el.dataset.sid===sid));
+  renderCalendar();
+
+  const content=document.getElementById('content');
+  if (content) content.innerHTML='';
+  buildUI();
+
+  stopPlay();
+  sessionFrames=[]; summaryData=null; sessionFPS=50;
+  tsMode='frame'; t0Ms=0; tEndMs=0;
+  currentJoints=null; playheadFrame=0; playbackSpeed=1;
+  jointMeshes={}; boneMeshes={};
+  if (THREE_renderer){THREE_renderer.dispose();THREE_renderer=null;skelInited=false;}
+
+  // ── Summary ──
+  try {
+    const res=await fetch(`/session/${sid}/summary`); summaryData=await res.json(); renderSummary(summaryData);
+  } catch(e){console.warn('summary fetch failed:',e);}
+
+  // ── Frame data ──
+  try {
+    const res=await fetch(`/outputs/${sid}_session.json`); const data=await res.json();
+    sessionFrames=(data.frames||[]).filter(f=>f.joints&&Object.keys(f.joints).length>0);
+    if (sessionFrames.length>0) {
+      if (sessionFrames.length>1) {
+        const first=sessionFrames[0].ts, last=sessionFrames[sessionFrames.length-1].ts;
+        if (first!=null&&last!=null&&isFinite(first)&&isFinite(last)) {
+          const rawSpan=last-first;
+          if (rawSpan>0) {
+            const impliedFPS=rawSpan<sessionFrames.length*2
+              ?(sessionFrames.length-1)/rawSpan:(sessionFrames.length-1)/(rawSpan/1000);
+            if (impliedFPS>0&&impliedFPS<500) sessionFPS=Math.round(impliedFPS);
+          }
+        }
+      }
+      resolveTimeAxis(sessionFrames);
+      document.getElementById('skel-overlay').classList.add('hidden');
+      const scrub=document.getElementById('pb-scrubber');
+      scrub.max=sessionFrames.length-1; scrub.value=0; scrub.disabled=false;
+      document.getElementById('pb-play').disabled=false;
+      document.getElementById('frame-badge').textContent=
+        sessionFrames.length.toLocaleString()+' frames · '+sessionFPS+' fps';
+      setPlayhead(0); drawLineGraph(); attachGraphScrub();
+    } else {
+      document.getElementById('skel-overlay').querySelector('span').textContent='No frame data in this session.';
+    }
+  } catch(e) {
+    console.warn('frames fetch failed:',e);
+    document.getElementById('skel-overlay').querySelector('span').textContent='Could not load frame data.';
+  }
+
+  setTimeout(initThree, 60);
+}
+
+/* ══════════════════════════════════════════════════════
+   BUILD UI
+══════════════════════════════════════════════════════ */
+function buildUI() {
+  document.getElementById('content').innerHTML = `
+  <div class="row">
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span>Skeleton replay</span>
+        <span id="frame-badge" style="font-size:11px;color:var(--muted)">loading…</span>
+      </div>
+      <div id="skel-wrap">
+        <canvas id="skel-canvas"></canvas>
+        <div id="skel-overlay">
+          <div class="spin"></div>
+          <span>Loading session frames…</span>
+        </div>
+        <div id="skel-pos-hud"></div>
+      </div>
+      <div id="pb-bar">
+        <div id="pb-controls">
+          <button class="pb-btn" id="pb-rew"  onclick="seekRelative(-10)" title="−10 frames">⏮</button>
+          <button class="pb-btn active" id="pb-play" onclick="togglePlay()" disabled>▶ Play</button>
+          <button class="pb-btn" id="pb-fwd"  onclick="seekRelative(10)"  title="+10 frames">⏭</button>
+          <input  type="range" id="pb-scrubber" min="0" max="0" value="0"
+                  oninput="onScrub(this.value)" disabled style="flex:1;min-width:80px;accent-color:var(--accent)">
+          <span id="pb-time" style="font-size:11px;color:var(--muted);min-width:90px;text-align:right">0 / 0</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="pb-speed">
+            <button class="speed-btn" onclick="setSpeed(0.25)">0.25×</button>
+            <button class="speed-btn" onclick="setSpeed(0.5)">0.5×</button>
+            <button class="speed-btn on" onclick="setSpeed(1)">1×</button>
+            <button class="speed-btn" onclick="setSpeed(2)">2×</button>
+          </div>
+          <span style="font-size:11px;color:var(--muted)" id="pb-ts-lbl"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Session metrics</div>
+      <div class="metrics-grid">
+        <div class="metric-cell"><div class="metric-name">Total reps</div><div class="metric-value" id="m-reps">—</div></div>
+        <div class="metric-cell"><div class="metric-name">Duration</div><div class="metric-value" id="m-dur">—</div></div>
+        <div class="metric-cell">
+          <div class="metric-name">Stability score</div>
+          <div class="metric-value" id="m-stability">—</div>
+          <div class="metric-grade" id="g-stability"></div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-name">Mean asymmetry</div>
+          <div class="metric-value" id="m-asym">—</div>
+          <div class="metric-grade" id="g-asym"></div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-name">Smoothness</div>
+          <div class="metric-value" id="m-smooth">—</div>
+          <div class="metric-grade" id="g-smooth"></div>
+        </div>
+        <div class="metric-cell" id="fatigue-cell">
+          <div class="metric-name" id="fatigue-label">Fatigue detected</div>
+          <div id="m-fatigue">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Metrics over session</div>
+    <div class="graph-controls">
+      <button class="metric-toggle on" id="tog-stability" onclick="toggleMetric('stability')" style="border-color:rgba(79,156,249,.5)">
+        <span class="mt-dot" style="background:#4f9cf9"></span>Stability
+      </button>
+      <button class="metric-toggle on" id="tog-knee_l" onclick="toggleMetric('knee_l')" style="border-color:rgba(34,197,94,.5)">
+        <span class="mt-dot" style="background:#22c55e"></span>Knee L°
+      </button>
+      <button class="metric-toggle on" id="tog-knee_r" onclick="toggleMetric('knee_r')" style="border-color:rgba(255,77,109,.5)">
+        <span class="mt-dot" style="background:#ff4d6d"></span>Knee R°
+      </button>
+      <button class="metric-toggle on" id="tog-asym" onclick="toggleMetric('asym')" style="border-color:rgba(245,166,35,.5)">
+        <span class="mt-dot" style="background:#f5a623"></span>Asymmetry°
+      </button>
+      <button class="metric-toggle on" id="tog-sway" onclick="toggleMetric('sway')" style="border-color:rgba(62,207,142,.5)">
+        <span class="mt-dot" style="background:#3ecf8e"></span>Sway vel
+      </button>
+    </div>
+    <canvas id="line-graph-canvas"></canvas>
+    <div style="font-size:11px;color:var(--muted);margin-top:5px" id="graph-hint">Click or drag on the graph to scrub the timeline.</div>
+  </div>
+
+  <div class="row">
+    <div class="card">
+      <div class="card-title">Per-rep breakdown</div>
+      <table>
+        <thead><tr><th>Rep</th><th>Sway CV</th><th>Asym (°)</th><th>Jerk</th></tr></thead>
+        <tbody id="rep-tbody"><tr><td colspan="4" style="color:var(--muted)">No rep data.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">Fatigue trend (asymmetry over reps)</div>
+      <canvas id="fatigue-chart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="card-title" style="margin:0">AI coaching report</div>
+      <button class="btn primary" onclick="generateReport()" id="btn-report">Generate report</button>
+    </div>
+    <div class="report-box loading" id="report-box">
+      Press "Generate report" to get personalised AI coaching feedback based on your session metrics.
+    </div>
+  </div>`;
+}
+
+/* ══════════════════════════════════════════════════════
+   THREE.JS INIT
+══════════════════════════════════════════════════════ */
+function initThree() {
+  const canvas = document.getElementById('skel-canvas');
+  if (!canvas || typeof THREE === 'undefined') return;
+  const W = canvas.offsetWidth || 400, H = canvas.offsetHeight || 300;
+
+  THREE_renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+  THREE_renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  THREE_renderer.setSize(W, H, false);
+  THREE_renderer.setClearColor(0x0d111a, 1);
+
+  THREE_scene = new THREE.Scene();
+
+  // Camera target — will smoothly follow pelvis during playback
+  skelTarget = new THREE.Vector3(0, 0.5, 0);
+  THREE_camera = new THREE.PerspectiveCamera(50, W/H, 0.01, 200);
+  updateSkelCamera();
+
+  // Lighting
+  THREE_scene.add(new THREE.AmbientLight(0x1a2a3a, 3));
+  const d1 = new THREE.DirectionalLight(0x00e5ff, 1.2); d1.position.set(2, 4, 3); THREE_scene.add(d1);
+  const d2 = new THREE.DirectionalLight(0x7c3aed, 0.5); d2.position.set(-3, 2, -1); THREE_scene.add(d2);
+
+  // Large grid that snaps to follow the pelvis
+  THREE_grid = new THREE.GridHelper(40, 80, 0x2a2f3e, 0x2a2f3e);
+  THREE_grid.position.y = -0.9;
+  THREE_scene.add(THREE_grid);
+
+  // Joint spheres
+  const jGeo = new THREE.SphereGeometry(0.018, 8, 8);
+  JOINT_NAMES.forEach(name => {
+    const side = name.endsWith('_l') ? 'l' : name.endsWith('_r') ? 'r' : 'c';
+    const mat  = new THREE.MeshPhongMaterial({
+      color: JOINT_COLORS[side], emissive: JOINT_COLORS[side],
+      emissiveIntensity: 0.4, transparent: true, opacity: 0.95
+    });
+    const mesh = new THREE.Mesh(jGeo, mat); mesh.visible = false;
+    THREE_scene.add(mesh); jointMeshes[name] = mesh;
+  });
+
+  // Bone cylinders
+  BONE_DEFS.forEach(([pa, ch, side]) => {
+    const geo = new THREE.CylinderGeometry(0.011, 0.011, 1, 6);
+    const mat = new THREE.MeshPhongMaterial({
+      color: BONE_COLORS[side], emissive: BONE_COLORS[side],
+      emissiveIntensity: 0.15, transparent: true, opacity: 0.85
+    });
+    const mesh = new THREE.Mesh(geo, mat); mesh.visible = false;
+    THREE_scene.add(mesh); boneMeshes[`${pa}-${ch}`] = mesh;
+  });
+
+  // ── Drag-to-orbit ──────────────────────────────────────────
+  const wrap = document.getElementById('skel-wrap');
+  wrap.addEventListener('mousedown', e => { isDragging = true; prevMouse = { x:e.clientX, y:e.clientY }; });
+  window.addEventListener('mouseup', () => { isDragging = false; });
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    skelSpherical.theta -= (e.clientX - prevMouse.x) * 0.007;
+    skelSpherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1,
+      skelSpherical.phi + (e.clientY - prevMouse.y) * 0.007));
+    prevMouse = { x:e.clientX, y:e.clientY };
+    updateSkelCamera();
+  });
+  wrap.addEventListener('wheel', e => {
+    skelSpherical.r = Math.max(0.8, Math.min(10, skelSpherical.r + e.deltaY * 0.003));
+    updateSkelCamera(); e.preventDefault();
+  }, { passive: false });
+
+  window.addEventListener('resize', () => {
+    const c = document.getElementById('skel-canvas');
+    if (!c || !THREE_renderer) return;
+    THREE_renderer.setSize(c.offsetWidth, c.offsetHeight, false);
+    THREE_camera.aspect = c.offsetWidth / c.offsetHeight;
+    THREE_camera.updateProjectionMatrix();
+    if (sessionFrames.length > 0) drawLineGraph(playheadFrame);
+  });
+
+  skelInited = true;
+  animateThree();
+  if (sessionFrames.length > 0) setPlayhead(0);
+}
+
+function updateSkelCamera() {
+  THREE_camera.position.set(
+    skelTarget.x + skelSpherical.r * Math.sin(skelSpherical.phi) * Math.sin(skelSpherical.theta),
+    skelTarget.y + skelSpherical.r * Math.cos(skelSpherical.phi),
+    skelTarget.z + skelSpherical.r * Math.sin(skelSpherical.phi) * Math.cos(skelSpherical.theta)
+  );
+  THREE_camera.lookAt(skelTarget);
+}
+
+/* ══════════════════════════════════════════════════════
+   BONE GEOMETRY UPDATE
+══════════════════════════════════════════════════════ */
+const _va = new THREE.Vector3(), _vb = new THREE.Vector3();
+function updateBone(mesh, pa, pb) {
+  _va.set(...pa); _vb.set(...pb);
+  const dir = _vb.clone().sub(_va), len = dir.length();
+  if (len < 0.001) { mesh.visible = false; return; }
+  mesh.visible = true;
+  mesh.position.copy(_va).addScaledVector(dir.normalize(), len / 2);
+  mesh.scale.set(1, len, 1);
+  mesh.setRotationFromQuaternion(
+    new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize())
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   ANIMATION LOOP
+   Each frame:
+   1. Place joints at world positions from currentJoints
+   2. Update bone cylinders
+   3. Smoothly move skelTarget to follow pelvis
+   4. Snap grid under pelvis
+   5. Update position HUD
+   6. Render
+══════════════════════════════════════════════════════ */
+function animateThree() {
+  requestAnimationFrame(animateThree);
+  if (!skelInited || !THREE_renderer) return;
+
+  if (currentJoints) {
+    // ── 1. Place joints ──────────────────────────────────────
+    JOINT_NAMES.forEach(name => {
+      const pos = currentJoints[name], m = jointMeshes[name];
+      if (pos) { m.position.set(pos[0], pos[1], pos[2]); m.visible = true; }
+      else { m.visible = false; }
+    });
+
+    // ── 2. Update bones ──────────────────────────────────────
+    BONE_DEFS.forEach(([pa, ch]) => {
+      const m = boneMeshes[`${pa}-${ch}`];
+      const a = currentJoints[pa], b = currentJoints[ch];
+      if (a && b) updateBone(m, a, b); else m.visible = false;
+    });
+
+    // ── 3. Smooth camera follow ──────────────────────────────
+    // During playback the skeleton may move through world space.
+    // The camera target lerps toward the pelvis so the environment
+    // appears to scroll past while the skeleton stays centred.
+    const pelvis = currentJoints['pelvis'];
+    if (pelvis) {
+      const LERP = 0.08;
+      skelTarget.x += (pelvis[0] - skelTarget.x) * LERP;
+      skelTarget.z += (pelvis[2] - skelTarget.z) * LERP;
+      // Target mid-body height
+      const midY = pelvis[1] - 0.5;
+      skelTarget.y += (midY - skelTarget.y) * LERP;
+      updateSkelCamera();
+    }
+
+    // ── 4. Snap grid to pelvis ───────────────────────────────
+    if (THREE_grid && currentJoints['pelvis']) {
+      const [px, , pz] = currentJoints['pelvis'];
+      THREE_grid.position.x = Math.round(px);
+      THREE_grid.position.z = Math.round(pz);
+    }
+
+    // ── 5. Position HUD ──────────────────────────────────────
+    const hud = document.getElementById('skel-pos-hud');
+    if (hud && currentJoints['pelvis']) {
+      const [px, py, pz] = currentJoints['pelvis'];
+      hud.textContent = `X ${px.toFixed(2)}  Y ${py.toFixed(2)}  Z ${pz.toFixed(2)}`;
+    }
+  }
+
+  THREE_renderer.render(THREE_scene, THREE_camera);
+}
+
+/* ══════════════════════════════════════════════════════
+   PLAYBACK CONTROLS
+══════════════════════════════════════════════════════ */
+function setPlayhead(idx) {
+  if (sessionFrames.length === 0) return;
+  idx = Math.max(0, Math.min(sessionFrames.length - 1, idx));
+  playheadFrame = idx;
+  currentJoints = sessionFrames[idx].joints;
+  const scrub = document.getElementById('pb-scrubber');
+  if (scrub) scrub.value = idx;
+  const curMs = tsToElapsedMs(sessionFrames[idx].ts, idx);
+  const pbTime = document.getElementById('pb-time');
+  if (pbTime) pbTime.textContent = formatTime(curMs) + ' / ' + formatTime(tEndMs);
+  const tsLbl = document.getElementById('pb-ts-lbl');
+  if (tsLbl) tsLbl.textContent = `frame ${idx + 1} / ${sessionFrames.length}`;
+  drawLineGraph(idx);
+}
+
+function onScrub(val) { stopPlay(); setPlayhead(parseInt(val)); }
+function togglePlay() { if (isPlaying) stopPlay(); else startPlay(); }
+
+function startPlay() {
+  if (sessionFrames.length === 0) return;
+  if (playheadFrame >= sessionFrames.length - 1) setPlayhead(0);
+  isPlaying = true;
+  const btn = document.getElementById('pb-play');
+  if (btn) { btn.textContent = '⏸ Pause'; btn.classList.add('active'); }
+  const interval = 1000 / (sessionFPS * playbackSpeed);
+  replayTimer = setInterval(() => {
+    if (playheadFrame >= sessionFrames.length - 1) { stopPlay(); return; }
+    setPlayhead(playheadFrame + 1);
+  }, interval);
+}
+
+function stopPlay() {
+  isPlaying = false;
+  if (replayTimer) { clearInterval(replayTimer); replayTimer = null; }
+  const btn = document.getElementById('pb-play');
+  if (btn) { btn.textContent = '▶ Play'; btn.classList.remove('active'); }
+}
+
+function seekRelative(delta) { stopPlay(); setPlayhead(playheadFrame + delta); }
+
+function setSpeed(s) {
+  playbackSpeed = s;
+  document.querySelectorAll('.speed-btn').forEach(b => {
+    b.classList.toggle('on', parseFloat(b.textContent) === s);
+  });
+  if (isPlaying) { stopPlay(); startPlay(); }
+}
+
+/* ══════════════════════════════════════════════════════
+   GRAPH SCRUB
+══════════════════════════════════════════════════════ */
+function attachGraphScrub() {
+  const canvas = document.getElementById('line-graph-canvas'); if (!canvas) return;
+  function xToFrame(clientX) {
+    const rect = canvas.getBoundingClientRect();
+    const pad  = { left:38, right:16 };
+    const iW   = rect.width - pad.left - pad.right;
+    const relX = Math.max(0, Math.min(iW, clientX - rect.left - pad.left));
+    const ratio = iW > 0 ? relX / iW : 0;
+    if (sessionFrames.length < 2) return 0;
+    if (tEndMs <= 0) return Math.round(ratio * (sessionFrames.length - 1));
+    const targetMs = ratio * tEndMs;
+    let lo = 0, hi = sessionFrames.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (tsToElapsedMs(sessionFrames[mid].ts, mid) < targetMs) lo = mid + 1; else hi = mid;
+    }
+    return lo;
+  }
+  function handleScrubMove(e) {
+    if (!isGraphScrubbing) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    stopPlay(); setPlayhead(xToFrame(clientX)); e.preventDefault();
+  }
+  canvas.addEventListener('mousedown', e => { isGraphScrubbing = true; stopPlay(); setPlayhead(xToFrame(e.clientX)); });
+  canvas.addEventListener('touchstart', e => { isGraphScrubbing = true; stopPlay(); setPlayhead(xToFrame(e.touches[0].clientX)); }, { passive:true });
+  window.addEventListener('mousemove',  handleScrubMove);
+  window.addEventListener('touchmove',  handleScrubMove, { passive:false });
+  window.addEventListener('mouseup',  () => { isGraphScrubbing = false; });
+  window.addEventListener('touchend', () => { isGraphScrubbing = false; });
+  canvas.addEventListener('mousemove', e => {
+    if (isGraphScrubbing || sessionFrames.length < 2) return;
+    showGraphTooltip(e, xToFrame(e.clientX));
+  });
+  canvas.addEventListener('mouseleave', () => hideGraphTooltip());
+}
+
+/* ══════════════════════════════════════════════════════
+   GRAPH TOOLTIP
+══════════════════════════════════════════════════════ */
+function showGraphTooltip(e, frameIdx) {
+  const tt = document.getElementById('graph-tooltip'); if (!tt || frameIdx == null) return;
+  const f  = sessionFrames[frameIdx]; if (!f) return;
+  const ms = tsToElapsedMs(f.ts, frameIdx);
+  document.getElementById('tt-time').textContent = formatTime(ms);
+  const m = f.metrics || {};
+  const rows = Object.entries(GRAPH_METRICS).filter(([k]) => graphEnabled[k]).map(([k, cfg]) => {
+    const raw = cfg.key(m); if (raw == null || !isFinite(raw)) return '';
+    const val = Number.isInteger(raw) ? raw : raw.toFixed(2);
+    return `<div class="tt-row"><span class="tt-dot" style="background:${cfg.color}"></span><span style="flex:1;color:var(--muted)">${cfg.label}</span><span style="font-weight:600">${val}</span></div>`;
+  }).join('');
+  document.getElementById('tt-rows').innerHTML = rows;
+  tt.style.display = 'block';
+  const x = e.clientX + 14, y = e.clientY - 10;
+  const ow = tt.offsetWidth, oh = tt.offsetHeight;
+  tt.style.left = (x + ow > window.innerWidth  ? e.clientX - ow - 14 : x) + 'px';
+  tt.style.top  = (y + oh > window.innerHeight ? e.clientY - oh - 10 : y) + 'px';
+}
+function hideGraphTooltip() {
+  const tt = document.getElementById('graph-tooltip'); if (tt) tt.style.display = 'none';
+}
+
+/* ══════════════════════════════════════════════════════
+   LINE GRAPH
+══════════════════════════════════════════════════════ */
+function toggleMetric(key) {
+  graphEnabled[key] = !graphEnabled[key];
+  const btn = document.getElementById('tog-' + key);
+  if (btn) btn.classList.toggle('on', graphEnabled[key]);
+  drawLineGraph(playheadFrame);
+}
+
+function drawLineGraph(playhead) {
+  const canvas = document.getElementById('line-graph-canvas'); if (!canvas) return;
+  const data = sessionFrames; if (!data || data.length < 2) return;
+  const W = canvas.offsetWidth || 800, H = 200, dpr = Math.min(window.devicePixelRatio, 2);
+  if (canvas.width !== W*dpr || canvas.height !== H*dpr) {
+    canvas.width = W*dpr; canvas.height = H*dpr; canvas.style.height = H + 'px';
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.save(); ctx.scale(dpr, dpr); ctx.clearRect(0, 0, W, H);
+  const pad = { top:12, right:16, bottom:28, left:38 };
+  const iW = W - pad.left - pad.right, iH = H - pad.top - pad.bottom;
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.beginPath(); ctx.roundRect(pad.left-4, pad.top-4, iW+8, iH+8, 4); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+  ctx.fillStyle = 'rgba(136,134,128,0.65)'; ctx.font = '10px system-ui'; ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (i/4) * iH;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + iW, y); ctx.stroke();
+    ctx.fillText(100 - i*25, pad.left - 6, y + 3);
+  }
+  if (tEndMs > 0) {
+    const numTicks = Math.min(8, Math.max(2, Math.floor(iW / 60)));
+    ctx.font = '10px system-ui'; ctx.textAlign = 'center'; let lastLabel = null;
+    for (let i = 0; i <= numTicks; i++) {
+      const tMs = (tEndMs / numTicks) * i, xPx = pad.left + (tMs / tEndMs) * iW, label = formatTime(tMs);
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(xPx, pad.top); ctx.lineTo(xPx, pad.top + iH); ctx.stroke();
+      if (label !== lastLabel) { ctx.fillStyle = 'rgba(136,134,128,0.55)'; ctx.fillText(label, xPx, H-4); lastLabel = label; }
+    }
+  }
+  function frameX(i) {
+    if (tEndMs <= 0) return pad.left + (i / (data.length - 1)) * iW;
+    const elapsedMs = tsToElapsedMs(data[i].ts, i);
+    return pad.left + Math.min(1, Math.max(0, elapsedMs / tEndMs)) * iW;
+  }
+  Object.entries(GRAPH_METRICS).forEach(([key, cfg]) => {
+    if (!graphEnabled[key]) return;
+    const pts = data.map((f, i) => {
+      const m = f.metrics || {}, raw = cfg.key(m);
+      if (raw == null || !isFinite(raw)) return null;
+      const norm = Math.min(1, Math.max(0, (raw - cfg.min) / (cfg.max - cfg.min)));
+      return [frameX(i), pad.top + iH - norm * iH];
+    }).filter(Boolean);
+    if (pts.length < 2) return;
+    ctx.beginPath(); ctx.moveTo(pts[0][0], pad.top + iH);
+    pts.forEach(([x, y]) => ctx.lineTo(x, y));
+    ctx.lineTo(pts[pts.length-1][0], pad.top + iH);
+    ctx.closePath(); ctx.fillStyle = cfg.color + '14'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) {
+      const [x0,y0] = pts[i-1], [x1,y1] = pts[i];
+      ctx.bezierCurveTo(x0+(x1-x0)*0.4, y0, x1-(x1-x0)*0.4, y1, x1, y1);
+    }
+    ctx.strokeStyle = cfg.color; ctx.lineWidth = 1.6; ctx.lineJoin = 'round'; ctx.stroke();
+  });
+  if (playhead != null && data.length > 1) {
+    const px = frameX(playhead);
+    ctx.strokeStyle = 'rgba(245,166,35,0.7)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(px, pad.top); ctx.lineTo(px, pad.top + iH); ctx.stroke();
+    ctx.setLineDash([]);
+    Object.entries(GRAPH_METRICS).forEach(([key, cfg]) => {
+      if (!graphEnabled[key]) return;
+      const m = (data[playhead]?.metrics) || {}, raw = cfg.key(m);
+      if (raw == null || !isFinite(raw)) return;
+      const norm = Math.min(1, Math.max(0, (raw - cfg.min) / (cfg.max - cfg.min)));
+      ctx.beginPath(); ctx.arc(px, pad.top + iH - norm * iH, 4, 0, Math.PI*2);
+      ctx.fillStyle = cfg.color; ctx.fill();
+    });
+    const tMs = tsToElapsedMs(data[playhead].ts, playhead), label = formatTime(tMs);
+    ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.font = '10px system-ui';
+    ctx.textAlign = px + 40 > W - pad.right ? 'right' : 'left';
+    ctx.fillText(label, px + (ctx.textAlign === 'right' ? -6 : 6), pad.top + 10);
+  }
+  ctx.restore();
+}
+
+function formatTime(ms) {
+  if (ms == null || !isFinite(ms) || ms < 0) return '0s';
+  const totalSec = Math.round(ms / 1000);
+  if (totalSec < 60) return totalSec + 's';
+  return Math.floor(totalSec / 60) + 'm' + String(totalSec % 60).padStart(2, '0') + 's';
+}
+
+/* ══════════════════════════════════════════════════════
+   SUMMARY RENDER
+══════════════════════════════════════════════════════ */
+function renderSummary(s) {
+  if (!s) return;
+  setText('m-reps',      s.total_reps ?? '—');
+  setText('m-dur',       s.duration_s ? `${s.duration_s}s` : '—');
+  setText('m-stability', s.sway?.stability_score ?? '—');
+  setText('m-asym',      s.symmetry?.mean_knee_asym_deg != null ? `${s.symmetry.mean_knee_asym_deg}°` : '—');
+  setText('m-smooth',    s.smoothness?.grade ?? '—');
+  setGrade('g-asym',   s.symmetry?.grade);
+  setGrade('g-smooth', s.smoothness?.grade);
+  const fatEl = document.getElementById('m-fatigue'), fatLbl = document.getElementById('fatigue-label');
+  const tier = s.fatigue?.stability_tier || stabilityTierFromScore(s.sway?.stability_score);
+  if (fatEl) {
+    if (tier) {
+      if (fatLbl) fatLbl.textContent = 'Readiness';
+      const score = Math.round(s.sway?.stability_score ?? 0);
+      const [bg, fg] = TIER_STYLES[tier] ?? ['rgba(255,255,255,.06)', 'var(--muted)'];
+      fatEl.innerHTML =
+        `<div class="metric-value" style="font-size:18px">${score}<span style="font-size:13px;font-weight:400;color:var(--muted)">%</span></div>` +
+        `<span class="tier-pill tier-${tier}">${tier}</span>`;
+    } else {
+      if (fatLbl) fatLbl.textContent = 'Fatigue detected';
+      const detected = s.fatigue?.detected;
+      fatEl.innerHTML = `<div class="metric-value" style="color:${detected?'var(--red)':'var(--green)'}">${detected?'Yes':'No'}</div>`;
+    }
+  }
+  const tbody = document.getElementById('rep-tbody');
+  if (tbody && s.per_rep && s.per_rep.length > 0) {
+    tbody.innerHTML = s.per_rep.map(r =>
+      `<tr><td>${r.rep}</td><td>${r.sway_cv}</td><td>${r.asym_mean}</td><td>${r.jerk_mean}</td></tr>`
+    ).join('');
+  }
+  if (s.per_rep && s.per_rep.length > 1) drawFatigueChart(s.per_rep);
+}
+
+function setGrade(id, grade) {
+  const el = document.getElementById(id); if (!el || !grade) return;
+  el.textContent = grade; el.className = `metric-grade grade-${grade}`;
+}
+
+/* ══════════════════════════════════════════════════════
+   FATIGUE CHART
+══════════════════════════════════════════════════════ */
+function drawFatigueChart(reps) {
+  const canvas = document.getElementById('fatigue-chart'); if (!canvas) return;
+  const W = canvas.offsetWidth, H = 160;
+  canvas.width = W*devicePixelRatio; canvas.height = H*devicePixelRatio;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  const ctx = canvas.getContext('2d'); ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0, 0, W, H);
+  const values = reps.map(r => r.asym_mean), max_v = Math.max(...values, 1);
+  const pad = 24, iW = W - pad*2, iH = H - pad*2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) { const y=pad+(i/4)*iH; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke(); }
+  const xs = values.map((_,i) => pad + (i / (values.length-1)) * iW);
+  const ys = values.map(v  => pad + iH - (v / max_v) * iH);
+  ctx.strokeStyle = '#f5a623'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+  ctx.beginPath(); xs.forEach((x,i) => i===0 ? ctx.moveTo(x,ys[i]) : ctx.lineTo(x,ys[i])); ctx.stroke();
+  ctx.fillStyle = '#f5a623';
+  xs.forEach((x,i) => { ctx.beginPath(); ctx.arc(x,ys[i],3.5,0,Math.PI*2); ctx.fill(); });
+  ctx.fillStyle = 'rgba(136,134,128,0.7)'; ctx.font = '11px system-ui'; ctx.textAlign = 'center';
+  xs.forEach((x,i) => {
+    if (i===0 || i===xs.length-1 || i%Math.ceil(xs.length/6)===0) ctx.fillText(`Rep ${i+1}`, x, H-4);
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   AI COACHING REPORT
+══════════════════════════════════════════════════════ */
+async function generateReport() {
+  const btn = document.getElementById('btn-report'), box = document.getElementById('report-box');
+  btn.disabled = true; btn.textContent = 'Generating…';
+  box.className = 'report-box loading'; box.textContent = '';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+        system: `You are an expert sports science coach and biomechanics analyst.
+Analyse the provided session metrics and give clear, actionable coaching feedback.
+Structure your response as:
+1. Overall assessment (2–3 sentences)
+2. Key strengths (bullet points)
+3. Areas to improve (bullet points with specific cues)
+4. Recommendation for next session
+Keep the tone positive and practical. Use plain language — no jargon.`,
+        messages: [{ role:'user', content: buildPrompt(summaryData) }],
+      }),
+    });
+    const data = await res.json();
+    const text = data.content?.find(b => b.type === 'text')?.text || 'No response generated.';
+    box.className = 'report-box'; box.textContent = text;
+  } catch(e) { box.className = 'report-box'; box.textContent = `Could not generate report: ${e.message}`; }
+  btn.disabled = false; btn.textContent = 'Regenerate';
+}
+
+function buildPrompt(s) {
+  if (!s) return 'No session data available. Please provide general squat performance coaching advice.';
+  const sym=s.symmetry||{}, sw=s.sway||{}, sm=s.smoothness||{}, fat=s.fatigue||{}, reps=s.per_rep||[];
+  const tierInfo = fat.stability_tier ? `Readiness tier: ${fat.stability_tier}.` : '';
+  const repTrend = reps.length >= 3
+    ? `Over the session, asymmetry trended from ${reps[0]?.asym_mean}° (rep 1) to ${reps[reps.length-1]?.asym_mean}° (rep ${reps.length}).` : '';
+  return `Session: ${s.total_reps} reps over ${s.duration_s}s.
+Stability: sway vel ${sw.mean_velocity_ms} m/s, score ${sw.stability_score}/100, CV ${sw.cv_pct}%${tierInfo?'\n'+tierInfo:''}
+Symmetry: mean asym ${sym.mean_knee_asym_deg}°, max ${sym.max_knee_asym_deg}°, grade ${sym.grade}
+Smoothness: jerk ${sm.mean_jerk}, trend ${sm.jerk_trend}, grade ${sm.grade}
+Fatigue: ${fat.detected?'detected':'none'}, asym trend ${fat.asym_trend_per_frame}, jerk trend ${fat.jerk_trend_per_frame}
+${repTrend}
+Please provide coaching feedback.`;
+}
+
+/* ══════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════ */
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+
+function stabilityTierFromScore(score) {
+  if (score == null || !isFinite(score)) return '';
+  if (score >= 95) return 'Peak';
+  if (score >= 85) return 'Fresh';
+  if (score >= 75) return 'Ready';
+  if (score >= 65) return 'Loaded';
+  if (score >= 50) return 'Strained';
+  if (score >= 35) return 'Fatigued';
+  if (score >= 20) return 'Overreached';
+  return 'Critical';
+}
+
+/* ══════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════ */
+window.addEventListener('load', () => {
+  loadSessionList();
+  if (activeSessionId) loadSession(activeSessionId);
+});
+</script>
+</body>
+</html>

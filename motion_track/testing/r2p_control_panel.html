@@ -1,0 +1,128 @@
+
+<style>
+.rp-wrap { font-family: system-ui, sans-serif; font-size: 13px; color: var(--color-text-primary); }
+.rp-section { margin-bottom: 1.5rem; }
+.rp-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 8px; }
+.rp-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+.rp-btn { padding: 7px 14px; border-radius: 8px; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); font-size: 12px; cursor: pointer; transition: background .12s; }
+.rp-btn:hover { background: var(--color-background-secondary); }
+.rp-btn.active { border-color: var(--color-border-info); color: var(--color-text-info); background: var(--color-background-info); }
+.rp-btn.danger { border-color: var(--color-border-danger); color: var(--color-text-danger); }
+.rp-toast { padding: 8px 12px; border-radius: 8px; font-size: 12px; min-height: 32px; color: var(--color-text-secondary); background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); margin-top: 4px; font-family: monospace; white-space: pre-wrap; word-break: break-all; }
+.rp-toast.ok  { color: var(--color-text-success); background: var(--color-background-success); border-color: var(--color-border-success); }
+.rp-toast.err { color: var(--color-text-danger);  background: var(--color-background-danger);  border-color: var(--color-border-danger); }
+.rp-divider { height: 0.5px; background: var(--color-border-tertiary); margin: 1.2rem 0; }
+.rp-note { font-size: 11px; color: var(--color-text-tertiary); margin-top: 4px; }
+.rp-host { display: flex; gap: 6px; align-items: center; margin-bottom: 1rem; }
+.rp-host input { flex: 1; padding: 6px 10px; border-radius: 7px; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); font-size: 12px; }
+</style>
+
+<div class="rp-wrap">
+  <h2 class="sr-only">R2P control panel — send API commands to your running server</h2>
+
+  <div class="rp-host">
+    <span style="font-size:12px;color:var(--color-text-secondary);white-space:nowrap">Server:</span>
+    <input id="rp-host" value="http://localhost:8000" placeholder="http://localhost:8000" />
+    <button class="rp-btn" onclick="rp_ping()">Ping</button>
+  </div>
+  <div class="rp-toast" id="rp-out">Response will appear here</div>
+
+  <div class="rp-divider"></div>
+
+  <div class="rp-section">
+    <div class="rp-label">1 — Motion mode (do this first with one pelvis sensor)</div>
+    <div class="rp-row">
+      <button class="rp-btn active" id="btn-test" onclick="rp_post('/motion_mode?mode=test')">
+        Set TEST mode
+      </button>
+      <button class="rp-btn" id="btn-user" onclick="rp_post('/motion_mode?mode=user')">
+        Set USER mode
+      </button>
+    </div>
+    <div class="rp-note">TEST = avatar moves when you bounce the pelvis sensor (single sensor OK)<br>USER = needs leg sensors to confirm real walking</div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-label">2 — IMU zero / T-pose (stand still, arms at sides, then click)</div>
+    <div class="rp-row">
+      <button class="rp-btn" onclick="rp_post('/ble/tpose')">Capture T-pose now</button>
+    </div>
+    <div class="rp-note">Freezes current sensor orientations as the neutral reference.<br>Do this every time you put the sensors on.</div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-label">3 — Forward direction (face your "forward", stand still, then click)</div>
+    <div class="rp-row">
+      <button class="rp-btn" onclick="rp_post('/direction/set_forward')">Set forward</button>
+      <button class="rp-btn" onclick="rp_post('/direction/set_right')">Set right (optional)</button>
+      <button class="rp-btn" onclick="rp_post('/debug/flip_forward')">Flip forward</button>
+    </div>
+    <div class="rp-note">After "Set forward": if the skeleton walks backward, click "Flip forward".<br>"Set right": turn 90° to your right then click, to lock left/right axis.</div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-label">4 — Motion calibration (optional, tunes thresholds to your body)</div>
+    <div class="rp-row">
+      <button class="rp-btn" onclick="rp_post('/motion_calib/begin')">Begin</button>
+      <button class="rp-btn" onclick="rp_post('/motion_calib/phase?phase=walk_forward')">Walk fwd</button>
+      <button class="rp-btn" onclick="rp_post('/motion_calib/phase?phase=jump')">Jump</button>
+      <button class="rp-btn" onclick="rp_post('/motion_calib/phase?phase=squat')">Squat</button>
+      <button class="rp-btn" onclick="rp_post('/motion_calib/finish')">Finish</button>
+    </div>
+    <div class="rp-note">Click Begin → perform each movement for ~5s → click Finish.<br>Skip this entirely if you just want to test quickly.</div>
+  </div>
+
+  <div class="rp-divider"></div>
+
+  <div class="rp-section">
+    <div class="rp-label">Debug — check current state</div>
+    <div class="rp-row">
+      <button class="rp-btn" onclick="rp_get('/ble/status')">BLE status</button>
+      <button class="rp-btn" onclick="rp_get('/debug/integrator_state')">Integrator state</button>
+      <button class="rp-btn" onclick="rp_get('/direction/state')">Direction state</button>
+      <button class="rp-btn" onclick="rp_get('/motion_mode')">Current mode</button>
+    </div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-label">Experimental states (strafe/backward) — only after legs connected + tuned</div>
+    <div class="rp-row">
+      <button class="rp-btn" onclick="rp_post('/motion_mode/experimental?enabled=true')">Enable</button>
+      <button class="rp-btn danger" onclick="rp_post('/motion_mode/experimental?enabled=false')">Disable</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function rp_host() { return document.getElementById('rp-host').value.replace(/\/+$/, ''); }
+function rp_show(text, cls) {
+  const el = document.getElementById('rp-out');
+  try { text = JSON.stringify(JSON.parse(text), null, 2); } catch(e) {}
+  el.textContent = text;
+  el.className = 'rp-toast ' + (cls || '');
+}
+async function rp_post(path) {
+  rp_show('Sending…', '');
+  try {
+    const r = await fetch(rp_host() + path, { method: 'POST' });
+    const t = await r.text();
+    rp_show(t, r.ok ? 'ok' : 'err');
+  } catch(e) { rp_show('Could not reach server: ' + e.message + '\n\nMake sure the backend is running at ' + rp_host(), 'err'); }
+}
+async function rp_get(path) {
+  rp_show('Fetching…', '');
+  try {
+    const r = await fetch(rp_host() + path);
+    const t = await r.text();
+    rp_show(t, r.ok ? 'ok' : 'err');
+  } catch(e) { rp_show('Could not reach server: ' + e.message, 'err'); }
+}
+async function rp_ping() {
+  rp_show('Pinging…', '');
+  try {
+    const r = await fetch(rp_host() + '/ble/status');
+    const t = await r.text();
+    rp_show(t, r.ok ? 'ok' : 'err');
+  } catch(e) { rp_show('No response from ' + rp_host(), 'err'); }
+}
+</script>

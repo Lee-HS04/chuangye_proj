@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2P · Live Mocap</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #07090d;
+    --panel:   #0c0f15cc;
+    --border:  #1c2230;
+    --accent:  #00ffe0;
+    --accent2: #ff3c6e;
+    --warn:    #ffb800;
+    --text:    #d4dde8;
+    --muted:   #4a5568;
+    --bone-c:  #38bdf8;
+    --bone-l:  #34d399;
+    --bone-r:  #f472b6;
+  }
+
+  html, body { width:100%; height:100%; background:var(--bg); overflow:hidden; font-family:'Space Mono',monospace; color:var(--text); }
+
+  #canvas-container { position:absolute; inset:0; }
+  #three-canvas { display:block; width:100%; height:100%; }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    position:absolute; top:0; left:0; right:0; height:48px;
+    display:flex; align-items:center; padding:0 20px; gap:14px;
+    background:linear-gradient(180deg,#07090dee 0%,transparent 100%);
+    z-index:10; pointer-events:none;
+  }
+  #logo { font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:.18em; color:var(--accent); text-shadow:0 0 14px var(--accent)80; pointer-events:all; }
+  .top-sep { flex:1; }
+  #ws-pill {
+    display:flex; align-items:center; gap:6px;
+    font-size:10px; letter-spacing:.1em; color:var(--muted);
+    pointer-events:none;
+  }
+  #ws-dot { width:7px; height:7px; border-radius:50%; background:#ff3333; box-shadow:0 0 6px #ff333380; transition:all .3s; }
+  #ws-dot.on { background:var(--accent); box-shadow:0 0 8px var(--accent)90; }
+  #fps-label { font-size:10px; color:var(--muted); letter-spacing:.1em; pointer-events:none; }
+
+  /* ── LEFT PANEL ── */
+  #left-panel {
+    position:absolute; top:60px; left:16px;
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:8px; padding:14px 18px; z-index:10;
+    backdrop-filter:blur(12px); min-width:180px;
+  }
+  .p-title { font-size:9px; color:var(--muted); letter-spacing:.15em; text-transform:uppercase; margin-bottom:10px; }
+  .info-row { display:flex; justify-content:space-between; gap:16px; margin-bottom:6px; align-items:center; }
+  .info-lbl { font-size:10px; color:var(--muted); letter-spacing:.06em; }
+  .info-val { font-size:11px; color:var(--text); }
+  .info-val.accent { color:var(--accent); }
+  .info-val.warn   { color:var(--warn); }
+
+  /* ── RIGHT PANEL (sensors) ── */
+  #right-panel {
+    position:absolute; top:60px; right:16px;
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:8px; padding:14px 18px; z-index:10;
+    backdrop-filter:blur(12px); min-width:190px;
+  }
+  .chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:4px; }
+  .chip {
+    font-size:9px; padding:3px 8px; border-radius:10px;
+    letter-spacing:.06em; text-transform:uppercase; font-weight:700;
+    border:1px solid transparent; transition:all .3s;
+  }
+  .chip.live { background:#003320; color:#00ff88; border-color:#00aa5566; box-shadow:0 0 6px #00ff8830; }
+  .chip.sim  { background:#12141a; color:var(--muted); border-color:var(--border); }
+
+  /* ── BOTTOM BAR ── */
+  #bottom-bar {
+    position:absolute; bottom:0; left:0; right:0;
+    padding:14px 24px 18px;
+    background:linear-gradient(0deg,#07090df5 0%,transparent 100%);
+    z-index:10; display:flex; gap:10px; align-items:center; justify-content:center;
+  }
+
+  .btn {
+    font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.1em;
+    padding:8px 20px; border-radius:4px;
+    border:1px solid var(--border); background:#0c0f15;
+    color:var(--muted); cursor:pointer; transition:all .15s;
+    text-transform:uppercase; min-width:130px; text-align:center;
+  }
+  .btn:hover  { border-color:var(--accent); color:var(--accent); box-shadow:0 0 10px var(--accent)40; }
+  .btn.active { border-color:var(--accent); color:var(--accent); background:#00ffe010; box-shadow:0 0 14px var(--accent)50; }
+  .btn.danger { border-color:var(--accent2); color:var(--accent2); background:#ff3c6e12; box-shadow:0 0 10px var(--accent2)50; }
+  .btn.warn   { border-color:var(--warn); color:var(--warn); background:#ffb80012; }
+
+  /* ── GRADE PANEL ── */
+  #grade-panel {
+    display:none; position:absolute; bottom:80px; right:16px;
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:8px; padding:18px 22px; z-index:10;
+    backdrop-filter:blur(12px); min-width:230px;
+    animation: fadeIn .25s ease;
+  }
+  #grade-panel.show { display:block; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+  #gp-letter {
+    font-family:'Bebas Neue',sans-serif; font-size:64px; line-height:1;
+    text-align:center; text-shadow:0 0 24px currentColor; margin-bottom:2px;
+  }
+  #gp-letter.A { color:#00ff88; } #gp-letter.B { color:#00ffe0; }
+  #gp-letter.C { color:#ffb800; } #gp-letter.D { color:#ff8800; }
+  #gp-letter.F { color:#ff3c6e; }
+  #gp-score { text-align:center; font-size:13px; color:var(--text); margin-bottom:12px; letter-spacing:.1em; }
+  #gp-dist  { text-align:center; font-size:9px;  color:var(--muted); margin-bottom:14px; letter-spacing:.08em; }
+  #gp-bars  { display:flex; flex-direction:column; gap:5px; }
+
+  /* ── RECORDING ── */
+  .section-sep { border-top:1px solid var(--border); margin:10px 0 8px; }
+  #rec-name-in {
+    font-family:'Space Mono',monospace; font-size:9px; letter-spacing:.06em;
+    background:#0c0f15; border:1px solid var(--border); color:var(--text);
+    padding:3px 8px; border-radius:3px; flex:1; outline:none; min-width:0;
+  }
+  #rec-name-in:focus { border-color:var(--accent2); }
+  #btn-rec-toggle {
+    font-family:'Space Mono',monospace; font-size:9px; letter-spacing:.1em;
+    padding:3px 10px; border-radius:3px; text-transform:uppercase; white-space:nowrap;
+    border:1px solid var(--accent2); color:var(--accent2);
+    background:#ff3c6e08; cursor:pointer; transition:all .15s;
+  }
+  #btn-rec-toggle.live { background:#ff3c6e30; animation:blink-rec .7s steps(1) infinite; }
+  @keyframes blink-rec { 50%{opacity:.45} }
+  .rec-info { font-size:9px; color:var(--muted); margin-top:6px; letter-spacing:.04em; line-height:1.6; }
+
+  #rec-timer {
+    display:none; text-align:center; margin-top:8px;
+    font-family:'Bebas Neue',sans-serif; font-size:38px; letter-spacing:.08em;
+    color:var(--accent2); text-shadow:0 0 16px var(--accent2)80;
+  }
+  #rec-timer.show { display:block; }
+
+  /* ── COUNTDOWN OVERLAY ── */
+  #countdown-overlay {
+    display:none; position:absolute; inset:0; z-index:25;
+    background:#07090de0; backdrop-filter:blur(6px);
+    flex-direction:column; align-items:center; justify-content:center; gap:14px;
+  }
+  #countdown-overlay.show { display:flex; }
+  #cd-num {
+    font-family:'Bebas Neue',sans-serif; font-size:180px; line-height:1;
+    color:var(--accent); text-shadow:0 0 50px var(--accent);
+    animation:cd-pop .9s cubic-bezier(.22,1,.36,1) forwards;
+  }
+  @keyframes cd-pop {
+    0%   { transform:scale(1.6); opacity:0; }
+    100% { transform:scale(1);   opacity:1; }
+  }
+  #cd-num.go { color:#00ff88; text-shadow:0 0 50px #00ff88; }
+  #cd-label { font-size:13px; color:var(--muted); letter-spacing:.25em; text-transform:uppercase; }
+
+  /* ── PLAYBACK BAR ── */
+  #pb-bar {
+    display:none; position:absolute; bottom:68px; left:0; right:0; z-index:9;
+    padding:8px 20px; align-items:center; gap:8px;
+    background:linear-gradient(0deg,rgba(7,9,13,.92) 55%,transparent 100%);
+  }
+  #pb-bar.show { display:flex; }
+  #pb-select, #pb-speed-sel {
+    font-family:'Space Mono',monospace; font-size:9px; color:var(--text);
+    background:#0c0f15; border:1px solid var(--border);
+    padding:4px 7px; border-radius:3px; outline:none;
+  }
+  #pb-select { min-width:120px; max-width:160px; }
+  #pb-progress-wrap {
+    flex:1; height:4px; background:var(--border); border-radius:2px;
+    cursor:pointer; min-width:60px; position:relative;
+  }
+  #pb-progress-bar { height:100%; background:var(--accent); border-radius:2px; width:0%; pointer-events:none; }
+  #pb-time { font-size:9px; color:var(--muted); white-space:nowrap; letter-spacing:.06em; }
+  .pb-btn {
+    font-family:'Space Mono',monospace; font-size:11px; padding:3px 8px;
+    border-radius:3px; border:1px solid var(--border); background:#0c0f15;
+    color:var(--muted); cursor:pointer; white-space:nowrap; transition:all .15s;
+  }
+  .pb-btn:hover, .pb-btn.on { border-color:var(--accent); color:var(--accent); }
+  #pb-mode-badge {
+    display:none; font-size:9px; padding:2px 9px; border-radius:10px;
+    letter-spacing:.12em; font-weight:700; white-space:nowrap;
+    background:#00ffe015; border:1px solid var(--accent); color:var(--accent);
+  }
+  #pb-mode-badge.show { display:inline-block; }
+
+  /* ── CALIB OVERLAY ── */
+  #calib-overlay {
+    display:none; position:absolute; inset:0; z-index:20;
+    background:#07090dcc; backdrop-filter:blur(4px);
+    flex-direction:column; align-items:center; justify-content:center; gap:18px;
+  }
+  #calib-overlay.show { display:flex; }
+  #calib-title { font-family:'Bebas Neue',sans-serif; font-size:36px; letter-spacing:.2em; color:var(--accent); text-shadow:0 0 20px var(--accent); }
+  #calib-sub   { font-size:12px; color:var(--text); letter-spacing:.1em; text-align:center; line-height:2; }
+  #calib-bar-wrap { width:280px; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+  #calib-bar { width:0%; height:100%; background:var(--accent); box-shadow:0 0 8px var(--accent); transition:width .1s linear; }
+
+  /* ── MOTION ENERGY BAR ── */
+  .energy-bar-wrap {
+    position:relative; height:7px; background:var(--border); border-radius:4px;
+    margin:6px 0 2px; overflow:visible;
+  }
+  #energy-bar {
+    height:100%; background:var(--accent); border-radius:4px;
+    width:0%; transition:width .07s linear;
+  }
+  #energy-bar.warn { background:var(--warn); }
+  #energy-bar.hot  { background:var(--accent2); box-shadow:0 0 6px var(--accent2)80; }
+  .eth-line {
+    position:absolute; top:-3px; bottom:-3px; width:2px;
+    background:#ffffff22; pointer-events:none; border-radius:1px;
+  }
+
+  /* ── AUTO-REC ── */
+  #btn-auto-rec {
+    font-family:'Space Mono',monospace; font-size:9px; letter-spacing:.08em;
+    padding:4px 10px; border-radius:3px; text-transform:uppercase;
+    border:1px solid var(--muted); color:var(--muted);
+    background:transparent; cursor:pointer; transition:all .15s; width:100%; margin-top:6px;
+  }
+  #btn-auto-rec.active {
+    border-color:#00ff88; color:#00ff88; background:#00ff8810;
+    animation:blink-rec .9s steps(1) infinite;
+  }
+
+  /* ── SEGMENT MARKERS on playback bar ── */
+  .seg-mark {
+    position:absolute; top:-5px; bottom:-5px; pointer-events:none; border-radius:2px;
+  }
+  .seg-mark.action { background:rgba(0,255,136,0.28); border:1px solid rgba(0,255,136,0.55); }
+  .seg-mark.pause  { background:transparent; }
+
+  /* ── CAMERA PANEL ── */
+  #cam-panel {
+    display:none; position:absolute; bottom:130px; left:16px; z-index:11;
+    border-radius:8px; border:1px solid var(--border);
+    overflow:hidden; background:#000;
+    box-shadow:0 4px 24px #00000099;
+  }
+  #cam-panel.show { display:block; }
+  #cam-label {
+    background:#07090dee; font-size:9px; color:var(--muted);
+    letter-spacing:.12em; padding:4px 10px; text-transform:uppercase;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  #cam-label span { color:var(--accent2); }
+  #cam-video { width:220px; height:165px; display:block; transform:scaleX(-1); object-fit:cover; }
+  #cam-overlay-canvas {
+    position:absolute; top:24px; left:0; width:220px; height:165px;
+    pointer-events:none; transform:scaleX(-1);
+  }
+  #cam-score-bar { height:3px; width:0%; background:var(--accent); transition:width .1s; }
+  #cam-vis-score { font-size:9px; color:var(--muted); padding:3px 8px; letter-spacing:.06em; background:#07090dee; }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="three-canvas"></canvas></div>
+
+<!-- Top bar -->
+<div id="topbar">
+  <div id="logo">R2P</div>
+  <span style="color:var(--muted);font-size:11px;letter-spacing:.14em">LIVE MOCAP</span>
+  <div class="top-sep"></div>
+  <div id="fps-label">-- FPS</div>
+  <div id="ws-pill"><div id="ws-dot"></div><span id="ws-label">OFFLINE</span></div>
+</div>
+
+<!-- Left info panel -->
+<div id="left-panel">
+  <div class="p-title">Status</div>
+  <div class="info-row"><span class="info-lbl">Frame</span>   <span class="info-val" id="iv-frame">0</span></div>
+  <div class="info-row"><span class="info-lbl">Motion</span>  <span class="info-val accent" id="iv-motion">—</span></div>
+  <div class="info-row"><span class="info-lbl">Pelvis Y</span><span class="info-val" id="iv-py">—</span></div>
+  <div class="info-row"><span class="info-lbl">Calibrated</span><span class="info-val" id="iv-calib">No</span></div>
+  <div class="section-sep"></div>
+  <div class="p-title">Motion Energy</div>
+  <div class="energy-bar-wrap">
+    <div id="energy-bar"></div>
+    <div class="eth-line" id="eth-hi" title="ACTION threshold" style="left:36.7%"></div>
+    <div class="eth-line" id="eth-lo" title="PAUSE threshold"  style="left:18.7%"></div>
+  </div>
+  <div class="info-row" style="margin-bottom:0">
+    <span class="info-lbl">Energy</span>
+    <span class="info-val" id="iv-energy">0.0000</span>
+  </div>
+</div>
+
+<!-- Right sensor panel -->
+<div id="right-panel">
+  <div class="p-title">Sensors</div>
+  <div class="chips" id="sensor-chips"><span class="chip sim">no data</span></div>
+  <div class="section-sep"></div>
+  <div class="p-title">Record</div>
+  <div style="display:flex;gap:5px;align-items:center;">
+    <input id="rec-name-in" type="text" value="take_1" spellcheck="false">
+    <button id="btn-rec-toggle" onclick="toggleRecording()">REC</button>
+  </div>
+  <div class="rec-info" id="rec-info">Ready</div>
+  <div id="rec-timer">00:00.0</div>
+  <button id="btn-auto-rec" onclick="toggleAutoRec()">⚡ Auto-Rec: OFF</button>
+</div>
+
+<!-- Playback bar -->
+<div id="pb-bar">
+  <span style="font-size:9px;color:var(--muted);letter-spacing:.12em;white-space:nowrap">PLAY</span>
+  <select id="pb-select" onchange="if(this.value)loadRecording(this.value)">
+    <option value="">— select —</option>
+  </select>
+  <button class="pb-btn" onclick="refreshRecordingsList()" title="Refresh">↺</button>
+  <button class="pb-btn" id="pb-btn-play" onclick="pbPlayPause()">▶</button>
+  <button class="pb-btn" onclick="pbStop()">■</button>
+  <button class="pb-btn on" id="pb-btn-loop" onclick="pbToggleLoop()" title="Loop">↻</button>
+  <button class="pb-btn" id="pb-analyze-btn" onclick="analyzeRecording()" title="Segment recording into reps">Analyze</button>
+  <select id="pb-speed-sel" onchange="pbSetSpeed(this.value)">
+    <option value="0.25">0.25×</option>
+    <option value="0.5">0.5×</option>
+    <option value="1" selected>1×</option>
+    <option value="2">2×</option>
+  </select>
+  <div id="pb-progress-wrap" onclick="pbSeek(event)"><div id="pb-progress-bar"></div></div>
+  <span id="pb-time">0:00 / 0:00</span>
+  <div id="pb-mode-badge">● PLAYBACK</div>
+</div>
+
+<!-- Grade result panel -->
+<div id="grade-panel">
+  <div class="p-title">Motion Grade</div>
+  <div id="gp-letter">-</div>
+  <div id="gp-score">-- / 100</div>
+  <div id="gp-dist">DTW distance --</div>
+  <div id="gp-bars"></div>
+</div>
+
+<!-- Camera motion trigger panel -->
+<div id="cam-panel">
+  <div id="cam-label">CAMERA TRIGGER <span id="cam-state-lbl">OFF</span></div>
+  <div style="position:relative">
+    <video id="cam-video" autoplay muted playsinline></video>
+    <canvas id="cam-overlay-canvas" width="220" height="165"></canvas>
+  </div>
+  <div id="cam-score-bar"></div>
+  <div id="cam-vis-score">Visual motion: —</div>
+</div>
+
+<!-- Countdown overlay -->
+<div id="countdown-overlay">
+  <div id="cd-num">3</div>
+  <div id="cd-label">Get ready</div>
+</div>
+
+<!-- Calibration overlay -->
+<div id="calib-overlay">
+  <div id="calib-title">CALIBRATING</div>
+  <div id="calib-sub">Stand upright, arms relaxed at your sides.<br>Hold still for 2 seconds.</div>
+  <div id="calib-bar-wrap"><div id="calib-bar"></div></div>
+</div>
+
+<!-- Bottom controls -->
+<div id="bottom-bar">
+  <button class="btn" id="btn-calib"     onclick="startCalibration()">Calibrate Pose</button>
+  <button class="btn" id="btn-reset-cam" onclick="resetCam()">Reset Camera</button>
+  <button class="btn" id="btn-clear-cal" onclick="clearCalibration()">Clear Calibration</button>
+  <button class="btn active" id="btn-frame"  onclick="toggleFrameCorrect()">Frame: Z→Y</button>
+  <button class="btn"        id="btn-mirror" onclick="toggleMirror()">Mirror</button>
+  <button class="btn" id="btn-record"    onclick="toggleRecord()">Record Reference</button>
+  <button class="btn" id="btn-grade"     onclick="gradeMotion()">Grade Motion</button>
+  <button class="btn" id="btn-camera"   onclick="toggleCamera()">Camera Trigger</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════
+//  SCENE
+// ══════════════════════════════════════════════════════
+
+const canvas   = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x07090d, 1);
+renderer.shadowMap.enabled = true;
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(52, 1, 0.01, 100);
+scene.fog    = new THREE.Fog(0x07090d, 8, 24);
+
+// Lighting
+scene.add(new THREE.AmbientLight(0x0d1a2a, 3));
+const dir1 = new THREE.DirectionalLight(0x00ffe0, 1.4); dir1.position.set(3, 5, 3); scene.add(dir1);
+const dir2 = new THREE.DirectionalLight(0xff3c6e, 0.5); dir2.position.set(-4, 2, -2); scene.add(dir2);
+const ptLight = new THREE.PointLight(0x00ffe0, 0.7, 6); ptLight.position.set(0, 2, 0); scene.add(ptLight);
+
+// Grid + floor glow
+const grid = new THREE.GridHelper(30, 60, 0x1c2230, 0x1c2230);
+grid.position.y = -0.92; scene.add(grid);
+const floorMesh = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 30),
+  new THREE.MeshBasicMaterial({ color: 0x00ffe0, transparent: true, opacity: 0.018, side: THREE.DoubleSide })
+);
+floorMesh.rotation.x = -Math.PI / 2; floorMesh.position.y = -0.91; scene.add(floorMesh);
+
+function onResize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', onResize); onResize();
+
+// ── Orbit controls ────────────────────────────────────
+let isDrag = false, pMouse = { x: 0, y: 0 };
+let sph = { theta: 0.3, phi: Math.PI / 3.2, r: 3.4 };
+let camTarget = new THREE.Vector3(0, 0.5, 0);
+
+function updateCam() {
+  camera.position.set(
+    camTarget.x + sph.r * Math.sin(sph.phi) * Math.sin(sph.theta),
+    camTarget.y + sph.r * Math.cos(sph.phi),
+    camTarget.z + sph.r * Math.sin(sph.phi) * Math.cos(sph.theta)
+  );
+  camera.lookAt(camTarget);
+}
+canvas.addEventListener('mousedown',  e => { isDrag = true; pMouse = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('mouseup',    () => isDrag = false);
+canvas.addEventListener('mouseleave', () => isDrag = false);
+canvas.addEventListener('mousemove',  e => {
+  if (!isDrag) return;
+  sph.theta -= (e.clientX - pMouse.x) * 0.006;
+  sph.phi    = Math.max(0.08, Math.min(Math.PI - 0.08, sph.phi + (e.clientY - pMouse.y) * 0.006));
+  pMouse = { x: e.clientX, y: e.clientY }; updateCam();
+});
+canvas.addEventListener('wheel', e => {
+  sph.r = Math.max(1, Math.min(10, sph.r + e.deltaY * 0.004)); updateCam();
+}, { passive: true });
+
+// Touch orbit
+let lt = null;
+canvas.addEventListener('touchstart', e => { lt = { x: e.touches[0].clientX, y: e.touches[0].clientY }; });
+canvas.addEventListener('touchmove',  e => {
+  if (!lt) return;
+  sph.theta -= (e.touches[0].clientX - lt.x) * 0.005;
+  sph.phi    = Math.max(0.08, Math.min(Math.PI - 0.08, sph.phi + (e.touches[0].clientY - lt.y) * 0.005));
+  lt = { x: e.touches[0].clientX, y: e.touches[0].clientY }; updateCam(); e.preventDefault();
+}, { passive: false });
+
+function resetCam() { sph = { theta: 0.3, phi: Math.PI / 3.2, r: 3.4 }; camTarget.set(0, 0.5, 0); updateCam(); }
+updateCam();
+
+// ══════════════════════════════════════════════════════
+//  SKELETON GEOMETRY
+// ══════════════════════════════════════════════════════
+
+// [parent, child, side]  side = 'c'|'l'|'r'
+const BONE_DEFS = [
+  ['pelvis','lumbar','c'], ['lumbar','chest','c'], ['chest','neck','c'], ['neck','head','c'], ['head','head_top','c'],
+  ['pelvis','hip_l','l'],  ['hip_l','knee_l','l'],  ['knee_l','ankle_l','l'],  ['ankle_l','foot_l','l'],
+  ['pelvis','hip_r','r'],  ['hip_r','knee_r','r'],  ['knee_r','ankle_r','r'],  ['ankle_r','foot_r','r'],
+  ['chest','shoulder_l','l'], ['shoulder_l','elbow_l','l'], ['elbow_l','wrist_l','l'], ['wrist_l','hand_l','l'],
+  ['chest','shoulder_r','r'], ['shoulder_r','elbow_r','r'], ['elbow_r','wrist_r','r'], ['wrist_r','hand_r','r'],
+  ['shoulder_l','shoulder_r','c'],
+  ['hip_l','hip_r','c'],
+];
+
+const JOINT_NAMES = [...new Set(BONE_DEFS.flatMap(b => [b[0], b[1]]))];
+const COLS  = { c: 0x38bdf8, l: 0x34d399, r: 0xf472b6 };
+const JCOLS = { c: 0x00ffe0, l: 0x34d399, r: 0xf472b6 };
+
+// Joint spheres
+const jointMeshes = {};
+const jGeo = new THREE.SphereGeometry(0.022, 10, 10);
+JOINT_NAMES.forEach(n => {
+  const s = n.endsWith('_l') ? 'l' : n.endsWith('_r') ? 'r' : 'c';
+  const m = new THREE.MeshPhongMaterial({
+    color: JCOLS[s], emissive: JCOLS[s], emissiveIntensity: 0.5, transparent: true, opacity: 0.9
+  });
+  const mesh = new THREE.Mesh(jGeo, m);
+  mesh.visible = false; scene.add(mesh);
+  jointMeshes[n] = mesh;
+});
+
+// Bone cylinders
+const boneMeshes = {};
+BONE_DEFS.forEach(([pa, ch, s]) => {
+  const m = new THREE.MeshPhongMaterial({
+    color: COLS[s], emissive: COLS[s], emissiveIntensity: 0.22, transparent: true, opacity: 0.85
+  });
+  const geo  = new THREE.CylinderGeometry(0.014, 0.014, 1, 8);
+  const mesh = new THREE.Mesh(geo, m);
+  mesh.visible = false; scene.add(mesh);
+  boneMeshes[`${pa}-${ch}`] = mesh;
+});
+
+// ── IMU MARKER MESHES ──────────────────────────────────
+// Octahedron (diamond) at each sensor mount site on the body
+
+function midpt(a, b) {
+  if (!a || !b) return null;
+  return [(a[0]+b[0])/2, (a[1]+b[1])/2, (a[2]+b[2])/2];
+}
+
+const IMU_DEFS = {
+  pelvis:       { side:'c', pos: J => J.pelvis },
+  chest:        { side:'c', pos: J => J.chest },
+  head:         { side:'c', pos: J => J.head },
+  l_thigh:      { side:'l', pos: J => midpt(J.hip_l,     J.knee_l)     },
+  r_thigh:      { side:'r', pos: J => midpt(J.hip_r,     J.knee_r)     },
+  l_shin:       { side:'l', pos: J => midpt(J.knee_l,    J.ankle_l)    },
+  r_shin:       { side:'r', pos: J => midpt(J.knee_r,    J.ankle_r)    },
+  l_foot:       { side:'l', pos: J => J.ankle_l },
+  r_foot:       { side:'r', pos: J => J.ankle_r },
+  l_upper_arm:  { side:'l', pos: J => midpt(J.shoulder_l, J.elbow_l)  },
+  r_upper_arm:  { side:'r', pos: J => midpt(J.shoulder_r, J.elbow_r)  },
+  l_forearm:    { side:'l', pos: J => midpt(J.elbow_l,   J.wrist_l)   },
+  r_forearm:    { side:'r', pos: J => midpt(J.elbow_r,   J.wrist_r)   },
+};
+
+const IMU_COL_LIVE = { c: 0x00ffe0, l: 0x00ff88, r: 0xff66aa };
+const IMU_COL_SIM  = { c: 0x1c2535, l: 0x1c2535, r: 0x1c2535 };
+
+const imuGeo    = new THREE.OctahedronGeometry(0.030, 0);
+const imuMeshes = {};
+for (const [sid, def] of Object.entries(IMU_DEFS)) {
+  const mat = new THREE.MeshPhongMaterial({
+    color: IMU_COL_SIM[def.side],
+    emissive: IMU_COL_SIM[def.side],
+    emissiveIntensity: 0.15,
+    transparent: true, opacity: 0.35,
+  });
+  const mesh = new THREE.Mesh(imuGeo, mat);
+  mesh.visible = false;
+  scene.add(mesh);
+  imuMeshes[sid] = mesh;
+}
+
+const _vA = new THREE.Vector3(), _vB = new THREE.Vector3();
+function updateBone(mesh, pa, pb) {
+  _vA.set(...pa); _vB.set(...pb);
+  const dir = _vB.clone().sub(_vA), len = dir.length();
+  if (len < 0.001) { mesh.visible = false; return; }
+  mesh.visible = true;
+  mesh.position.copy(_vA).addScaledVector(dir.normalize(), len / 2);
+  mesh.scale.set(1, len, 1);
+  mesh.setRotationFromQuaternion(
+    new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize())
+  );
+}
+
+// ══════════════════════════════════════════════════════
+//  QUATERNION MATH  (scalar-first: [w, x, y, z])
+// ══════════════════════════════════════════════════════
+
+function qmul(a, b) {
+  const [w1,x1,y1,z1] = a, [w2,x2,y2,z2] = b;
+  return [
+    w1*w2 - x1*x2 - y1*y2 - z1*z2,
+    w1*x2 + x1*w2 + y1*z2 - z1*y2,
+    w1*y2 - x1*z2 + y1*w2 + z1*x2,
+    w1*z2 + x1*y2 - y1*x2 + z1*w2,
+  ];
+}
+function qconj(q) { return [q[0], -q[1], -q[2], -q[3]]; }
+function qrot(q, v) {
+  const qv = [0, v[0], v[1], v[2]];
+  const r = qmul(qmul(q, qv), qconj(q));
+  return [r[1], r[2], r[3]];
+}
+function qnorm(q) {
+  const n = Math.hypot(...q);
+  return n < 1e-9 ? [1, 0, 0, 0] : q.map(x => x / n);
+}
+function slerp(a, b, t) {
+  let d = a[0]*b[0]+a[1]*b[1]+a[2]*b[2]+a[3]*b[3];
+  if (d < 0) { b = b.map(x => -x); d = -d; }
+  if (d > 0.9995) return qnorm(a.map((v, i) => v + (b[i] - v) * t));
+  const th0 = Math.acos(d), th = th0*t, s0 = Math.cos(th) - d*Math.sin(th)/Math.sin(th0), s1 = Math.sin(th)/Math.sin(th0);
+  return qnorm(a.map((v, i) => v*s0 + b[i]*s1));
+}
+function add3(a, b) { return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
+function sc3(v, s)  { return [v[0]*s, v[1]*s, v[2]*s]; }
+
+const IDENT = [1, 0, 0, 0];
+
+// ══════════════════════════════════════════════════════
+//  COORDINATE FRAME CORRECTION
+//
+//  ESP32 DMP quaternions live in a Z-up world frame
+//  (gravity = +Z, AZ≈9.81 when flat).  Our FK is Y-up.
+//  The correct conversion is a conjugation by FC:
+//    q_yup = FC * q_zup * FC_inv
+//  where FC = 90° rotation around X  (Z→Y, Y→−Z).
+//
+//  Toggle "Frame Z→Y" OFF only if your firmware already
+//  outputs quaternions in a Y-up frame.
+//  Toggle "Mirror" if turning right still spins left.
+// ══════════════════════════════════════════════════════
+
+const FC     = [Math.SQRT1_2, -Math.SQRT1_2, 0, 0];  // −90° around X
+const FC_INV = [Math.SQRT1_2,  Math.SQRT1_2, 0, 0];  // +90° around X
+
+let useFrameCorrect = true;   // Z-up → Y-up (on by default for ESP32 DMP)
+let useMirror       = false;  // invert all rotations (fixes inverted yaw)
+
+function applyFrame(q) {
+  let r = q;
+  if (useFrameCorrect) r = qnorm(qmul(qmul(FC, r), FC_INV));
+  if (useMirror)       r = qconj(r);
+  return r;
+}
+
+function toggleFrameCorrect() {
+  useFrameCorrect = !useFrameCorrect;
+  clearCalibration();
+  const btn = document.getElementById('btn-frame');
+  btn.textContent = useFrameCorrect ? 'Frame: Z→Y' : 'Frame: Raw';
+  btn.classList.toggle('active', useFrameCorrect);
+}
+
+function toggleMirror() {
+  useMirror = !useMirror;
+  clearCalibration();
+  document.getElementById('btn-mirror').classList.toggle('active', useMirror);
+}
+
+// ══════════════════════════════════════════════════════
+//  LIMB LENGTHS  (metres, for a ~1.75m person)
+// ══════════════════════════════════════════════════════
+
+const LL = {
+  pelvis_h: 0.92,
+  pelvis_lumbar: 0.10, lumbar: 0.14, chest: 0.20, neck: 0.10, head: 0.13,
+  thigh: 0.42, shin: 0.40, foot: 0.17,
+  clavicle: 0.175, upper_arm: 0.30, forearm: 0.26, hand: 0.09,
+};
+
+// ══════════════════════════════════════════════════════
+//  CALIBRATION
+//  Records neutral-pose quaternions so all subsequent
+//  readings are expressed relative to that pose.
+// ══════════════════════════════════════════════════════
+
+let calibOffsets  = {};    // sensor_id -> quaternion recorded at calibration
+let isCalibrated  = false;
+let calibFrames   = [];    // accumulate frames during calib window
+let calibRunning  = false;
+const CALIB_DURATION_MS = 2000;
+let calibStartTime = 0;
+
+function startCalibration() {
+  calibFrames   = [];
+  calibRunning  = true;
+  calibStartTime = performance.now();
+  document.getElementById('calib-overlay').classList.add('show');
+  document.getElementById('btn-calib').classList.add('warn');
+  document.getElementById('btn-calib').textContent = 'Calibrating...';
+}
+
+function finishCalibration() {
+  calibRunning = false;
+  document.getElementById('calib-overlay').classList.remove('show');
+  document.getElementById('btn-calib').classList.remove('warn');
+  document.getElementById('btn-calib').textContent = 'Calibrate Pose';
+
+  if (calibFrames.length === 0) return;
+
+  // Average quaternions per sensor over the calibration window
+  const sums   = {};
+  const counts = {};
+  for (const frame of calibFrames) {
+    for (const [sid, q] of Object.entries(frame)) {
+      if (!sums[sid]) { sums[sid] = [0,0,0,0]; counts[sid] = 0; }
+      // Apply frame correction before averaging so calibration is in Y-up space
+      const qfc = applyFrame(q);
+      const ref = sums[sid];
+      const dot = qfc[0]*ref[0]+qfc[1]*ref[1]+qfc[2]*ref[2]+qfc[3]*ref[3];
+      const qf  = (dot < 0 && counts[sid] > 0) ? qfc.map(x => -x) : qfc;
+      sums[sid][0] += qf[0]; sums[sid][1] += qf[1]; sums[sid][2] += qf[2]; sums[sid][3] += qf[3];
+      counts[sid]++;
+    }
+  }
+  calibOffsets = {};
+  for (const [sid, sum] of Object.entries(sums)) {
+    calibOffsets[sid] = qnorm(sum.map(v => v / counts[sid]));
+  }
+  isCalibrated = true;
+  document.getElementById('iv-calib').textContent = 'Yes';
+  document.getElementById('iv-calib').className   = 'info-val accent';
+  console.log('Calibration complete for:', Object.keys(calibOffsets));
+}
+
+function clearCalibration() {
+  calibOffsets = {};
+  isCalibrated = false;
+  document.getElementById('iv-calib').textContent = 'No';
+  document.getElementById('iv-calib').className   = 'info-val';
+}
+
+// Get calibrated quaternion for a sensor.
+// If calibrated: returns rotation relative to calibration pose (= neutral = arms at sides).
+// If not calibrated: returns raw sensor quaternion.
+function getCalibratedQ(sid, rawQ) {
+  const q = applyFrame(rawQ || IDENT);   // convert to Y-up frame first
+  const offset = calibOffsets[sid];
+  if (!offset) return q;
+  return qnorm(qmul(qconj(offset), q)); // remove T-pose offset (in Y-up space)
+}
+
+// ══════════════════════════════════════════════════════
+//  FORWARD KINEMATICS
+//  Takes a dict of calibrated segment quaternions,
+//  computes all joint world positions.
+// ══════════════════════════════════════════════════════
+
+function computeJoints(Q, rootY) {
+  const J  = {};
+  const up = [0, 1, 0], dn = [0, -1, 0];
+
+  // With only a thigh sensor active, use it as pelvis proxy so the whole
+  // body follows the sensor rather than staying rigid.
+  const _proxy = Q.thigh_r || Q.thigh_l || IDENT;
+  const qp   = Q.pelvis  || _proxy;
+  const qc   = Q.chest   || qp;
+  const qtl  = Q.thigh_l || qp;
+  const qtr  = Q.thigh_r || qp;
+  const qsl  = Q.shin_l    || qtl;
+  const qsr  = Q.shin_r    || qtr;
+  const qfl  = Q.l_foot    || qsl;
+  const qfr  = Q.r_foot    || qsr;
+  const qh   = Q.head      || qc;
+  const qual = Q.l_upper_arm || qc;
+  const quar = Q.r_upper_arm || qc;
+  const qfal = Q.l_forearm   || qual;
+  const qfar = Q.r_forearm   || quar;
+
+  const ry = (rootY || 0) + LL.pelvis_h;
+
+  J.pelvis    = [0, ry, 0];
+  J.lumbar    = add3(J.pelvis,     qrot(qp,  sc3(up, LL.pelvis_lumbar)));
+  J.chest     = add3(J.lumbar,     qrot(qc,  sc3(up, LL.lumbar)));
+  J.neck      = add3(J.chest,      qrot(qc,  sc3(up, LL.chest)));
+  J.head      = add3(J.neck,       qrot(qc,  sc3(up, LL.neck)));
+  J.head_top  = add3(J.head,       qrot(qh,  sc3(up, LL.head)));
+
+  J.hip_l     = add3(J.pelvis,     qrot(qp,  [-0.105, -0.05, 0]));
+  J.knee_l    = add3(J.hip_l,      qrot(qtl, sc3(dn, LL.thigh)));
+  J.ankle_l   = add3(J.knee_l,     qrot(qsl, sc3(dn, LL.shin)));
+  J.foot_l    = add3(J.ankle_l,    qrot(qfl, [0, -0.08*LL.foot, LL.foot*0.94]));
+
+  J.hip_r     = add3(J.pelvis,     qrot(qp,  [ 0.105, -0.05, 0]));
+  J.knee_r    = add3(J.hip_r,      qrot(qtr, sc3(dn, LL.thigh)));
+  J.ankle_r   = add3(J.knee_r,     qrot(qsr, sc3(dn, LL.shin)));
+  J.foot_r    = add3(J.ankle_r,    qrot(qfr, [0, -0.08*LL.foot, LL.foot*0.94]));
+
+  J.shoulder_l = add3(J.chest,     qrot(qc,  [-LL.clavicle, 0, 0]));
+  J.elbow_l    = add3(J.shoulder_l, qrot(qual, sc3(dn, LL.upper_arm)));
+  J.wrist_l    = add3(J.elbow_l,   qrot(qfal, sc3(dn, LL.forearm)));
+  J.hand_l     = add3(J.wrist_l,   qrot(qfal, sc3(dn, LL.hand)));
+
+  J.shoulder_r = add3(J.chest,     qrot(qc,  [ LL.clavicle, 0, 0]));
+  J.elbow_r    = add3(J.shoulder_r, qrot(quar, sc3(dn, LL.upper_arm)));
+  J.wrist_r    = add3(J.elbow_r,   qrot(qfar, sc3(dn, LL.forearm)));
+  J.hand_r     = add3(J.wrist_r,   qrot(qfar, sc3(dn, LL.hand)));
+
+  return J;
+}
+
+// ══════════════════════════════════════════════════════
+//  SENSOR → SKELETON SEGMENT MAPPING
+// ══════════════════════════════════════════════════════
+
+// Maps the server's sensor_id keys to the Q keys used in computeJoints
+const SID_TO_SEG = {
+  pelvis:      'pelvis',
+  chest:       'chest',
+  l_thigh:     'thigh_l',
+  r_thigh:     'thigh_r',
+  l_shin:      'shin_l',
+  r_shin:      'shin_r',
+  l_foot:      'l_foot',
+  r_foot:      'r_foot',
+  head:        'head',
+  l_upper_arm: 'l_upper_arm',
+  r_upper_arm: 'r_upper_arm',
+  l_forearm:   'l_forearm',
+  r_forearm:   'r_forearm',
+};
+
+// ══════════════════════════════════════════════════════
+//  WEBSOCKET
+// ══════════════════════════════════════════════════════
+
+let latestQuats   = {};    // sensor_id -> raw quaternion from server
+let activeSensors = new Set();
+let wsRetry       = null;
+let lastMsgTime   = 0;
+
+function connectWS() {
+  const url = `ws://${location.host}/ws`;
+  const ws  = new WebSocket(url);
+
+  ws.onopen = () => {
+    setWsState(true);
+    if (wsRetry) { clearTimeout(wsRetry); wsRetry = null; }
+  };
+
+  ws.onmessage = evt => {
+    lastMsgTime = performance.now();
+    try {
+      const data = JSON.parse(evt.data);
+      if (data.type !== 'pose') return;
+
+      latestQuats   = data.quats || {};
+      activeSensors = new Set(data.active_sensors || []);
+
+      // Accumulate calibration frames
+      if (calibRunning) {
+        const elapsed = performance.now() - calibStartTime;
+        calibFrames.push({ ...latestQuats });
+        const pct = Math.min(100, (elapsed / CALIB_DURATION_MS) * 100);
+        document.getElementById('calib-bar').style.width = pct + '%';
+        if (elapsed >= CALIB_DURATION_MS) finishCalibration();
+      }
+
+      // Update sensor chips
+      updateSensorChips(data.active_sensors || [], data.sim_sensors || []);
+
+      // HUD
+      document.getElementById('iv-frame').textContent  = data.frame_id || 0;
+      document.getElementById('iv-motion').textContent = data.motion   || '—';
+      document.getElementById('fps-label').textContent = (data.fps || 0).toFixed(1) + ' FPS';
+
+      // Motion energy bar + auto-rec
+      if (typeof data.motion_energy === 'number') {
+        _updateEnergyBar(data.motion_energy);
+        if (_autoRec) _checkAutoRec(data.motion_energy);
+      }
+
+    } catch(e) { /* ignore */ }
+  };
+
+  ws.onclose = ws.onerror = () => {
+    setWsState(false);
+    if (!wsRetry) wsRetry = setTimeout(connectWS, 2000);
+  };
+}
+
+function setWsState(on) {
+  document.getElementById('ws-dot').classList.toggle('on', on);
+  document.getElementById('ws-label').textContent = on ? 'LIVE' : 'OFFLINE';
+}
+
+function updateSensorChips(live, sim) {
+  const el   = document.getElementById('sensor-chips');
+  const all  = [...new Set([...live, ...sim])].sort();
+  if (all.length === 0) { el.innerHTML = '<span class="chip sim">no data</span>'; return; }
+  el.innerHTML = all.map(s => {
+    const isLive = live.includes(s);
+    return `<span class="chip ${isLive ? 'live' : 'sim'}">${s.replace(/_/g,' ')}</span>`;
+  }).join('');
+}
+
+connectWS();
+
+// ══════════════════════════════════════════════════════
+//  SMOOTH JOINTS  (exponential low-pass per joint)
+// ══════════════════════════════════════════════════════
+
+let smoothedJoints = {};
+const SMOOTH = 0.25;   // lower = more lag, less jitter
+
+function smoothJoint(name, target) {
+  const prev = smoothedJoints[name];
+  if (!prev) { smoothedJoints[name] = target; return target; }
+  const out = [
+    prev[0] + (target[0] - prev[0]) * SMOOTH,
+    prev[1] + (target[1] - prev[1]) * SMOOTH,
+    prev[2] + (target[2] - prev[2]) * SMOOTH,
+  ];
+  smoothedJoints[name] = out;
+  return out;
+}
+
+// ══════════════════════════════════════════════════════
+//  MAIN RENDER LOOP
+// ══════════════════════════════════════════════════════
+
+let frameCount = 0;
+
+function tick() {
+  requestAnimationFrame(tick);
+  frameCount++;
+
+  // Advance playback — overrides latestQuats when in playback mode
+  if (_pbMode) _advancePlayback();
+
+  // Build segment quaternion dict from latest sensor data
+  const Q = {};
+  for (const [sid, seg] of Object.entries(SID_TO_SEG)) {
+    const raw = latestQuats[sid];
+    if (raw) {
+      Q[seg] = getCalibratedQ(sid, raw);
+    }
+    // Missing sensors → falls through to defaults in computeJoints
+  }
+
+  // Compute joint world positions
+  const J = computeJoints(Q, 0);
+
+  // Smooth and apply to scene
+  JOINT_NAMES.forEach(n => {
+    const p    = J[n];
+    const mesh = jointMeshes[n];
+    if (!mesh) return;
+    if (p) {
+      const sp = smoothJoint(n, p);
+      mesh.position.set(sp[0], sp[1], sp[2]);
+      mesh.visible = true;
+    } else {
+      mesh.visible = false;
+    }
+  });
+
+  BONE_DEFS.forEach(([pa, ch]) => {
+    const mesh = boneMeshes[`${pa}-${ch}`];
+    const a = smoothedJoints[pa], b = smoothedJoints[ch];
+    if (a && b) updateBone(mesh, a, b); else if (mesh) mesh.visible = false;
+  });
+
+  // ── IMU marker positions ──────────────────────────────
+  for (const [sid, def] of Object.entries(IMU_DEFS)) {
+    const mesh = imuMeshes[sid];
+    const pos  = def.pos(smoothedJoints);
+    if (!pos) { mesh.visible = false; continue; }
+    mesh.position.set(pos[0], pos[1], pos[2]);
+    mesh.rotation.y += 0.018;
+    const isLive = activeSensors.has(sid);
+    const col    = isLive ? IMU_COL_LIVE[def.side] : IMU_COL_SIM[def.side];
+    mesh.material.color.setHex(col);
+    mesh.material.emissive.setHex(col);
+    mesh.material.emissiveIntensity = isLive ? 0.9 : 0.15;
+    mesh.material.opacity           = isLive ? 1.0 : 0.28;
+    mesh.visible = true;
+  }
+
+  // Point light follows chest
+  const chest = smoothedJoints['chest'];
+  if (chest) ptLight.position.set(chest[0], chest[1] + 0.3, chest[2]);
+
+  // Follow pelvis with camera target
+  const pel = smoothedJoints['pelvis'];
+  if (pel) {
+    camTarget.x += (pel[0] - camTarget.x) * 0.03;
+    camTarget.y += (pel[1] - 0.4 - camTarget.y) * 0.03;
+    camTarget.z += (pel[2] - camTarget.z) * 0.03;
+    updateCam();
+    document.getElementById('iv-py').textContent = pel[1].toFixed(3) + 'm';
+  }
+
+  renderer.render(scene, camera);
+}
+
+tick();
+
+// ══════════════════════════════════════════════════════
+//  RECORDING
+// ══════════════════════════════════════════════════════
+
+let _recRunning  = false;
+let _recTimer    = null;
+let _recMs       = 0;      // elapsed milliseconds
+
+function _fmtTime(ms) {
+  const total = Math.floor(ms / 100);
+  const t     = total % 10;
+  const s     = Math.floor(total / 10) % 60;
+  const m     = Math.floor(total / 600);
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${t}`;
+}
+
+function _startCountdown(onComplete) {
+  const overlay = document.getElementById('countdown-overlay');
+  const numEl   = document.getElementById('cd-num');
+  const lblEl   = document.getElementById('cd-label');
+  let   count   = 3;
+
+  function _showCount(n) {
+    // Re-trigger CSS animation each tick
+    numEl.style.animation = 'none';
+    numEl.offsetHeight;                      // force reflow
+    numEl.style.animation = '';
+
+    if (n > 0) {
+      numEl.textContent   = n;
+      numEl.classList.remove('go');
+      lblEl.textContent   = 'Get ready';
+      setTimeout(() => _showCount(n - 1), 1000);
+    } else {
+      numEl.textContent   = 'GO';
+      numEl.classList.add('go');
+      lblEl.textContent   = '';
+      setTimeout(() => {
+        overlay.classList.remove('show');
+        numEl.classList.remove('go');
+        onComplete();
+      }, 600);
+    }
+  }
+
+  overlay.classList.add('show');
+  _showCount(count);
+}
+
+function toggleRecording() {
+  const btn   = document.getElementById('btn-rec-toggle');
+  const info  = document.getElementById('rec-info');
+  const timer = document.getElementById('rec-timer');
+  const name  = (document.getElementById('rec-name-in').value || 'take_1').trim();
+
+  if (!_recRunning) {
+    btn.disabled = true;
+    info.textContent = 'Countdown…';
+
+    _startCountdown(() => {
+      fetch(`/api/recording/start?name=${encodeURIComponent(name)}`, { method: 'POST' })
+        .then(r => r.json())
+        .then(() => {
+          _recRunning  = true;
+          _recMs       = 0;
+          btn.disabled = false;
+          btn.textContent = '■ STOP';
+          btn.classList.add('live');
+          info.textContent = '● REC';
+          timer.textContent = '00:00.0';
+          timer.classList.add('show');
+
+          _recTimer = setInterval(() => {
+            _recMs += 100;
+            timer.textContent = _fmtTime(_recMs);
+          }, 100);
+        })
+        .catch(() => { btn.disabled = false; alert('Server unreachable'); });
+    });
+
+  } else {
+    fetch('/api/recording/stop', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => {
+        _recRunning  = false;
+        clearInterval(_recTimer); _recTimer = null;
+        btn.textContent = 'REC';
+        btn.classList.remove('live');
+        timer.classList.remove('show');
+        info.textContent = d.error
+          ? `Error: ${d.error}`
+          : `Saved "${d.name}"  ${d.frames} frames`;
+        refreshRecordingsList();
+      })
+      .catch(() => alert('Server unreachable'));
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  PLAYBACK ENGINE
+//  Loads a saved recording and drives the skeleton
+//  with its stored quaternion frames instead of live data.
+// ══════════════════════════════════════════════════════
+
+let _pbData    = null;   // loaded recording object
+let _pbPlaying = false;
+let _pbLoop    = true;
+let _pbSpeed   = 1.0;
+let _pbTime    = 0;      // current playback position (seconds)
+let _pbWall    = 0;      // last wall-clock reference (seconds)
+let _pbMode    = false;  // when true, overrides latestQuats with playback frame
+
+function refreshRecordingsList() {
+  fetch('/api/recordings')
+    .then(r => r.json())
+    .then(names => {
+      const sel = document.getElementById('pb-select');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— select —</option>';
+      names.forEach(n => {
+        const o = document.createElement('option');
+        o.value = o.textContent = n;
+        if (n === cur) o.selected = true;
+        sel.appendChild(o);
+      });
+      document.getElementById('pb-bar').classList.toggle('show', names.length > 0);
+    })
+    .catch(() => {});
+}
+
+function loadRecording(name) {
+  if (!name) return;
+  fetch(`/api/recording/${encodeURIComponent(name)}`)
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(data => {
+      _pbData = data; _pbTime = 0; _pbPlaying = false; _pbMode = false;
+      _pbSegments = null;
+      document.getElementById('pb-progress-wrap').querySelectorAll('.seg-mark').forEach(el => el.remove());
+      document.getElementById('pb-btn-play').textContent = '▶';
+      document.getElementById('pb-mode-badge').classList.remove('show');
+      _updatePbTime();
+      console.log(`Loaded recording "${data.name}" — ${data.frame_count} frames @ ${data.sample_rate}Hz`);
+    })
+    .catch(e => alert(`Failed to load recording: ${e}`));
+}
+
+function pbPlayPause() {
+  if (!_pbData) { alert('Load a recording first.'); return; }
+  _pbPlaying = !_pbPlaying;
+  _pbMode    = _pbPlaying;
+  _pbWall    = performance.now() / 1000;
+  document.getElementById('pb-btn-play').textContent = _pbPlaying ? '⏸' : '▶';
+  document.getElementById('pb-mode-badge').classList.toggle('show', _pbPlaying);
+}
+
+function pbStop() {
+  _pbPlaying = false; _pbMode = false; _pbTime = 0;
+  document.getElementById('pb-btn-play').textContent = '▶';
+  document.getElementById('pb-mode-badge').classList.remove('show');
+  _updatePbTime();
+}
+
+function pbToggleLoop() {
+  _pbLoop = !_pbLoop;
+  document.getElementById('pb-btn-loop').classList.toggle('on', _pbLoop);
+}
+
+function pbSetSpeed(v) {
+  _pbSpeed = parseFloat(v);
+  if (_pbPlaying) _pbWall = performance.now() / 1000;
+}
+
+function pbSeek(e) {
+  if (!_pbData) return;
+  const wrap = e.currentTarget;
+  const pct  = Math.max(0, Math.min(1, e.offsetX / wrap.offsetWidth));
+  const dur  = _pbData.frames[_pbData.frames.length - 1].t;
+  _pbTime    = pct * dur;
+  if (_pbPlaying) _pbWall = performance.now() / 1000;
+  _updatePbTime();
+}
+
+function _updatePbTime() {
+  if (!_pbData || !_pbData.frames.length) return;
+  const dur = _pbData.frames[_pbData.frames.length - 1].t;
+  const pct = Math.min(100, (_pbTime / dur) * 100);
+  document.getElementById('pb-progress-bar').style.width = pct + '%';
+  const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+  document.getElementById('pb-time').textContent = `${fmt(_pbTime)} / ${fmt(dur)}`;
+}
+
+function _advancePlayback() {
+  if (!_pbPlaying || !_pbData) return;
+  const now  = performance.now() / 1000;
+  _pbTime   += (now - _pbWall) * _pbSpeed;
+  _pbWall    = now;
+  const frames = _pbData.frames;
+  const dur    = frames[frames.length - 1].t;
+
+  if (_pbTime >= dur) {
+    if (_pbLoop) { _pbTime %= dur; }
+    else {
+      _pbTime = dur; _pbPlaying = false; _pbMode = false;
+      document.getElementById('pb-btn-play').textContent = '▶';
+      document.getElementById('pb-mode-badge').classList.remove('show');
+    }
+  }
+
+  // Binary search for closest frame
+  let lo = 0, hi = frames.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (frames[mid].t <= _pbTime) lo = mid; else hi = mid - 1;
+  }
+  latestQuats = { ...frames[lo].quats };
+  _updatePbTime();
+}
+
+// Load recordings list on page load
+window.addEventListener('load', () => refreshRecordingsList());
+
+// ══════════════════════════════════════════════════════
+//  MOTION ENERGY BAR
+// ══════════════════════════════════════════════════════
+
+const ENERGY_MAX  = 0.15;
+const ENERGY_HIGH = 0.055;
+const ENERGY_LOW  = 0.028;
+
+function _updateEnergyBar(e) {
+  const pct = Math.min(100, (e / ENERGY_MAX) * 100);
+  const bar = document.getElementById('energy-bar');
+  bar.style.width = pct + '%';
+  bar.className   = e >= ENERGY_HIGH ? 'hot' : e >= ENERGY_LOW ? 'warn' : '';
+  document.getElementById('iv-energy').textContent = e.toFixed(4);
+}
+
+// ══════════════════════════════════════════════════════
+//  AUTO-RECORD
+//  Hysteresis state machine mirrors server-side segmenter.
+//  HIGH threshold starts a recording; LOW threshold (with
+//  debounce) stops it — same logic used for segmentation.
+// ══════════════════════════════════════════════════════
+
+let _autoRec       = false;
+let _autoActive    = false;
+let _autoStopTimer = null;
+let _autoTakeNum   = 1;
+
+function toggleAutoRec() {
+  _autoRec = !_autoRec;
+  const btn = document.getElementById('btn-auto-rec');
+  btn.textContent = _autoRec ? '⚡ Auto-Rec: ON' : '⚡ Auto-Rec: OFF';
+  btn.classList.toggle('active', _autoRec);
+  if (!_autoRec && _autoActive) {
+    _autoActive = false;
+    clearTimeout(_autoStopTimer); _autoStopTimer = null;
+    fetch('/api/recording/stop', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById('rec-info').textContent = d.error ? `Error: ${d.error}` : `Saved "${d.name}"  ${d.frames}f`;
+        document.getElementById('btn-rec-toggle').classList.remove('live');
+        refreshRecordingsList();
+      });
+  }
+}
+
+function _checkAutoRec(energy) {
+  if (_recRunning) return;
+
+  if (!_autoActive && energy >= ENERGY_HIGH) {
+    _autoActive = true;
+    clearTimeout(_autoStopTimer); _autoStopTimer = null;
+    const name = `auto_${String(_autoTakeNum++).padStart(3, '0')}`;
+    fetch(`/api/recording/start?name=${encodeURIComponent(name)}`, { method: 'POST' })
+      .then(r => r.json())
+      .then(() => {
+        document.getElementById('rec-name-in').value   = name;
+        document.getElementById('rec-info').textContent = `● AUTO "${name}"`;
+        document.getElementById('btn-rec-toggle').classList.add('live');
+      })
+      .catch(() => { _autoActive = false; });
+
+  } else if (_autoActive && energy < ENERGY_LOW) {
+    if (!_autoStopTimer) {
+      _autoStopTimer = setTimeout(() => {
+        _autoStopTimer = null;
+        if (!_autoActive) return;
+        _autoActive = false;
+        fetch('/api/recording/stop', { method: 'POST' })
+          .then(r => r.json())
+          .then(d => {
+            document.getElementById('rec-info').textContent = d.error
+              ? `Error: ${d.error}`
+              : `Saved "${d.name}"  ${d.frames}f`;
+            document.getElementById('btn-rec-toggle').classList.remove('live');
+            refreshRecordingsList();
+          });
+      }, 500);  // 500 ms debounce before stopping
+    }
+  } else if (_autoActive && energy >= ENERGY_LOW) {
+    // Still moving — cancel pending stop
+    if (_autoStopTimer) { clearTimeout(_autoStopTimer); _autoStopTimer = null; }
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  RECORDING ANALYSIS — SEGMENT MARKERS
+// ══════════════════════════════════════════════════════
+
+let _pbSegments = null;
+
+function analyzeRecording() {
+  const name = document.getElementById('pb-select').value;
+  if (!name) { alert('Select a recording first.'); return; }
+  const btn = document.getElementById('pb-analyze-btn');
+  btn.textContent = '…';
+  btn.style.pointerEvents = 'none';
+
+  fetch(`/api/segment/${encodeURIComponent(name)}`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      btn.textContent = 'Analyze';
+      btn.style.pointerEvents = '';
+      if (data.error) { alert(data.error); return; }
+      _pbSegments = data.segments;
+      _renderSegments(data.segments, data.rep_count, data.summary);
+    })
+    .catch(() => { btn.textContent = 'Analyze'; btn.style.pointerEvents = ''; });
+}
+
+function _renderSegments(segments, repCount, summary) {
+  const wrap = document.getElementById('pb-progress-wrap');
+  wrap.querySelectorAll('.seg-mark').forEach(el => el.remove());
+  if (!segments || !_pbData || !_pbData.frames.length) return;
+
+  const dur = _pbData.frames[_pbData.frames.length - 1].t;
+  if (dur <= 0) return;
+
+  let repNum = 0;
+  for (const seg of segments) {
+    if (seg.type === 'action') repNum++;
+    const el = document.createElement('div');
+    el.className = `seg-mark ${seg.type}`;
+    el.style.left  = ((seg.start_t / dur) * 100) + '%';
+    el.style.width = (((seg.end_t - seg.start_t) / dur) * 100) + '%';
+    if (seg.type === 'action') {
+      el.title = `Rep ${repNum} — ${seg.duration.toFixed(2)}s`;
+    }
+    wrap.appendChild(el);
+  }
+  if (summary) console.log('[Segmentation]', summary, `| ${repCount} rep(s)`);
+}
+
+// ══════════════════════════════════════════════════════
+//  CAMERA MOTION TRIGGER  (MediaPipe Pose, lazy-loaded)
+//  Tracks hip/knee landmark velocities to produce a
+//  visual motion score alongside the IMU energy bar.
+//  Score can optionally trigger auto-record.
+// ══════════════════════════════════════════════════════
+
+let _camOn          = false;
+let _mpPoseInst     = null;
+let _mpCamInst      = null;
+let _prevLandmarks  = null;
+let _camScore       = 0;
+const _CAM_MAX      = 0.04;
+const _CAM_HIGH     = 0.018;
+const _TRACKED_LM   = [23, 24, 25, 26];  // L-hip, R-hip, L-knee, R-knee
+
+function toggleCamera() {
+  if (_camOn) _stopCamera(); else _startCamera();
+}
+
+async function _startCamera() {
+  const btn = document.getElementById('btn-camera');
+  btn.textContent = 'Loading…'; btn.classList.add('warn');
+  try {
+    await _loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js');
+    await _loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
+  } catch(e) {
+    btn.textContent = 'Camera Trigger'; btn.classList.remove('warn');
+    alert('Failed to load MediaPipe. Check network connection.');
+    return;
+  }
+
+  const video  = document.getElementById('cam-video');
+  const canvas = document.getElementById('cam-overlay-canvas');
+  const ctx    = canvas.getContext('2d');
+
+  _mpPoseInst = new Pose({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`
+  });
+  _mpPoseInst.setOptions({
+    modelComplexity: 0,
+    smoothLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  });
+  _mpPoseInst.onResults(r => _onPoseResults(r, ctx, canvas.width, canvas.height));
+
+  try {
+    _mpCamInst = new Camera(video, {
+      onFrame: async () => { if (_mpPoseInst) await _mpPoseInst.send({ image: video }); },
+      width: 220, height: 165,
+    });
+    await _mpCamInst.start();
+    _camOn = true;
+    document.getElementById('cam-panel').classList.add('show');
+    document.getElementById('cam-state-lbl').textContent = 'ON';
+    btn.textContent = 'Camera: ON';
+    btn.classList.remove('warn'); btn.classList.add('active');
+  } catch(e) {
+    btn.textContent = 'Camera Trigger'; btn.classList.remove('warn');
+    alert(`Camera error: ${e.message}`);
+  }
+}
+
+function _stopCamera() {
+  if (_mpCamInst)  { try { _mpCamInst.stop();  } catch(e) {} _mpCamInst  = null; }
+  if (_mpPoseInst) { try { _mpPoseInst.close(); } catch(e) {} _mpPoseInst = null; }
+  _camOn = false; _prevLandmarks = null; _camScore = 0;
+  document.getElementById('cam-panel').classList.remove('show');
+  document.getElementById('cam-state-lbl').textContent = 'OFF';
+  document.getElementById('cam-score-bar').style.width = '0%';
+  document.getElementById('cam-vis-score').textContent = 'Visual motion: —';
+  const btn = document.getElementById('btn-camera');
+  btn.textContent = 'Camera Trigger'; btn.classList.remove('active', 'warn');
+}
+
+function _onPoseResults(results, ctx, w, h) {
+  ctx.clearRect(0, 0, w, h);
+  if (!results.poseLandmarks) {
+    _prevLandmarks = null; _camScore = 0;
+    _updateCamScore(0); return;
+  }
+
+  // Draw tracked landmark dots
+  ctx.fillStyle = '#00ffe0cc';
+  for (const idx of _TRACKED_LM) {
+    const lm = results.poseLandmarks[idx];
+    if (!lm || lm.visibility < 0.4) continue;
+    ctx.beginPath(); ctx.arc(lm.x * w, lm.y * h, 5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Velocity from landmark deltas
+  if (_prevLandmarks) {
+    let total = 0, count = 0;
+    for (const idx of _TRACKED_LM) {
+      const cur  = results.poseLandmarks[idx];
+      const prev = _prevLandmarks[idx];
+      if (!cur || !prev || cur.visibility < 0.4) continue;
+      const dx = cur.x - prev.x, dy = cur.y - prev.y;
+      total += Math.sqrt(dx * dx + dy * dy);
+      count++;
+    }
+    const raw = count > 0 ? total / count : 0;
+    _camScore  = _camScore * 0.82 + raw * 0.18;   // EMA smoothing
+    _updateCamScore(_camScore);
+
+    // Feed into auto-rec as secondary trigger if IMU energy is not driving it
+    if (_autoRec && !_autoActive && !_recRunning && _camScore >= _CAM_HIGH) {
+      _checkAutoRec(ENERGY_HIGH);  // synthesise "high energy" event from camera
+    }
+  }
+  _prevLandmarks = results.poseLandmarks.map(lm => ({ ...lm }));
+}
+
+function _updateCamScore(score) {
+  const pct = Math.min(100, (score / _CAM_MAX) * 100);
+  const bar = document.getElementById('cam-score-bar');
+  bar.style.width      = pct + '%';
+  bar.style.background = score >= _CAM_HIGH ? 'var(--accent2)' : score > _CAM_HIGH * 0.4 ? 'var(--warn)' : 'var(--accent)';
+  document.getElementById('cam-vis-score').textContent = `Visual motion: ${(score * 1000).toFixed(1)}`;
+}
+
+function _loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.crossOrigin = 'anonymous';
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  GRADING
+// ══════════════════════════════════════════════════════
+
+let _isRecording = false;
+let _gradeTimer  = null;
+
+function toggleRecord() {
+  const btn = document.getElementById('btn-record');
+  if (!_isRecording) {
+    fetch('/api/record-reference?action=start', { method: 'POST' })
+      .then(() => {
+        _isRecording = true;
+        btn.textContent = 'Stop Recording';
+        btn.classList.add('active');
+      })
+      .catch(() => alert('Server unreachable'));
+  } else {
+    fetch('/api/record-reference?action=stop', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => {
+        _isRecording = false;
+        btn.textContent = 'Record Reference';
+        btn.classList.remove('active');
+        btn.classList.add('warn');
+        btn.title = `Reference: ${d.frames} frames`;
+        setTimeout(() => btn.classList.remove('warn'), 1200);
+      })
+      .catch(() => alert('Server unreachable'));
+  }
+}
+
+function gradeMotion() {
+  fetch('/api/grade', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { alert(data.error); return; }
+      _renderGrade(data);
+    })
+    .catch(() => alert('Server unreachable'));
+}
+
+function _renderGrade(data) {
+  const panel  = document.getElementById('grade-panel');
+  const letter = document.getElementById('gp-letter');
+  letter.textContent = data.grade;
+  letter.className   = data.grade;   // A/B/C/D/F
+  document.getElementById('gp-score').textContent = `${data.score} / 100`;
+  document.getElementById('gp-dist').textContent  = `DTW ${data.distance}  |  ${data.live_frames}f vs ${data.ref_frames}f ref`;
+
+  const bars = document.getElementById('gp-bars');
+  bars.innerHTML = '';
+  for (const [sid, info] of Object.entries(data.per_sensor || {})) {
+    const pct = info.score;
+    const col = pct >= 80 ? '#00ff88' : pct >= 60 ? '#ffb800' : '#ff3c6e';
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;';
+    row.innerHTML = `
+      <span style="font-size:9px;color:var(--muted);width:82px;text-align:right;letter-spacing:.04em">${sid.replace(/_/g,' ')}</span>
+      <div style="flex:1;height:3px;background:var(--border);border-radius:2px;">
+        <div style="width:${pct}%;height:100%;background:${col};border-radius:2px;"></div>
+      </div>
+      <span style="font-size:9px;color:var(--text);width:14px;">${info.grade}</span>`;
+    bars.appendChild(row);
+  }
+
+  panel.classList.add('show');
+  clearTimeout(_gradeTimer);
+  _gradeTimer = setTimeout(() => panel.classList.remove('show'), 10000);
+}
+</script>
+</body>
+</html>

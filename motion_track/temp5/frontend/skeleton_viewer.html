@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2P · Skeleton Animator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #07090d;
+    --panel: #0c0f15cc;
+    --border: #1c2230;
+    --accent: #00ffe0;
+    --accent2: #ff3c6e;
+    --warn: #ffb800;
+    --text: #d4dde8;
+    --muted: #4a5568;
+    --bone-c: #38bdf8;
+    --bone-l: #34d399;
+    --bone-r: #f472b6;
+    --joint-c: #00ffe0;
+    --joint-l: #34d399;
+    --joint-r: #f472b6;
+  }
+
+  html, body { width:100%; height:100%; background:var(--bg); overflow:hidden; font-family:'Space Mono',monospace; color:var(--text); }
+
+  #canvas-container { position:absolute; inset:0; }
+  #three-canvas { display:block; width:100%; height:100%; }
+
+  /* TOP BAR */
+  #topbar {
+    position:absolute; top:0; left:0; right:0; height:48px;
+    display:flex; align-items:center; padding:0 20px; gap:16px;
+    background:linear-gradient(180deg,#07090dee 0%,transparent 100%);
+    z-index:10;
+  }
+  #logo { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.15em; color:var(--accent); text-shadow:0 0 12px var(--accent)80; }
+  .sep { flex:1; }
+  #state-label { font-size:11px; color:var(--accent); letter-spacing:.1em; text-transform:uppercase; text-shadow:0 0 8px var(--accent); }
+
+  /* MOTION CONTROLS */
+  #controls {
+    position:absolute; bottom:0; left:0; right:0;
+    padding:16px 24px 20px;
+    background:linear-gradient(0deg,#07090df0 0%,transparent 100%);
+    z-index:10;
+    display:flex; flex-direction:column; gap:10px; align-items:center;
+  }
+
+  .ctrl-row { display:flex; gap:8px; align-items:center; }
+
+  .btn {
+    font-family:'Space Mono',monospace;
+    font-size:10px; letter-spacing:.08em;
+    padding:7px 16px; border-radius:4px;
+    border:1px solid var(--border);
+    background:#0c0f15;
+    color:var(--muted);
+    cursor:pointer;
+    transition:all .15s;
+    text-transform:uppercase;
+    position:relative;
+    min-width:80px; text-align:center;
+  }
+  .btn:hover { border-color:var(--accent); color:var(--accent); box-shadow:0 0 8px var(--accent)40; }
+  .btn.active { border-color:var(--accent); color:var(--accent); background:#00ffe010; box-shadow:0 0 12px var(--accent)50; }
+  .btn.danger { border-color:var(--accent2); color:var(--accent2); background:#ff3c6e10; box-shadow:0 0 12px var(--accent2)50; }
+  .btn kbd {
+    font-family:'Space Mono',monospace;
+    font-size:9px; color:var(--muted);
+    background:#1c2230; border-radius:3px;
+    padding:1px 4px; margin-left:4px;
+  }
+
+  .label-sep { font-size:10px; color:var(--muted); letter-spacing:.12em; }
+
+  /* INFO */
+  #info-panel {
+    position:absolute; top:60px; left:16px;
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:8px; padding:12px 16px;
+    z-index:10; backdrop-filter:blur(12px);
+    min-width:160px;
+  }
+  .info-row { display:flex; justify-content:space-between; gap:16px; margin-bottom:4px; }
+  .info-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .info-val { font-size:11px; color:var(--text); }
+
+  /* KEYBOARD HINT */
+  #hint {
+    position:absolute; top:60px; right:16px;
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:8px; padding:12px 16px;
+    z-index:10; backdrop-filter:blur(12px);
+    font-size:10px; color:var(--muted); line-height:1.8;
+  }
+  #hint b { color:var(--text); display:inline-block; min-width:28px; }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="three-canvas"></canvas></div>
+
+<div id="topbar">
+  <div id="logo">R2P</div>
+  <span style="color:var(--muted);font-size:11px;letter-spacing:.12em">SKELETON ANIMATOR</span>
+  <div class="sep"></div>
+  <div id="state-label">IDLE</div>
+</div>
+
+<div id="info-panel">
+  <div class="info-row"><span class="info-lbl">Motion</span><span class="info-val" id="iv-motion">Idle</span></div>
+  <div class="info-row"><span class="info-lbl">Frame</span><span class="info-val" id="iv-frame">0</span></div>
+  <div class="info-row"><span class="info-lbl">Pelvis Y</span><span class="info-val" id="iv-py">—</span></div>
+  <div class="info-row"><span class="info-lbl">Root Z</span><span class="info-val" id="iv-rz">0.00</span></div>
+</div>
+
+<div id="hint">
+  <b>W</b> Walk Forward<br>
+  <b>S</b> Walk Back<br>
+  <b>A</b> Strafe Left<br>
+  <b>D</b> Strafe Right<br>
+  <b>R</b> Run<br>
+  <b>J</b> Jump<br>
+  <b>Q</b> Squat<br>
+  <b>Space</b> Idle<br>
+  <b>C</b> Reset Cam
+</div>
+
+<div id="controls">
+  <div class="ctrl-row">
+    <span class="label-sep">LOCOMOTION</span>
+    <button class="btn" id="btn-walk-fwd"  onclick="setMotion('walk_fwd')">Walk Fwd <kbd>W</kbd></button>
+    <button class="btn" id="btn-walk-back" onclick="setMotion('walk_back')">Walk Back <kbd>S</kbd></button>
+    <button class="btn" id="btn-strafe-l"  onclick="setMotion('strafe_l')">Strafe L <kbd>A</kbd></button>
+    <button class="btn" id="btn-strafe-r"  onclick="setMotion('strafe_r')">Strafe R <kbd>D</kbd></button>
+    <button class="btn" id="btn-run"       onclick="setMotion('run')">Run <kbd>R</kbd></button>
+  </div>
+  <div class="ctrl-row">
+    <span class="label-sep">ACTION</span>
+    <button class="btn" id="btn-jump"  onclick="setMotion('jump')">Jump <kbd>J</kbd></button>
+    <button class="btn" id="btn-squat" onclick="setMotion('squat')">Squat <kbd>Q</kbd></button>
+    <button class="btn" id="btn-idle"  onclick="setMotion('idle')" style="border-color:var(--accent);color:var(--accent)">Idle <kbd>Space</kbd></button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ══════════════════════════════════════════════════
+//  SCENE SETUP
+// ══════════════════════════════════════════════════
+const canvas   = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x07090d, 1);
+renderer.shadowMap.enabled = true;
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(52, 1, 0.01, 100);
+
+// Fog for depth
+scene.fog = new THREE.Fog(0x07090d, 6, 20);
+
+// Lighting
+scene.add(new THREE.AmbientLight(0x0d1a2a, 3));
+const dir1 = new THREE.DirectionalLight(0x00ffe0, 1.4); dir1.position.set(3,5,3); scene.add(dir1);
+const dir2 = new THREE.DirectionalLight(0xff3c6e, 0.5); dir2.position.set(-4,2,-2); scene.add(dir2);
+const pt   = new THREE.PointLight(0x00ffe0, 0.6, 5); pt.position.set(0,2,0); scene.add(pt);
+
+// Grid
+const grid = new THREE.GridHelper(30, 60, 0x1c2230, 0x1c2230);
+grid.position.y = -0.92;
+scene.add(grid);
+
+// Floor glow
+const floorGeo = new THREE.PlaneGeometry(30, 30);
+const floorMat = new THREE.MeshBasicMaterial({ color:0x00ffe0, transparent:true, opacity:0.02, side:THREE.DoubleSide });
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI/2; floor.position.y = -0.91;
+scene.add(floor);
+
+function onResize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', onResize); onResize();
+
+// ── Orbit ─────────────────────────────────────────
+let isDrag=false, pMouse={x:0,y:0};
+let sph={theta:0.3, phi:Math.PI/3.2, r:3.2};
+let camTarget = new THREE.Vector3(0,0.4,0);
+
+function updateCam() {
+  camera.position.set(
+    camTarget.x + sph.r*Math.sin(sph.phi)*Math.sin(sph.theta),
+    camTarget.y + sph.r*Math.cos(sph.phi),
+    camTarget.z + sph.r*Math.sin(sph.phi)*Math.cos(sph.theta)
+  );
+  camera.lookAt(camTarget);
+}
+canvas.addEventListener('mousedown', e=>{isDrag=true;pMouse={x:e.clientX,y:e.clientY};});
+canvas.addEventListener('mouseup',   ()=>isDrag=false);
+canvas.addEventListener('mousemove', e=>{
+  if(!isDrag)return;
+  sph.theta -= (e.clientX-pMouse.x)*0.006;
+  sph.phi    = Math.max(0.1,Math.min(Math.PI-0.1,sph.phi+(e.clientY-pMouse.y)*0.006));
+  pMouse={x:e.clientX,y:e.clientY}; updateCam();
+});
+canvas.addEventListener('wheel', e=>{
+  sph.r=Math.max(1,Math.min(10,sph.r+e.deltaY*0.004)); updateCam();
+},{passive:true});
+
+// Touch
+let lt=null;
+canvas.addEventListener('touchstart',e=>{lt={x:e.touches[0].clientX,y:e.touches[0].clientY};});
+canvas.addEventListener('touchmove',e=>{
+  if(!lt)return;
+  sph.theta-=(e.touches[0].clientX-lt.x)*0.005;
+  sph.phi=Math.max(0.1,Math.min(Math.PI-0.1,sph.phi+(e.touches[0].clientY-lt.y)*0.005));
+  lt={x:e.touches[0].clientX,y:e.touches[0].clientY}; updateCam(); e.preventDefault();
+},{passive:false});
+
+updateCam();
+
+function resetCam() { sph={theta:0.3,phi:Math.PI/3.2,r:3.2}; camTarget.set(0,0.4,0); updateCam(); }
+
+// ══════════════════════════════════════════════════
+//  SKELETON STRUCTURE
+// ══════════════════════════════════════════════════
+
+const BONE_DEFS = [
+  ['pelvis','lumbar','c'],['lumbar','chest','c'],['chest','neck','c'],['neck','head','c'],['head','head_top','c'],
+  ['pelvis','hip_l','l'],['hip_l','knee_l','l'],['knee_l','ankle_l','l'],['ankle_l','foot_l','l'],
+  ['pelvis','hip_r','r'],['hip_r','knee_r','r'],['knee_r','ankle_r','r'],['ankle_r','foot_r','r'],
+  ['chest','shoulder_l','l'],['shoulder_l','elbow_l','l'],['elbow_l','wrist_l','l'],['wrist_l','hand_l','l'],
+  ['chest','shoulder_r','r'],['shoulder_r','elbow_r','r'],['elbow_r','wrist_r','r'],['wrist_r','hand_r','r'],
+  ['shoulder_l','shoulder_r','c'],
+  ['hip_l','hip_r','c'],
+];
+
+const JOINT_NAMES = [...new Set(BONE_DEFS.flatMap(b=>[b[0],b[1]]))];
+
+const COLS  = { c:0x38bdf8, l:0x34d399, r:0xf472b6 };
+const JCOLS = { c:0x00ffe0, l:0x34d399, r:0xf472b6 };
+
+// Joint spheres
+const jointMeshes = {};
+const jGeo = new THREE.SphereGeometry(0.022, 10, 10);
+JOINT_NAMES.forEach(n => {
+  const s = n.endsWith('_l')?'l':n.endsWith('_r')?'r':'c';
+  const m = new THREE.MeshPhongMaterial({ color:JCOLS[s], emissive:JCOLS[s], emissiveIntensity:0.5, transparent:true, opacity:0.9 });
+  const mesh = new THREE.Mesh(jGeo, m);
+  mesh.visible=false; scene.add(mesh);
+  jointMeshes[n]=mesh;
+});
+
+// Bone cylinders
+const boneMeshes = {};
+BONE_DEFS.forEach(([pa,ch,s]) => {
+  const m = new THREE.MeshPhongMaterial({ color:COLS[s], emissive:COLS[s], emissiveIntensity:0.2, transparent:true, opacity:0.82 });
+  const geo = new THREE.CylinderGeometry(0.013,0.013,1,8);
+  const mesh = new THREE.Mesh(geo,m);
+  mesh.visible=false; scene.add(mesh);
+  boneMeshes[`${pa}-${ch}`]=mesh;
+});
+
+const _va=new THREE.Vector3(), _vb=new THREE.Vector3();
+function updateBone(mesh,pa,pb) {
+  _va.set(...pa); _vb.set(...pb);
+  const dir=_vb.clone().sub(_va), len=dir.length();
+  if(len<0.001){mesh.visible=false;return;}
+  mesh.visible=true;
+  mesh.position.copy(_va).addScaledVector(dir.normalize(),len/2);
+  mesh.scale.set(1,len,1);
+  mesh.setRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize()));
+}
+
+// ══════════════════════════════════════════════════
+//  QUATERNION / MATH HELPERS
+// ══════════════════════════════════════════════════
+function qmul(a,b){const[w1,x1,y1,z1]=a,[w2,x2,y2,z2]=b;return[w1*w2-x1*x2-y1*y2-z1*z2,w1*x2+x1*w2+y1*z2-z1*y2,w1*y2-x1*z2+y1*w2+z1*x2,w1*z2+x1*y2-y1*x2+z1*w2];}
+function qconj(q){return[q[0],-q[1],-q[2],-q[3]];}
+function qrot(q,v){const qv=[0,...v],r=qmul(qmul(q,qv),qconj(q));return[r[1],r[2],r[3]];}
+function qnorm(q){const n=Math.hypot(...q);return n<1e-9?[1,0,0,0]:q.map(x=>x/n);}
+function axAngle(ax,a){const h=a/2,s=Math.sin(h);return qnorm([Math.cos(h),ax[0]*s,ax[1]*s,ax[2]*s]);}
+function add(a,b){return[a[0]+b[0],a[1]+b[1],a[2]+b[2]];}
+function sc(v,s){return[v[0]*s,v[1]*s,v[2]*s];}
+function lerp(a,b,t){return a+(b-a)*t;}
+function slerp(a,b,t){
+  let d=a[0]*b[0]+a[1]*b[1]+a[2]*b[2]+a[3]*b[3];
+  if(d<0){b=b.map(x=>-x);d=-d;}
+  if(d>0.9995){return qnorm(a.map((v,i)=>v+(b[i]-v)*t));}
+  const th0=Math.acos(d),th=th0*t,s0=Math.cos(th)-d*Math.sin(th)/Math.sin(th0),s1=Math.sin(th)/Math.sin(th0);
+  return qnorm(a.map((v,i)=>v*s0+b[i]*s1));
+}
+
+// ══════════════════════════════════════════════════
+//  LIMB LENGTHS
+// ══════════════════════════════════════════════════
+const LL = {
+  pelvis_h:0.92, pelvis_to_lumbar:0.10, lumbar:0.15, chest:0.20, neck:0.10, head:0.13,
+  thigh:0.42, shin:0.40, foot:0.17,
+  clavicle:0.175, upper_arm:0.30, forearm:0.26, hand:0.09,
+};
+
+// ══════════════════════════════════════════════════
+//  COMPUTE JOINTS FROM QUATS
+// ══════════════════════════════════════════════════
+function computeJoints(Q, rootX, rootY, rootZ) {
+  const J = {};
+  const up=[0,1,0], dn=[0,-1,0];
+  const qp=Q.pelvis||[1,0,0,0], qc=Q.chest||qp;
+  const qtl=Q.thigh_l||qp, qtr=Q.thigh_r||qp;
+  const qsl=Q.shin_l||qtl, qsr=Q.shin_r||qtr;
+  const ql_fl=Q.l_foot||qsl, qr_fl=Q.r_foot||qsr;
+  const qua_l=Q.l_upper_arm||qc, qua_r=Q.r_upper_arm||qc;
+  const qfa_l=Q.l_forearm||qua_l, qfa_r=Q.r_forearm||qua_r;
+
+  J.pelvis    = [rootX, LL.pelvis_h + rootY, rootZ];
+  J.lumbar    = add(J.pelvis,    qrot(qp, sc(up, LL.pelvis_to_lumbar)));
+  J.chest     = add(J.lumbar,    qrot(qc, sc(up, LL.lumbar)));
+  J.neck      = add(J.chest,     qrot(qc, sc(up, LL.chest)));
+  J.head      = add(J.neck,      qrot(qc, sc(up, LL.neck)));
+  J.head_top  = add(J.head,      qrot(qc, sc(up, LL.head)));
+
+  J.hip_l     = add(J.pelvis,    qrot(qp, [-0.105,-0.05,0]));
+  J.knee_l    = add(J.hip_l,     qrot(qtl, sc(dn, LL.thigh)));
+  J.ankle_l   = add(J.knee_l,    qrot(qsl, sc(dn, LL.shin)));
+  J.foot_l    = add(J.ankle_l,   qrot(ql_fl, sc([0,-0.08,1], LL.foot)));
+
+  J.hip_r     = add(J.pelvis,    qrot(qp, [ 0.105,-0.05,0]));
+  J.knee_r    = add(J.hip_r,     qrot(qtr, sc(dn, LL.thigh)));
+  J.ankle_r   = add(J.knee_r,    qrot(qsr, sc(dn, LL.shin)));
+  J.foot_r    = add(J.ankle_r,   qrot(qr_fl, sc([0,-0.08,1], LL.foot)));
+
+  J.shoulder_l = add(J.chest,    qrot(qc, [-LL.clavicle,0,0]));
+  J.elbow_l    = add(J.shoulder_l, qrot(qua_l, sc(dn, LL.upper_arm)));
+  J.wrist_l    = add(J.elbow_l,  qrot(qfa_l, sc(dn, LL.forearm)));
+  J.hand_l     = add(J.wrist_l,  qrot(qfa_l, sc(dn, LL.hand)));
+
+  J.shoulder_r = add(J.chest,    qrot(qc, [ LL.clavicle,0,0]));
+  J.elbow_r    = add(J.shoulder_r, qrot(qua_r, sc(dn, LL.upper_arm)));
+  J.wrist_r    = add(J.elbow_r,  qrot(qfa_r, sc(dn, LL.forearm)));
+  J.hand_r     = add(J.wrist_r,  qrot(qfa_r, sc(dn, LL.hand)));
+
+  return J;
+}
+
+// ══════════════════════════════════════════════════
+//  ANIMATION STATE MACHINE
+// ══════════════════════════════════════════════════
+let currentMotion = 'idle';
+let t = 0;
+let frameCount = 0;
+
+// Root translation state
+let rootX=0, rootY=0, rootZ=0;
+
+// For jump
+let jumpPhase = 0;
+let inJump = false;
+
+// For squat
+let squatPhase = 0;
+
+// Camera follow
+let camFollow = true;
+
+function setMotion(m) {
+  currentMotion = m;
+  document.querySelectorAll('.btn').forEach(b=>b.classList.remove('active','danger'));
+  const btnId = 'btn-'+m.replace('_','-');
+  const el = document.getElementById(btnId);
+  if(el) el.classList.add(m==='run'?'danger':'active');
+  document.getElementById('state-label').textContent = m.replace('_',' ').toUpperCase();
+  document.getElementById('iv-motion').textContent = m.replace('_',' ');
+  if(m==='jump' && !inJump) { jumpPhase=0; inJump=true; }
+  if(m==='idle') document.getElementById('btn-idle').classList.add('active');
+}
+
+// Initialize idle button
+document.getElementById('btn-idle').classList.add('active');
+
+// ── Motion functions ─────────────────────────────
+
+function motionIdle(t) {
+  const s = Math.sin(t*0.8)*0.02;
+  const qp = axAngle([0,0,1], s);
+  const qc = axAngle([0,0,1],-s*0.5);
+  const QUA_L = axAngle([1,0,0], -0.05+Math.sin(t*0.8)*0.02);
+  const QUA_R = axAngle([1,0,0], -0.05-Math.sin(t*0.8)*0.02);
+  const QFA_L = axAngle([1,0,0], 0.08);
+  const QFA_R = axAngle([1,0,0], 0.08);
+  return { pelvis:qp, chest:qc, thigh_l:qmul(axAngle([1,0,0],0.01),axAngle([0,0,1],0.02)), thigh_r:qmul(axAngle([1,0,0],0.01),axAngle([0,0,1],-0.02)), shin_l:[1,0,0,0], shin_r:[1,0,0,0], l_upper_arm:QUA_L, r_upper_arm:QUA_R, l_forearm:QFA_L, r_forearm:QFA_R };
+}
+
+function motionWalk(t, speed, dir) {
+  // dir: 'fwd', 'back', 'left', 'right'
+  const f = speed;
+  const phi = 2*Math.PI*f*t;
+  
+  let pelvisYaw = 0;
+  let strafeShift = [0,0];
+  if(dir==='fwd')   { pelvisYaw=0;  }
+  if(dir==='back')  { pelvisYaw=Math.PI; }
+  if(dir==='left')  { pelvisYaw=-Math.PI/2; strafeShift=[-1,0]; }
+  if(dir==='right') { pelvisYaw= Math.PI/2; strafeShift=[ 1,0]; }
+
+  const qp = qmul(axAngle([0,1,0], pelvisYaw), axAngle([0,0,1], 0.04*Math.sin(phi)));
+  const qc = qmul(axAngle([0,1,0], pelvisYaw), axAngle([0,1,0], 0.05*Math.sin(phi)));
+
+  const thighAmp = dir==='back'?-0.45:0.45;
+  const qt_l = axAngle([1,0,0], thighAmp*Math.sin(phi));
+  const qt_r = axAngle([1,0,0], thighAmp*Math.sin(phi+Math.PI));
+
+  const qs_l = axAngle([1,0,0], -0.45*Math.max(0,Math.sin(phi)));
+  const qs_r = axAngle([1,0,0], -0.45*Math.max(0,Math.sin(phi+Math.PI)));
+
+  const armAmp = dir==='left'||dir==='right' ? 0.15 : 0.32;
+  const qa_l = axAngle([1,0,0], armAmp*Math.sin(phi+Math.PI));
+  const qa_r = axAngle([1,0,0], armAmp*Math.sin(phi));
+  const qf_l = axAngle([1,0,0],-0.15*Math.max(0,Math.sin(phi)));
+  const qf_r = axAngle([1,0,0],-0.15*Math.max(0,Math.sin(phi+Math.PI)));
+
+  return { pelvis:qp, chest:qc, thigh_l:qt_l, thigh_r:qt_r, shin_l:qs_l, shin_r:qs_r, l_upper_arm:qa_l, r_upper_arm:qa_r, l_forearm:qf_l, r_forearm:qf_r };
+}
+
+function motionRun(t) {
+  const phi = 2*Math.PI*1.8*t;
+  const qp  = qmul(axAngle([1,0,0],-0.15), axAngle([0,0,1],0.06*Math.sin(phi)));
+  const qc  = qmul(axAngle([1,0,0],-0.12), axAngle([0,1,0],0.10*Math.sin(phi)));
+
+  const qt_l = qmul(axAngle([1,0,0], 0.75*Math.sin(phi)),   axAngle([0,0,1],0.08*Math.sin(phi)));
+  const qt_r = qmul(axAngle([1,0,0], 0.75*Math.sin(phi+Math.PI)), axAngle([0,0,1],-0.08*Math.sin(phi)));
+  const qs_l = axAngle([1,0,0], -0.9*Math.max(0,Math.sin(phi)));
+  const qs_r = axAngle([1,0,0], -0.9*Math.max(0,Math.sin(phi+Math.PI)));
+
+  const qa_l = axAngle([1,0,0], 0.7*Math.sin(phi+Math.PI));
+  const qa_r = axAngle([1,0,0], 0.7*Math.sin(phi));
+  const qf_l = axAngle([1,0,0],-0.4*Math.max(0,Math.sin(phi)));
+  const qf_r = axAngle([1,0,0],-0.4*Math.max(0,Math.sin(phi+Math.PI)));
+
+  return { pelvis:qp, chest:qc, thigh_l:qt_l, thigh_r:qt_r, shin_l:qs_l, shin_r:qs_r, l_upper_arm:qa_l, r_upper_arm:qa_r, l_forearm:qf_l, r_forearm:qf_r };
+}
+
+function motionJump(dt) {
+  jumpPhase += dt;
+  const total = 0.9;
+  const p = Math.min(jumpPhase / total, 1.0);
+
+  // Heights via parabolic arc
+  const jumpH = p < 0.5 ? p*2 : (1-(p-0.5)*2);
+  const yOff  = 0.55 * Math.sin(Math.PI * p);
+
+  // Leg tuck at peak
+  const tuck  = Math.sin(Math.PI * p);
+  const thighFlex = 0.6 * tuck;
+  const shinFold  = -0.7 * tuck;
+
+  // Arm raise on takeoff
+  const armLift = 0.8 * Math.sin(Math.PI * Math.min(p*2,1));
+
+  const qt_l = axAngle([1,0,0], thighFlex);
+  const qt_r = axAngle([1,0,0], thighFlex);
+  const qs_l = axAngle([1,0,0], shinFold);
+  const qs_r = axAngle([1,0,0], shinFold);
+  const qa   = axAngle([1,0,0], -armLift);
+  const qf   = axAngle([1,0,0],  armLift*0.3);
+
+  if(p>=1.0) { inJump=false; setMotion('idle'); jumpPhase=0; }
+
+  return { Q:{ pelvis:[1,0,0,0], chest:[1,0,0,0], thigh_l:qt_l, thigh_r:qt_r, shin_l:qs_l, shin_r:qs_r, l_upper_arm:qa, r_upper_arm:qa, l_forearm:qf, r_forearm:qf }, yOff };
+}
+
+function motionSquat(t) {
+  // Continuous squat bob
+  const depth = (1 - Math.cos(2*Math.PI*0.6*t)) * 0.5; // 0..1
+  const thighFlex = 1.1 * depth;
+  const shinFold  = -1.0 * depth;
+  const trunkLean = -0.25 * depth;
+  const armOut    = 0.5 * depth;
+  const yOff = -0.35 * depth;
+
+  const qt_l = axAngle([1,0,0], thighFlex);
+  const qt_r = axAngle([1,0,0], thighFlex);
+  const qs_l = axAngle([1,0,0], shinFold);
+  const qs_r = axAngle([1,0,0], shinFold);
+  const qp   = axAngle([1,0,0], trunkLean);
+  const qc   = axAngle([1,0,0], trunkLean*0.6);
+  const qa_l = axAngle([1,0,0], -armOut);
+  const qa_r = axAngle([1,0,0], -armOut);
+  const qf_l = axAngle([1,0,0], armOut*0.3);
+  const qf_r = axAngle([1,0,0], armOut*0.3);
+
+  return { Q:{ pelvis:qp, chest:qc, thigh_l:qt_l, thigh_r:qt_r, shin_l:qs_l, shin_r:qs_r, l_upper_arm:qa_l, r_upper_arm:qa_r, l_forearm:qf_l, r_forearm:qf_r }, yOff };
+}
+
+// ── Root speed map ────────────────────────────────
+const MOVE_SPEED = { walk_fwd:1.4, walk_back:1.0, strafe_l:1.1, strafe_r:1.1, run:3.6 };
+
+// ══════════════════════════════════════════════════
+//  MAIN LOOP
+// ══════════════════════════════════════════════════
+let lastTime = performance.now() / 1000;
+let currentJoints = null;
+
+function tick() {
+  requestAnimationFrame(tick);
+  const now = performance.now() / 1000;
+  const dt  = Math.min(now - lastTime, 0.05);
+  lastTime  = now;
+  t        += dt;
+  frameCount++;
+
+  let Q, yOff = 0;
+
+  // Move root
+  const spd = MOVE_SPEED[currentMotion] || 0;
+
+  if(currentMotion==='walk_fwd')  { rootZ -= spd*dt; }
+  if(currentMotion==='walk_back') { rootZ += spd*dt; }
+  if(currentMotion==='strafe_l')  { rootX -= spd*dt; }
+  if(currentMotion==='strafe_r')  { rootX += spd*dt; }
+  if(currentMotion==='run')       { rootZ -= spd*dt; }
+
+  // Camera follow X/Z
+  if(camFollow) {
+    const tx = rootX, tz = rootZ;
+    camTarget.x += (tx - camTarget.x) * 0.1;
+    camTarget.z += (tz - camTarget.z) * 0.1;
+    updateCam();
+  }
+
+  // Compute quats
+  if(currentMotion==='idle') {
+    Q = motionIdle(t);
+  } else if(currentMotion==='walk_fwd') {
+    Q = motionWalk(t, 0.9, 'fwd');
+  } else if(currentMotion==='walk_back') {
+    Q = motionWalk(t, 0.75, 'back');
+  } else if(currentMotion==='strafe_l') {
+    Q = motionWalk(t, 0.75, 'left');
+  } else if(currentMotion==='strafe_r') {
+    Q = motionWalk(t, 0.75, 'right');
+  } else if(currentMotion==='run') {
+    Q = motionRun(t);
+  } else if(currentMotion==='jump') {
+    const r = motionJump(dt); Q = r.Q; yOff = r.yOff;
+  } else if(currentMotion==='squat') {
+    const r = motionSquat(t); Q = r.Q; yOff = r.yOff;
+  } else {
+    Q = motionIdle(t);
+  }
+
+  // Compute joints
+  const J = computeJoints(Q, rootX, yOff, rootZ);
+  currentJoints = J;
+
+  // Update scene
+  JOINT_NAMES.forEach(n => {
+    const p = J[n], m = jointMeshes[n];
+    if(p){ m.position.set(p[0],p[1],p[2]); m.visible=true; } else { m.visible=false; }
+  });
+  BONE_DEFS.forEach(([pa,ch]) => {
+    const m=boneMeshes[`${pa}-${ch}`], a=J[pa], b=J[ch];
+    if(a&&b) updateBone(m,a,b); else m.visible=false;
+  });
+
+  // Point light follows pelvis
+  if(J.chest){ pt.position.set(J.chest[0], J.chest[1]+0.3, J.chest[2]); }
+
+  // UI
+  document.getElementById('iv-frame').textContent = frameCount;
+  if(J.pelvis) document.getElementById('iv-py').textContent = J.pelvis[1].toFixed(2)+'m';
+  document.getElementById('iv-rz').textContent = rootZ.toFixed(2)+'m';
+
+  renderer.render(scene, camera);
+}
+
+tick();
+
+// ══════════════════════════════════════════════════
+//  KEYBOARD
+// ══════════════════════════════════════════════════
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if(k==='w') setMotion('walk_fwd');
+  if(k==='s') setMotion('walk_back');
+  if(k==='a') setMotion('strafe_l');
+  if(k==='d') setMotion('strafe_r');
+  if(k==='r') setMotion('run');
+  if(k==='j') setMotion('jump');
+  if(k==='q') setMotion('squat');
+  if(k===' ')  { e.preventDefault(); setMotion('idle'); }
+  if(k==='c') resetCam();
+});
+window.addEventListener('keyup', e => {
+  // Stop locomotion on key release
+  const k = e.key.toLowerCase();
+  if(['w','s','a','d','r'].includes(k) && !['jump','squat'].includes(currentMotion)) {
+    setMotion('idle');
+  }
+});
+</script>
+</body>
+</html>

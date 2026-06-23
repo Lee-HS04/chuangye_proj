@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2P — Calibration</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #181c27; --border: rgba(255,255,255,0.08);
+    --text: #e8e6de; --muted: #888680; --accent: #4f9cf9;
+    --green: #3ecf8e; --amber: #f5a623; --red: #e74c3c;
+    --radius: 10px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: system-ui,-apple-system,sans-serif; font-size: 14px; min-height: 100vh; display: flex; flex-direction: column; }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; gap: 12px; }
+  header h1 { font-size: 16px; font-weight: 600; white-space: nowrap; }
+  .nav-links { display: flex; align-items: center; gap: 4px; }
+  .nav-link { font-size: 12px; padding: 5px 11px; border-radius: 6px; border: 1px solid transparent; color: var(--muted); text-decoration: none; transition: all .15s; white-space: nowrap; }
+  .nav-link:hover { background: rgba(255,255,255,.06); color: var(--text); }
+  .nav-link.active { background: rgba(79,156,249,.12); border-color: rgba(79,156,249,.3); color: var(--accent); }
+  .nav-sep { width: 1px; height: 16px; background: var(--border); margin: 0 4px; }
+  .hbadge { font-size: 11px; padding: 3px 9px; border-radius: 20px; background: rgba(255,255,255,.07); color: var(--muted); }
+  .hbadge.ok { background: rgba(62,207,142,.15); color: var(--green); }
+
+  .main { flex: 1; display: grid; grid-template-columns: 1fr 210px 290px; gap: 14px; padding: 14px; max-width: 1180px; margin: 0 auto; width: 100%; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .card-title { font-size: 11px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+
+  /* ── Camera column ── */
+  .cam-col { display: flex; flex-direction: column; gap: 10px; }
+  .source-toggle { display: flex; gap: 8px; }
+  .src-btn { flex: 1; padding: 7px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; transition: all .15s; }
+  .src-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(79,156,249,.08); }
+
+  .camera-wrap { position: relative; background: #000; border-radius: var(--radius); overflow: hidden; aspect-ratio: 4/3; }
+  #camera-canvas { width: 100%; height: 100%; display: block; object-fit: contain; }
+  #no-camera { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); }
+  .state-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 12px; background: linear-gradient(transparent, rgba(0,0,0,.88)); display: flex; align-items: center; gap: 8px; }
+  .state-pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; background: rgba(255,255,255,.1); transition: all .3s; }
+  .state-pill.waiting       { color: var(--muted); }
+  .state-pill.pose_detected { color: var(--amber); background: rgba(245,166,35,.2); }
+  .state-pill.recording     { color: var(--green); background: rgba(62,207,142,.2); }
+  .state-pill.complete      { color: var(--accent); background: rgba(79,156,249,.2); }
+
+  .ring-wrap { position: absolute; top: 10px; right: 10px; }
+  svg.ring { width: 50px; height: 50px; }
+  .ring-bg   { fill: none; stroke: rgba(255,255,255,.1); stroke-width: 4; }
+  .ring-fill { fill: none; stroke: var(--amber); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 138.2; stroke-dashoffset: 138.2; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset .2s, stroke .3s; }
+  .ring-text { font-size: 10px; font-weight: 600; fill: var(--text); }
+
+  .rec-bar-bg { height: 4px; background: rgba(255,255,255,.07); border-radius: 2px; overflow: hidden; margin-top: 5px; }
+  .rec-bar    { height: 100%; background: var(--green); border-radius: 2px; width: 0%; transition: width .25s; }
+
+  /* ── Step tracker ── */
+  .progress-steps { display: flex; flex-direction: column; gap: 0; }
+  .step-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; position: relative; }
+  .step-item:not(:last-child)::after { content: ''; position: absolute; left: 14px; top: 34px; bottom: -10px; width: 1px; background: var(--border); }
+  .step-icon { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; transition: all .4s; z-index: 1; }
+  .step-icon.active { border-color: var(--amber); background: rgba(245,166,35,.12); }
+  .step-icon.done   { border-color: var(--green);  background: rgba(62,207,142,.12); }
+  .step-body { flex: 1; padding-top: 3px; }
+  .step-name { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.2; }
+  .step-desc { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+  .step-tag  { display: inline-block; margin-top: 4px; font-size: 10px; padding: 2px 7px; border-radius: 8px; }
+  .step-tag.pending { background: rgba(255,255,255,.05); color: var(--muted); }
+  .step-tag.active  { background: rgba(245,166,35,.15); color: var(--amber); }
+  .step-tag.done    { background: rgba(62,207,142,.12); color: var(--green); }
+
+  .corr-list { display: flex; flex-direction: column; gap: 5px; min-height: 44px; }
+  .corr-item { display: flex; align-items: flex-start; gap: 7px; font-size: 12px; padding: 7px 10px; border-radius: 7px; background: rgba(245,166,35,.07); border-left: 3px solid var(--amber); color: var(--text); line-height: 1.4; }
+  .corr-item.ok { background: rgba(62,207,142,.07); border-color: var(--green); }
+
+  /* ── Body diagram ── */
+  .body-col { display: flex; flex-direction: column; gap: 10px; }
+  .sc-row { display: flex; align-items: baseline; gap: 5px; }
+  .sc-big  { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; }
+  .sc-dem  { font-size: 12px; color: var(--muted); }
+  .sc-lbl  { font-size: 11px; color: var(--muted); }
+  .mode-tog { display: flex; gap: 4px; width: 100%; }
+  .mtbtn { flex: 1; padding: 4px 5px; font-size: 11px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all .15s; }
+  .mtbtn.on { background: rgba(79,156,249,.12); border-color: var(--accent); color: var(--accent); }
+  .leg-row { display: flex; gap: 10px; }
+  .lpill { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+  .lpill-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Buttons ── */
+  .btn { width: 100%; padding: 9px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: transparent; color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s; text-align: center; }
+  .btn:hover { background: rgba(255,255,255,.05); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
+  .btn.primary:hover { filter: brightness(1.1); }
+  .btn.success { background: rgba(62,207,142,.15); border-color: rgba(62,207,142,.4); color: var(--green); }
+  .btn.warn-btn { background: rgba(245,166,35,.1); border-color: rgba(245,166,35,.3); color: var(--amber); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 6px; }
+  .btn-row .btn { flex: 1; }
+
+  .status-msg { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 16px; }
+  .status-msg.ok  { color: var(--green); }
+  .status-msg.err { color: var(--red); }
+
+  /* ── Toggle switch ── */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+  .toggle-label { font-size: 13px; }
+  .toggle-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .toggle-sw { position: relative; display: inline-block; width: 38px; height: 20px; flex-shrink: 0; }
+  .toggle-sw input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; inset: 0; background: rgba(255,255,255,.12); border-radius: 20px; transition: .2s; }
+  .slider::before { content:''; position: absolute; height: 14px; width: 14px; left: 3px; bottom: 3px; background: var(--muted); border-radius: 50%; transition: .2s; }
+  input:checked + .slider { background: var(--accent); }
+  input:checked + .slider::before { transform: translateX(18px); background: #fff; }
+
+  /* ── Motion calibration wizard ── */
+  .calib-phases { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .phase-btn { padding: 6px 12px; border-radius: 7px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; transition: all .15s; flex: 1; min-width: 90px; text-align: center; }
+  .phase-btn:hover:not(:disabled) { background: rgba(255,255,255,.05); color: var(--text); }
+  .phase-btn.active  { border-color: var(--amber); color: var(--amber); background: rgba(245,166,35,.1); }
+  .phase-btn.done    { border-color: var(--green);  color: var(--green);  background: rgba(62,207,142,.08); }
+  .phase-btn.running { border-color: var(--accent); color: var(--accent); background: rgba(79,156,249,.12); cursor: not-allowed; }
+  .phase-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+  /* ── Countdown / timer display ── */
+  #mcalib-timer-wrap {
+    display: none; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: rgba(255,255,255,.03);
+    margin: 8px 0;
+  }
+  #mcalib-timer-wrap.countdown { border-color: rgba(245,166,35,.4); background: rgba(245,166,35,.06); }
+  #mcalib-timer-wrap.recording { border-color: rgba(79,156,249,.4);  background: rgba(79,156,249,.06); }
+  #mcalib-timer-wrap.done      { border-color: rgba(62,207,142,.4);  background: rgba(62,207,142,.06); }
+
+  .timer-ring-wrap { position: relative; width: 48px; height: 48px; flex-shrink: 0; }
+  .timer-ring-wrap svg { width: 48px; height: 48px; }
+  .timer-ring-bg   { fill: none; stroke: rgba(255,255,255,.08); stroke-width: 4; }
+  .timer-ring-fill { fill: none; stroke-width: 4; stroke-linecap: round;
+                     stroke-dasharray: 113.1; stroke-dashoffset: 0;
+                     transform: rotate(-90deg); transform-origin: center;
+                     transition: stroke-dashoffset .25s linear, stroke .3s; }
+  .timer-ring-num  { position: absolute; inset: 0; display: flex; align-items: center;
+                     justify-content: center; font-size: 14px; font-weight: 600;
+                     font-variant-numeric: tabular-nums; }
+
+  .timer-info { flex: 1; }
+  .timer-phase-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .timer-status-line { font-size: 11px; color: var(--muted); }
+
+  .timer-bar-bg { height: 4px; background: rgba(255,255,255,.07); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+  .timer-bar    { height: 100%; border-radius: 2px; width: 0%; transition: width .25s linear; }
+
+  /* ── Direction status ── */
+  .dir-status { font-size: 11px; color: var(--muted); padding: 7px 10px; border-radius: 7px; background: rgba(255,255,255,.03); border: 1px solid var(--border); margin-top: 6px; line-height: 1.6; }
+  .dir-status.ok { border-color: rgba(62,207,142,.3); color: var(--green); background: rgba(62,207,142,.05); }
+
+  /* ── Instructions ── */
+  .inst-list { display: flex; flex-direction: column; gap: 6px; }
+  .inst-row { display: flex; gap: 8px; align-items: flex-start; }
+  .inst-num { width: 18px; height: 18px; border-radius: 50%; background: rgba(79,156,249,.15); color: var(--accent); font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .inst-text { font-size: 12px; line-height: 1.5; color: var(--text); }
+
+  .divider { height: 1px; background: var(--border); margin: 10px 0; }
+
+  @media (max-width: 860px) { .main { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>R2P · Calibration</h1>
+  <nav class="nav-links">
+    <!-- FIX: backend serves calibrate page at "/" not "/calibrate" -->
+    <a href="/"          class="nav-link active">Calibrate</a>
+    <a href="/select"    class="nav-link">Select test</a>
+    <a href="/test"      class="nav-link">Live</a>
+    <a href="/review"    class="nav-link">Review</a>
+    <div class="nav-sep"></div>
+    <a href="/settings"  class="nav-link">⚙ Settings</a>
+  </nav>
+  <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+    <span class="hbadge" id="imu-badge">IMU: 0/6</span>
+    <span class="hbadge" id="calib-badge">Not calibrated</span>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ══ COLUMN 1: Camera ══ -->
+  <div class="cam-col">
+    <div class="card-title" style="padding:0">Camera feed</div>
+
+    <div class="source-toggle">
+      <button class="src-btn active" id="btn-webcam" onclick="useWebcam()">💻 Webcam</button>
+      <button class="src-btn"        id="btn-phone"  onclick="usePhone()">📱 Phone</button>
+    </div>
+
+    <div class="camera-wrap">
+      <canvas id="camera-canvas"></canvas>
+      <div id="no-camera">
+        <span style="font-size:28px">📷</span>
+        <span style="font-size:13px">Camera not started</span>
+        <button class="btn primary" style="width:auto;padding:7px 18px;margin:0;font-size:12px" onclick="startCamera()">Start camera</button>
+      </div>
+      <div class="state-overlay" id="state-overlay" style="display:none">
+        <span class="state-pill waiting" id="state-pill">Waiting</span>
+        <span style="font-size:11px;color:rgba(255,255,255,.6)" id="state-hint">Step into frame</span>
+      </div>
+      <div class="ring-wrap" id="ring-wrap" style="display:none">
+        <svg class="ring" viewBox="0 0 56 56">
+          <circle class="ring-bg"   cx="28" cy="28" r="22"/>
+          <circle class="ring-fill" id="ring-fill" cx="28" cy="28" r="22"/>
+          <text   class="ring-text" x="28" y="33" text-anchor="middle" id="ring-label">0%</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="rec-bar-bg" id="rec-bar-bg" style="display:none">
+      <div class="rec-bar" id="rec-bar"></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:right;min-height:15px" id="rec-label"></div>
+
+    <button class="btn" id="btn-restart"  onclick="restartCalib()" style="display:none">↺ Restart calibration</button>
+    <button class="btn primary" id="btn-continue" onclick="goToSelect()" style="display:none">Continue to tests →</button>
+    <div class="status-msg" id="gvhmr-msg"></div>
+  </div>
+
+  <!-- ══ COLUMN 2: Body + IMU setup ══ -->
+  <div class="body-col">
+
+    <div class="card">
+      <div class="card-title">IMU sensors</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+        <div class="sc-row">
+          <span class="sc-big" id="conn-count">0</span>
+          <span class="sc-dem" id="total-count">/ 6</span>
+        </div>
+        <div class="sc-lbl" id="conn-lbl">sensors connected</div>
+
+        <div class="mode-tog">
+          <button class="mtbtn on" id="mbtn-c" onclick="setBodyMode('consumer')">Consumer (6)</button>
+          <button class="mtbtn"    id="mbtn-p" onclick="setBodyMode('pro')">Pro (17)</button>
+        </div>
+
+        <svg id="body-svg" width="155" height="360" viewBox="0 0 170 390" style="margin-top:4px">
+          <ellipse cx="85" cy="28" rx="18" ry="21" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <rect x="80" y="46" width="10" height="11" rx="2" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <path d="M57 56 Q52 65 50 98 Q49 122 52 142 Q65 147 85 147 Q105 147 118 142 Q121 122 120 98 Q118 65 113 56 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <path d="M57 60 Q45 63 41 82 Q38 98 41 114 Q47 118 52 114 Q53 98 55 82 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <path d="M113 60 Q125 63 129 82 Q132 98 129 114 Q123 118 118 114 Q117 98 115 82 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <path d="M41 114 Q38 126 38 142 Q41 150 46 148 Q51 147 51 142 Q51 128 52 114 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <path d="M129 114 Q132 126 132 142 Q129 150 124 148 Q119 147 119 142 Q119 128 118 114 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <path d="M52 142 Q50 155 52 167 Q65 172 85 172 Q105 172 118 167 Q120 155 118 142 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <path d="M52 167 Q49 186 50 210 Q53 220 60 221 Q67 221 68 210 Q67 186 66 169 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <path d="M118 167 Q121 186 120 210 Q117 220 110 221 Q103 221 102 210 Q103 186 104 169 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <path d="M50 221 Q48 246 50 271 Q53 281 60 281 Q67 281 67 271 Q67 246 68 221 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <path d="M120 221 Q122 246 120 271 Q117 281 110 281 Q103 281 103 271 Q103 246 102 221 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <path d="M50 281 Q48 291 50 299 Q53 305 62 305 Q70 304 72 298 Q70 290 67 281 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <path d="M120 281 Q122 291 120 299 Q117 305 108 305 Q100 304 98 298 Q100 290 103 281 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+          <g class="pro-node" style="opacity:.22"><circle cx="85" cy="10" r="7" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="85" cy="10" r="4" id="mdot-head" fill="#e74c3c"/></g>
+          <g><circle cx="85" cy="85" r="8" fill="var(--bg)" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><circle cx="85" cy="85" r="4.5" id="mdot-chest" fill="#e74c3c"/></g>
+          <g><circle cx="85" cy="155" r="10" fill="var(--bg)" stroke="rgba(255,255,255,.38)" stroke-width="2"/><circle cx="85" cy="155" r="5.5" id="mdot-pelvis" fill="#e74c3c"/><text x="97" y="159" font-size="7" fill="rgba(255,255,255,.28)" font-family="system-ui">ROOT</text></g>
+          <g class="pro-node" style="opacity:.22"><circle cx="54" cy="61" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="54" cy="61" r="3.5" id="mdot-l_shoulder" fill="#e74c3c"/></g>
+          <g class="pro-node" style="opacity:.22"><circle cx="116" cy="61" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="116" cy="61" r="3.5" id="mdot-r_shoulder" fill="#e74c3c"/></g>
+          <g class="pro-node" style="opacity:.22"><circle cx="43" cy="89" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="43" cy="89" r="3.5" id="mdot-l_upper_arm" fill="#e74c3c"/></g>
+          <g class="pro-node" style="opacity:.22"><circle cx="127" cy="89" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="127" cy="89" r="3.5" id="mdot-r_upper_arm" fill="#e74c3c"/></g>
+          <g class="pro-node" style="opacity:.22"><circle cx="42" cy="131" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="42" cy="131" r="3.5" id="mdot-l_forearm" fill="#e74c3c"/></g>
+          <g class="pro-node" style="opacity:.22"><circle cx="128" cy="131" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="128" cy="131" r="3.5" id="mdot-r_forearm" fill="#e74c3c"/></g>
+          <g><circle cx="59" cy="192" r="8" fill="var(--bg)" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><circle cx="59" cy="192" r="4.5" id="mdot-thigh_l" fill="#e74c3c"/></g>
+          <g><circle cx="111" cy="192" r="8" fill="var(--bg)" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><circle cx="111" cy="192" r="4.5" id="mdot-thigh_r" fill="#e74c3c"/></g>
+          <g><circle cx="59" cy="250" r="8" fill="var(--bg)" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><circle cx="59" cy="250" r="4.5" id="mdot-shin_l" fill="#e74c3c"/></g>
+          <g><circle cx="111" cy="250" r="8" fill="var(--bg)" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><circle cx="111" cy="250" r="4.5" id="mdot-shin_r" fill="#e74c3c"/></g>
+          <g class="pro-node" style="opacity:.22"><circle cx="61" cy="293" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="61" cy="293" r="3.5" id="mdot-l_foot" fill="#e74c3c"/></g>
+          <g class="pro-node" style="opacity:.22"><circle cx="109" cy="293" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="109" cy="293" r="3.5" id="mdot-r_foot" fill="#e74c3c"/></g>
+        </svg>
+
+        <div class="leg-row">
+          <div class="lpill"><div class="lpill-dot" style="background:#3ecf8e"></div>connected</div>
+          <div class="lpill"><div class="lpill-dot" style="background:#e74c3c"></div>off</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Motion mode (Step 3) ── -->
+    <div class="card">
+      <div class="card-title">Motion mode</div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label" id="mode-label">Test mode</div>
+          <div class="toggle-sub"   id="mode-sub">Avatar moves on pelvis bounce (single sensor)</div>
+        </div>
+        <label class="toggle-sw">
+          <input type="checkbox" id="mode-toggle" onchange="toggleMotionMode(this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">
+        <b>Test</b> — pelvis only &nbsp;|&nbsp; <b>User</b> — requires leg sensors
+      </div>
+      <div class="status-msg" id="mode-msg"></div>
+    </div>
+
+  </div>
+
+  <!-- ══ COLUMN 3: Right panel ══ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+
+    <!-- Progress steps (Steps 1–3 of calibration) -->
+    <div class="card">
+      <div class="card-title">Calibration progress</div>
+      <div class="progress-steps">
+        <div class="step-item">
+          <div class="step-icon" id="step-icon-1">📐</div>
+          <div class="step-body">
+            <div class="step-name">Pose detected</div>
+            <div class="step-desc">YOLO confirms correct standing pose held for 3 s</div>
+            <span class="step-tag pending" id="step-tag-1">waiting</span>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-icon" id="step-icon-2">📡</div>
+          <div class="step-body">
+            <div class="step-name">IMU zero-reference set</div>
+            <div class="step-desc">Sensor orientations snapshotted — or use override below</div>
+            <span class="step-tag pending" id="step-tag-2">waiting</span>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-icon" id="step-icon-3">📏</div>
+          <div class="step-body">
+            <div class="step-name">Limb lengths measured</div>
+            <div class="step-desc">GVHMR analyses the video to extract your segment proportions</div>
+            <span class="step-tag pending" id="step-tag-3">waiting</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual IMU zero override (Step 4 in docs) -->
+      <div class="divider"></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Manual override — stand in T-pose then:</div>
+      <button class="btn warn-btn" onclick="tposeOverride()">📡 Set IMU zero now (T-pose)</button>
+      <div class="status-msg" id="tpose-msg"></div>
+    </div>
+
+    <!-- Pose corrections -->
+    <div class="card">
+      <div class="card-title">Pose corrections</div>
+      <div class="corr-list" id="corr-list">
+        <div class="corr-item ok"><span>⏳</span>Start camera to begin</div>
+      </div>
+    </div>
+
+    <!-- Direction setup (Step 5 in docs) -->
+    <div class="card">
+      <div class="card-title">Forward direction</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">
+        Face the direction you want to be "forward", stand still, then press <b>Set forward</b>.
+        Optionally turn 90° right and press <b>Confirm right</b>.
+      </div>
+      <div class="btn-row" style="margin-bottom:8px">
+        <button class="btn" onclick="setForward()">➡ Set forward</button>
+        <button class="btn" id="btn-set-right" onclick="setRight()" disabled>↩ Confirm right</button>
+      </div>
+      <div class="dir-status" id="dir-status">No forward direction set yet.</div>
+      <div class="status-msg" id="dir-msg"></div>
+    </div>
+
+    <!-- Motion calibration wizard (Step 6 in docs) -->
+    <div class="card">
+      <div class="card-title">Motion calibration <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">
+        Tunes step, jump and squat detection to your body.
+        Each phase: 3 s countdown, then 5 s of movement. Recording stops automatically.
+      </div>
+      <button class="btn primary" id="btn-mcalib-begin" onclick="mcalibBegin()">Begin motion calibration</button>
+
+      <div id="mcalib-phases-wrap" style="display:none">
+
+        <!-- Per-phase instruction -->
+        <div style="font-size:12px;color:var(--muted);margin-top:10px;margin-bottom:6px" id="mcalib-phase-hint">
+          Tap a phase to start the countdown, then perform the movement.
+        </div>
+
+        <!-- Countdown / recording timer block -->
+        <div id="mcalib-timer-wrap">
+          <div class="timer-ring-wrap">
+            <svg viewBox="0 0 48 48">
+              <circle class="timer-ring-bg"   cx="24" cy="24" r="18"/>
+              <circle class="timer-ring-fill" id="timer-ring-fill" cx="24" cy="24" r="18"/>
+            </svg>
+            <div class="timer-ring-num" id="timer-ring-num">3</div>
+          </div>
+          <div class="timer-info">
+            <div class="timer-phase-name" id="timer-phase-name">—</div>
+            <div class="timer-status-line" id="timer-status-line">Starting…</div>
+            <div class="timer-bar-bg">
+              <div class="timer-bar" id="timer-bar"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phase buttons — disabled while a phase is running -->
+        <div class="calib-phases" id="mcalib-phase-btns">
+          <button class="phase-btn" id="ph-walk_forward" onclick="startPhase('walk_forward')">🚶 Walk fwd</button>
+          <button class="phase-btn" id="ph-walk_back"    onclick="startPhase('walk_back')">🚶 Walk back</button>
+          <button class="phase-btn" id="ph-walk_left"    onclick="startPhase('walk_left')">↖ Walk left</button>
+          <button class="phase-btn" id="ph-walk_right"   onclick="startPhase('walk_right')">↗ Walk right</button>
+          <button class="phase-btn" id="ph-jump"         onclick="startPhase('jump')">⬆ Jump</button>
+          <button class="phase-btn" id="ph-squat"        onclick="startPhase('squat')">⬇ Squat</button>
+        </div>
+
+        <button class="btn success" id="btn-mcalib-finish" onclick="mcalibFinish()" style="margin-top:4px">✓ Finish &amp; apply thresholds</button>
+      </div>
+
+      <div class="status-msg" id="mcalib-msg"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   SENSOR BODY MAP
+═══════════════════════════════════════════════════ */
+const CONSUMER_IDS = ['chest','pelvis','thigh_l','thigh_r','shin_l','shin_r'];
+const PRO_IDS      = ['head','l_shoulder','r_shoulder','l_upper_arm','r_upper_arm','l_forearm','r_forearm','l_foot','r_foot'];
+const ALL_IDS      = [...CONSUMER_IDS, ...PRO_IDS];
+const connectedSet = new Set();
+let   bodyMode     = 'consumer';
+
+function setBodyMode(mode) {
+  bodyMode = mode;
+  doc('mbtn-c').className = 'mtbtn' + (mode === 'consumer' ? ' on' : '');
+  doc('mbtn-p').className = 'mtbtn' + (mode === 'pro'      ? ' on' : '');
+  document.querySelectorAll('.pro-node').forEach(el => {
+    el.style.opacity = mode === 'pro' ? '1' : '0.22';
+  });
+  updateCount();
+}
+
+function updateSensors(active) {
+  ALL_IDS.forEach(id => {
+    const on = active.includes(id);
+    if (on) connectedSet.add(id); else connectedSet.delete(id);
+    const dot = doc('mdot-' + id);
+    if (dot) dot.style.fill = on ? '#3ecf8e' : '#e74c3c';
+  });
+  updateCount();
+}
+
+function updateCount() {
+  const rel  = bodyMode === 'consumer' ? CONSUMER_IDS : ALL_IDS;
+  const n    = rel.filter(id => connectedSet.has(id)).length;
+  doc('conn-count').textContent  = n;
+  doc('total-count').textContent = '/ ' + rel.length;
+  doc('conn-lbl').textContent    = n === rel.length ? '✓ all connected' : 'sensors connected';
+  const allOk = CONSUMER_IDS.every(id => connectedSet.has(id));
+  const badge = doc('imu-badge');
+  badge.textContent = `IMU: ${connectedSet.size}/${CONSUMER_IDS.length}`;
+  badge.className   = 'hbadge' + (allOk ? ' ok' : '');
+}
+
+/* ═══════════════════════════════════════════════════
+   CALIBRATION STEPS
+═══════════════════════════════════════════════════ */
+function setStep(n, state) {
+  const icon   = doc('step-icon-' + n);
+  const tag    = doc('step-tag-'  + n);
+  const emojis = { 1:{ pending:'📐', active:'📐', done:'✅' },
+                   2:{ pending:'📡', active:'📡', done:'✅' },
+                   3:{ pending:'📏', active:'⏳', done:'✅' } };
+  const labels = { pending:'waiting', active:'in progress…', done:'done ✓' };
+  icon.className   = 'step-icon ' + state;
+  icon.textContent = emojis[n][state];
+  tag.className    = 'step-tag '  + state;
+  tag.textContent  = labels[state];
+}
+
+/* ═══════════════════════════════════════════════════
+   IMU WEBSOCKET
+═══════════════════════════════════════════════════ */
+let imuWS = null;
+function connectIMU() {
+  imuWS = new WebSocket(`ws://${location.host}/ws/imu`);
+  imuWS.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'init' || msg.type === 'frame') updateSensors(msg.sensors || []);
+    if (msg.type === 'imu_zeroed') {
+      setStep(2, 'done');
+      setStep(3, 'active');
+      showMsg('tpose-msg', '✓ IMU zero set.', 'ok');
+    }
+    if (msg.type === 'calibration_processing') { doc('gvhmr-msg').textContent = msg.msg; }
+    if (msg.type === 'calibrated') {
+      setStep(3, 'done');
+      doc('gvhmr-msg').textContent = '✓ Limb lengths measured.';
+      doc('gvhmr-msg').className   = 'status-msg ok';
+      doc('calib-badge').textContent = 'Calibrated ✓';
+      doc('calib-badge').className   = 'hbadge ok';
+      doc('btn-continue').style.display = 'block';
+    }
+    if (msg.type === 'calibration_error') {
+      doc('gvhmr-msg').textContent = '⚠ ' + msg.msg;
+      doc('gvhmr-msg').className   = 'status-msg err';
+      doc('btn-restart').style.display = 'block';
+    }
+    if (msg.type === 'direction_forward_set') {
+      const ax = (msg.forward_axis || []).map(v => v.toFixed(2)).join(', ');
+      doc('dir-status').textContent = `✓ Forward set. Axis: [${ax}]`;
+      doc('dir-status').className   = 'dir-status ok';
+      doc('btn-set-right').disabled = false;
+    }
+    if (msg.type === 'direction_right_set') {
+      doc('dir-status').textContent += msg.axis_flipped
+        ? ' · Right confirmed (axis corrected).'
+        : ' · Right confirmed.';
+    }
+    if (msg.type === 'calib_begin') {
+      // Server confirmed begin — phases wrap is already shown by mcalibBegin()
+    }
+    if (msg.type === 'calib_phase') {
+      // Server confirmed which phase is active — UI already updated locally, nothing extra needed
+    }
+    if (msg.type === 'calib_complete') {
+      // Triggered by mcalibFinish() confirmation
+      document.querySelectorAll('.phase-btn').forEach(b => {
+        b.classList.remove('active','running'); b.classList.add('done');
+      });
+      const s = msg.summary || {};
+      showMsg('mcalib-msg',
+        `✓ Done. Step: ${s.step_accel_thresh}, Jump: ${s.jump_launch_thresh}, Squat: ${s.squat_descend_thresh}`, 'ok');
+    }
+    if (msg.type === 'motion_mode') syncModeUI(msg.mode);
+  };
+  imuWS.onclose = () => setTimeout(connectIMU, 2000);
+}
+
+/* ═══════════════════════════════════════════════════
+   CAMERA WEBSOCKET
+═══════════════════════════════════════════════════ */
+let cameraWS     = null;
+let latestMsg    = null;
+let renderQueued = false;
+
+function connectCamera() {
+  cameraWS = new WebSocket(`ws://${location.host}/ws/camera`);
+  cameraWS.onclose   = () => setTimeout(connectCamera, 2000);
+  cameraWS.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'pose_frame') {
+      latestMsg = msg;
+      if (!renderQueued) { renderQueued = true; requestAnimationFrame(renderFrame); }
+    }
+  };
+}
+
+let usingPhone    = false;
+let frameInterval = null;
+const RECORD_DUR  = 5.0;
+
+function useWebcam() {
+  usingPhone = false;
+  doc('btn-webcam').classList.add('active');
+  doc('btn-phone').classList.remove('active');
+}
+function usePhone() {
+  usingPhone = true;
+  doc('btn-phone').classList.add('active');
+  doc('btn-webcam').classList.remove('active');
+}
+
+async function startCamera() {
+  doc('no-camera').style.display     = 'none';
+  doc('state-overlay').style.display = 'flex';
+  doc('ring-wrap').style.display     = 'block';
+  await fetch('/pose/start?mode=calibration&record_seconds=5&hold_seconds=3', { method:'POST' });
+  if (usingPhone) {
+    await startBrowserCamera();
+  } else {
+    if (cameraWS && cameraWS.readyState === 1)
+      cameraWS.send(JSON.stringify({ type: 'start_webcam' }));
+  }
+}
+
+async function startBrowserCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{ width:640, height:480 }, audio:false });
+    const video  = document.createElement('video');
+    video.srcObject = stream; video.play();
+    const canvas = doc('camera-canvas'), ctx = canvas.getContext('2d');
+    frameInterval = setInterval(() => {
+      if (video.readyState < 2) return;
+      canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
+      ctx.drawImage(video, 0, 0);
+      canvas.toBlob(blob => {
+        if (!blob || !cameraWS || cameraWS.readyState !== 1) return;
+        const reader = new FileReader();
+        reader.onload = () => cameraWS.send(JSON.stringify({ type:'frame', data: reader.result.split(',')[1] }));
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.65);
+    }, 1000/15);
+  } catch(err) { alert('Camera access denied: ' + err.message); }
+}
+
+const camCanvas = doc('camera-canvas');
+const camCtx    = camCanvas.getContext('2d');
+let   prevState = null;
+const frameImg  = new Image();
+frameImg.onload = () => {
+  camCanvas.width = frameImg.naturalWidth; camCanvas.height = frameImg.naturalHeight;
+  camCtx.drawImage(frameImg, 0, 0);
+};
+
+function renderFrame() {
+  renderQueued = false;
+  const msg = latestMsg; if (!msg) return;
+  latestMsg = null;
+  if (msg.frame_b64) frameImg.src = 'data:image/jpeg;base64,' + msg.frame_b64;
+  const pill = doc('state-pill');
+  pill.className   = 'state-pill ' + msg.state;
+  pill.textContent = { waiting:'Waiting for pose', pose_detected:'Hold pose…', recording:'Recording', complete:'Complete ✓' }[msg.state] || msg.state;
+  doc('state-hint').textContent = {
+    waiting:       'Step into frame, feet shoulder-width, arms at sides',
+    pose_detected: 'Perfect — hold still…',
+    recording:     'Recording 5 s clip — stay still',
+    complete:      'Clip captured ✓ — processing limb lengths',
+  }[msg.state] || '';
+  const fill = doc('ring-fill');
+  fill.style.strokeDashoffset = 138.2 * (1 - msg.hold_progress);
+  fill.style.stroke = msg.state === 'recording' ? 'var(--green)' : 'var(--amber)';
+  doc('ring-label').textContent = Math.round(msg.hold_progress * 100) + '%';
+  if (msg.state === 'recording') {
+    doc('rec-bar-bg').style.display = 'block';
+    doc('rec-bar').style.width = Math.min(100, (msg.record_seconds / RECORD_DUR) * 100) + '%';
+    doc('rec-label').textContent = `Recording: ${msg.record_seconds.toFixed(1)} s / ${RECORD_DUR} s`;
+  } else if (msg.state !== 'complete') {
+    doc('rec-bar').style.width = '0%'; doc('rec-label').textContent = '';
+  }
+  if (msg.state !== prevState) {
+    if (msg.state === 'pose_detected') setStep(1, 'active');
+    if (msg.state === 'recording')   { setStep(1, 'done'); setStep(2, 'done'); }
+    if (msg.state === 'complete') {
+      setStep(3, 'active');
+      if (frameInterval) clearInterval(frameInterval);
+      doc('btn-restart').style.display = 'block';
+    }
+    prevState = msg.state;
+  }
+  const corrs = msg.corrections || [];
+  doc('corr-list').innerHTML = corrs.length === 0
+    ? `<div class="corr-item ok"><span>✓</span>Pose is correct</div>`
+    : corrs.map(c => `<div class="corr-item"><span>⚠</span>${c}</div>`).join('');
+  if (latestMsg) { renderQueued = true; requestAnimationFrame(renderFrame); }
+}
+
+/* ═══════════════════════════════════════════════════
+   MOTION MODE  (Step 3 in docs)
+═══════════════════════════════════════════════════ */
+async function toggleMotionMode(isUser) {
+  const mode = isUser ? 'user' : 'test';
+  try {
+    await fetch(`/motion_mode?mode=${mode}`, { method:'POST' });
+    syncModeUI(mode);
+    showMsg('mode-msg', `Mode set: ${mode}`, 'ok');
+  } catch(e) { showMsg('mode-msg', 'Error: ' + e.message, 'err'); }
+}
+
+function syncModeUI(mode) {
+  const isUser = mode === 'user';
+  doc('mode-toggle').checked = isUser;
+  doc('mode-label').textContent = isUser ? 'User mode' : 'Test mode';
+  doc('mode-sub').textContent   = isUser
+    ? 'Full multi-IMU — leg sensors confirm locomotion'
+    : 'Pelvis-only — avatar moves on bounce (single sensor)';
+}
+
+// Load current mode on startup
+fetch('/motion_mode').then(r => r.json()).then(d => syncModeUI(d.mode)).catch(() => {});
+
+/* ═══════════════════════════════════════════════════
+   T-POSE OVERRIDE  (Step 4 in docs)
+═══════════════════════════════════════════════════ */
+async function tposeOverride() {
+  try {
+    await fetch('/ble/tpose', { method:'POST' });
+    // WS will fire imu_zeroed which updates steps
+    showMsg('tpose-msg', 'Sent — waiting for confirmation…');
+  } catch(e) { showMsg('tpose-msg', 'Error: ' + e.message, 'err'); }
+}
+
+/* ═══════════════════════════════════════════════════
+   DIRECTION  (Step 5 in docs)
+═══════════════════════════════════════════════════ */
+async function setForward() {
+  try {
+    const res = await fetch('/direction/set_forward', { method:'POST' });
+    if (!res.ok) {
+      const d = await res.json(); showMsg('dir-msg', d.detail || 'Error', 'err'); return;
+    }
+    const d = await res.json();
+    const ax = (d.forward_axis || []).map(v => (+v).toFixed(2)).join(', ');
+    doc('dir-status').textContent = `✓ Forward captured. Axis: [${ax}]`;
+    doc('dir-status').className   = 'dir-status ok';
+    doc('btn-set-right').disabled = false;
+    showMsg('dir-msg', 'Forward direction set.', 'ok');
+  } catch(e) { showMsg('dir-msg', 'Error: ' + e.message, 'err'); }
+}
+
+async function setRight() {
+  try {
+    const res = await fetch('/direction/set_right', { method:'POST' });
+    if (!res.ok) {
+      const d = await res.json(); showMsg('dir-msg', d.detail || 'Error', 'err'); return;
+    }
+    const d = await res.json();
+    const note = d.axis_flipped ? ' (axis corrected)' : '';
+    doc('dir-status').textContent += ` · Right turn confirmed${note} (Δ${d.turn_delta_deg}°).`;
+    showMsg('dir-msg', 'Right direction confirmed.', 'ok');
+  } catch(e) { showMsg('dir-msg', 'Error: ' + e.message, 'err'); }
+}
+
+/* ═══════════════════════════════════════════════════
+   MOTION CALIBRATION  (Step 6 in docs)
+   Flow per phase:
+     1. User taps a phase button
+     2. 3-second countdown (amber ring counting down)
+     3. POST /motion_calib/phase — backend starts recording
+     4. 5-second recording timer (blue ring filling up)
+     5. Timer expires → backend implicitly stops (data already buffered)
+     6. Button marked done, next phase enabled
+═══════════════════════════════════════════════════ */
+
+const MCALIB_COUNTDOWN_S = 3;
+const MCALIB_RECORD_S    = 5;
+
+const PHASE_LABELS = {
+  walk_forward: 'Walk forward',
+  walk_back:    'Walk backward',
+  walk_left:    'Strafe left',
+  walk_right:   'Strafe right',
+  jump:         'Jump',
+  squat:        'Squat',
+};
+const PHASE_HINTS = {
+  walk_forward: 'Walk forward at your normal pace.',
+  walk_back:    'Walk backward at a comfortable pace.',
+  walk_left:    'Step sideways to the left.',
+  walk_right:   'Step sideways to the right.',
+  jump:         'Jump 3–5 times at your natural effort.',
+  squat:        'Squat down and up 3–4 times, full depth.',
+};
+
+let _mcalibRunning  = false;  // true while countdown or recording is active
+let _mcalibTimer    = null;   // setInterval handle
+let _mcalibPhase    = null;   // currently active phase key
+let _mcalibStarted  = false;  // has begin() been called
+
+// Ring circumference for r=18: 2π×18 ≈ 113.1
+const RING_C = 113.1;
+
+function _setTimerRing(fraction, color) {
+  const fill = doc('timer-ring-fill');
+  if (!fill) return;
+  fill.style.strokeDashoffset = RING_C * (1 - Math.max(0, Math.min(1, fraction)));
+  fill.style.stroke = color;
+}
+function _setTimerNum(text)   { const el=doc('timer-ring-num');  if(el) el.textContent = text; }
+function _setTimerState(cls)  {
+  const wrap = doc('mcalib-timer-wrap');
+  if (!wrap) return;
+  wrap.className = '';   // clear
+  if (cls) wrap.className = cls;
+  wrap.style.display = cls ? 'flex' : 'none';
+}
+function _setTimerBar(pct, color) {
+  const bar = doc('timer-bar');
+  if (!bar) return;
+  bar.style.width      = pct + '%';
+  bar.style.background = color;
+}
+function _setTimerText(phase, status) {
+  const pn = doc('timer-phase-name'), sl = doc('timer-status-line');
+  if (pn) pn.textContent = PHASE_LABELS[phase] || phase;
+  if (sl) sl.textContent = status;
+}
+
+function _lockPhaseBtns(lock) {
+  document.querySelectorAll('.phase-btn').forEach(b => {
+    if (!b.classList.contains('done')) b.disabled = lock;
+  });
+}
+
+async function mcalibBegin() {
+  try {
+    await fetch('/motion_calib/begin', { method:'POST' });
+    _mcalibStarted = true;
+    doc('mcalib-phases-wrap').style.display = 'block';
+    doc('btn-mcalib-begin').textContent = '↺ Restart motion calibration';
+    document.querySelectorAll('.phase-btn').forEach(b => { b.classList.remove('active','done','running'); b.disabled = false; });
+    _mcalibRunning = false;
+    _setTimerState(null);
+    showMsg('mcalib-msg', 'Tap a phase to begin.', 'ok');
+    doc('mcalib-phase-hint').textContent = 'Tap a phase to start the countdown, then perform the movement.';
+  } catch(e) { showMsg('mcalib-msg', 'Error: ' + e.message, 'err'); }
+}
+
+function startPhase(phase) {
+  if (_mcalibRunning || !_mcalibStarted) return;
+  const btn = doc('ph-' + phase);
+  if (btn && btn.classList.contains('done')) return;  // already done, skip
+
+  _mcalibRunning = true;
+  _mcalibPhase   = phase;
+  _lockPhaseBtns(true);
+
+  // Mark button as active (waiting)
+  document.querySelectorAll('.phase-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  doc('mcalib-phase-hint').textContent = PHASE_HINTS[phase] || '';
+  showMsg('mcalib-msg', '');
+
+  _runCountdown(phase);
+}
+
+function _runCountdown(phase) {
+  let remaining = MCALIB_COUNTDOWN_S;
+  _setTimerState('countdown');
+  _setTimerText(phase, `Get ready — starting in ${remaining}…`);
+  _setTimerNum(remaining);
+  _setTimerRing(1.0, 'var(--amber)');   // full ring, counts DOWN
+  _setTimerBar(0, 'var(--amber)');
+
+  if (_mcalibTimer) clearInterval(_mcalibTimer);
+  _mcalibTimer = setInterval(() => {
+    remaining--;
+    const frac = remaining / MCALIB_COUNTDOWN_S;
+    _setTimerRing(frac, 'var(--amber)');
+    _setTimerNum(remaining > 0 ? remaining : 'GO!');
+    _setTimerText(phase, remaining > 0 ? `Get ready — starting in ${remaining}…` : 'START!');
+    _setTimerBar((1 - frac) * 100, 'var(--amber)');
+
+    if (remaining <= 0) {
+      clearInterval(_mcalibTimer);
+      _mcalibTimer = null;
+      _startRecording(phase);
+    }
+  }, 1000);
+}
+
+async function _startRecording(phase) {
+  // Tell the backend which phase is active — it starts buffering sensor data
+  try {
+    await fetch(`/motion_calib/phase?phase=${phase}`, { method:'POST' });
+  } catch(e) {
+    showMsg('mcalib-msg', 'Error starting phase: ' + e.message, 'err');
+    _mcalibRunning = false; _lockPhaseBtns(false); _setTimerState(null);
+    return;
+  }
+
+  const btn = doc('ph-' + phase);
+  if (btn) { btn.classList.remove('active'); btn.classList.add('running'); }
+
+  let elapsed = 0;
+  _setTimerState('recording');
+  _setTimerText(phase, `Recording… ${MCALIB_RECORD_S}s remaining`);
+  _setTimerNum(MCALIB_RECORD_S);
+  _setTimerRing(0, 'var(--accent)');   // empty ring, fills up
+  _setTimerBar(0, 'var(--accent)');
+
+  _mcalibTimer = setInterval(() => {
+    elapsed++;
+    const frac = elapsed / MCALIB_RECORD_S;
+    const remaining = MCALIB_RECORD_S - elapsed;
+    _setTimerRing(frac, 'var(--accent)');
+    _setTimerNum(remaining > 0 ? remaining : '✓');
+    _setTimerText(phase, remaining > 0 ? `Recording… ${remaining}s remaining` : 'Done — data captured');
+    _setTimerBar(frac * 100, 'var(--accent)');
+
+    if (elapsed >= MCALIB_RECORD_S) {
+      clearInterval(_mcalibTimer);
+      _mcalibTimer = null;
+      _phaseComplete(phase, btn);
+    }
+  }, 1000);
+}
+
+function _phaseComplete(phase, btn) {
+  if (btn) { btn.classList.remove('active','running'); btn.classList.add('done'); btn.disabled = false; }
+  _mcalibRunning = false;
+  _mcalibPhase   = null;
+  _setTimerState('done');
+  _setTimerRing(1.0, 'var(--green)');
+  _setTimerNum('✓');
+  _setTimerBar(100, 'var(--green)');
+  _setTimerText(phase, 'Recorded ✓ — tap the next phase or Finish.');
+
+  // Re-enable remaining undone buttons
+  _lockPhaseBtns(false);
+  document.querySelectorAll('.phase-btn.done').forEach(b => b.disabled = false);
+
+  // Check if all phases are done → nudge toward Finish
+  const allDone = Array.from(document.querySelectorAll('.phase-btn')).every(b => b.classList.contains('done'));
+  if (allDone) {
+    showMsg('mcalib-msg', 'All phases recorded — press Finish to apply thresholds.', 'ok');
+    _setTimerState(null);
+  } else {
+    showMsg('mcalib-msg', `${PHASE_LABELS[phase]} done. Continue with the next phase.`, 'ok');
+  }
+}
+
+async function mcalibFinish() {
+  if (_mcalibRunning) {
+    showMsg('mcalib-msg', 'Wait for the current phase to finish before applying.', 'err');
+    return;
+  }
+  try {
+    const res = await fetch('/motion_calib/finish', { method:'POST' });
+    const d   = await res.json();
+    document.querySelectorAll('.phase-btn').forEach(b => { b.classList.remove('active','running'); b.classList.add('done'); });
+    _setTimerState(null);
+    const s = d.summary || {};
+    showMsg('mcalib-msg',
+      `✓ Applied — step: ${s.step_accel_thresh}, jump: ${s.jump_launch_thresh}, squat: ${s.squat_descend_thresh}`, 'ok');
+  } catch(e) { showMsg('mcalib-msg', 'Error: ' + e.message, 'err'); }
+}
+
+/* ═══════════════════════════════════════════════════
+   RESTART / CONTINUE
+═══════════════════════════════════════════════════ */
+async function restartCalib() {
+  await fetch('/pose/reset', { method:'POST' });
+  await fetch('/pose/start?mode=calibration&record_seconds=5&hold_seconds=3', { method:'POST' });
+  [1,2,3].forEach(n => setStep(n, 'pending'));
+  prevState = null; latestMsg = null;
+  doc('gvhmr-msg').textContent  = '';
+  doc('gvhmr-msg').className    = 'status-msg';
+  doc('btn-continue').style.display = 'none';
+  doc('rec-bar').style.width    = '0%';
+  doc('rec-label').textContent  = '';
+}
+
+function goToSelect() { location.href = '/select'; }
+
+/* ═══════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════ */
+function doc(id) { return document.getElementById(id); }
+function showMsg(id, text, type) {
+  const el = doc(id); if (!el) return;
+  el.textContent = text;
+  el.className   = 'status-msg' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
+}
+
+/* ═══════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════ */
+connectIMU();
+connectCamera();
+setBodyMode('consumer');
+updateCount();
+</script>
+</body>
+</html>

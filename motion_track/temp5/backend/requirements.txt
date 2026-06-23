@@ -1,0 +1,10 @@
+# backend/requirements.txt
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+bleak>=0.21.1          # BLE for ESP32 communication
+numpy>=1.26.0
+torch>=2.2.0           # for GVHMR .pt file loading
+paramiko>=3.4.0        # SSH for remote GVHMR
+scp>=0.15.0            # file transfer over SSH
+opencv-python-headless>=4.9.0
+python-multipart>=0.0.9  # for file upload in FastAPI

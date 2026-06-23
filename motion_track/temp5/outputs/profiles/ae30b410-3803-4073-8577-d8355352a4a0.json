@@ -1,0 +1,827 @@
+{
+  "id": "ae30b410-3803-4073-8577-d8355352a4a0",
+  "name": "Default",
+  "created_at": 1779384185.7231584,
+  "updated_at": 1779607132.9369707,
+  "body": {
+    "height_cm": null,
+    "weight_kg": null,
+    "age": null,
+    "gender": null,
+    "sport": null
+  },
+  "limb_lengths": {
+    "thigh_l": 0.4367262125015259,
+    "shin_l": 0.462110310792923,
+    "thigh_r": 0.4159527122974396,
+    "shin_r": 0.46901342272758484,
+    "hip_width": 0.06108498573303223,
+    "pelvis_height": 0.9371429085731506
+  },
+  "derived": {
+    "leg_length_l_cm": 89.9,
+    "leg_length_r_cm": 88.5,
+    "leg_symmetry_pct": 98.4
+  },
+  "imu_offsets": {
+    "pelvis": [
+      -0.4135931894335084,
+      0.3934179119001666,
+      -0.5548201321669016,
+      0.6052583260002563
+    ],
+    "chest": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "thigh_l": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "thigh_r": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "shin_l": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "shin_r": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "l_upper_arm": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "r_upper_arm": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "l_forearm": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "r_forearm": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "head": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "l_foot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "r_foot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "calibration_history": [
+    {
+      "timestamp": 1779384377.5246964,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779384412.183619,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779507007.6070635,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779509571.8414114,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779509865.5246782,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779509929.3276842,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779510062.3662417,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779510228.321227,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779510538.522272,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779512716.6256416,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779512961.0911434,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779513078.9366503,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779513539.4357219,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779519056.465127,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779526842.3827865,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779529545.0328925,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779531707.5053492,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779548008.449945,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779549583.844227,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779550051.5148652,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779552090.477047,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779559724.8864439,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779561021.1160789,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779561999.1428435,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    }
+  ],
+  "test_history": [
+    {
+      "session_id": "346fd600-daa6-4bee-adc6-6449f0ea4b16",
+      "test_id": "stability",
+      "timestamp": 1779531812.2277918,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 232,
+        "duration_s": 4.6,
+        "sway": {
+          "mean_velocity_ms": 0.0189,
+          "cv_pct": 2.08,
+          "stability_score": 97.9
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.00536,
+          "jerk_trend": -0.00014,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00014,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "346fd600-daa6-4bee-adc6-6449f0ea4b16"
+      }
+    },
+    {
+      "session_id": "dd508b0d-ffe1-4226-8323-d8bd16264692",
+      "test_id": "stability",
+      "timestamp": 1779560153.6073642,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 372,
+        "duration_s": 7.4,
+        "sway": {
+          "mean_velocity_ms": 0.0198,
+          "cv_pct": 0.7,
+          "stability_score": 99.3
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "dd508b0d-ffe1-4226-8323-d8bd16264692"
+      }
+    },
+    {
+      "session_id": "922e48e6-2096-4b20-9268-30c60432b68c",
+      "test_id": "stability",
+      "timestamp": 1779560171.807463,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 86,
+        "duration_s": 1.7,
+        "sway": {
+          "mean_velocity_ms": 0.0196,
+          "cv_pct": 6.19,
+          "stability_score": 93.8
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "922e48e6-2096-4b20-9268-30c60432b68c"
+      }
+    },
+    {
+      "session_id": "68db5bf4-3fa5-47aa-81c2-6dd6d17fa4c0",
+      "test_id": "stability",
+      "timestamp": 1779560301.4658055,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 3635,
+        "duration_s": 72.7,
+        "sway": {
+          "mean_velocity_ms": 0.0204,
+          "cv_pct": 15.42,
+          "stability_score": 84.6
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "68db5bf4-3fa5-47aa-81c2-6dd6d17fa4c0"
+      }
+    },
+    {
+      "session_id": "410ebf70-f521-4bb5-8f0f-b71705bf9b3d",
+      "test_id": "stability",
+      "timestamp": 1779561045.6257186,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 153,
+        "duration_s": 3.1,
+        "sway": {
+          "mean_velocity_ms": 0.0191,
+          "cv_pct": 12.51,
+          "stability_score": 87.5
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.02908,
+          "jerk_trend": -0.00111,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00111,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "410ebf70-f521-4bb5-8f0f-b71705bf9b3d"
+      }
+    },
+    {
+      "session_id": "8a68d5d7-43f3-4910-a6c2-e3b69609b39e",
+      "test_id": "stability",
+      "timestamp": 1779562063.653404,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 1060,
+        "duration_s": 21.2,
+        "sway": {
+          "mean_velocity_ms": 0.007,
+          "cv_pct": 27.0,
+          "stability_score": 73.0
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "8a68d5d7-43f3-4910-a6c2-e3b69609b39e"
+      }
+    },
+    {
+      "session_id": "f1a0059c-c5b1-4ac1-9a30-d944742f96ec",
+      "test_id": "stability",
+      "timestamp": 1779562169.0169854,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 1633,
+        "duration_s": 32.7,
+        "sway": {
+          "mean_velocity_ms": 0.0188,
+          "cv_pct": 20.52,
+          "stability_score": 79.5
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "f1a0059c-c5b1-4ac1-9a30-d944742f96ec"
+      }
+    },
+    {
+      "session_id": "e5df4dba-30f5-4f55-9752-e93dc7d8d600",
+      "test_id": "stability",
+      "timestamp": 1779562205.0160549,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 534,
+        "duration_s": 10.7,
+        "sway": {
+          "mean_velocity_ms": 0.0186,
+          "cv_pct": 14.66,
+          "stability_score": 85.3
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "e5df4dba-30f5-4f55-9752-e93dc7d8d600"
+      }
+    },
+    {
+      "session_id": "df245bf8-8d78-4a87-89ee-9be4e6ce225c",
+      "test_id": "stability",
+      "timestamp": 1779593567.2616196,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 94,
+        "duration_s": 1.9,
+        "sway": {
+          "mean_velocity_ms": 0.0198,
+          "cv_pct": 12.18,
+          "stability_score": 87.8
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.2027,
+          "jerk_trend": -0.01235,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.01235,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "df245bf8-8d78-4a87-89ee-9be4e6ce225c"
+      }
+    },
+    {
+      "session_id": "31db7e9f-7c90-4edd-9291-6aeb48eaca8e",
+      "test_id": "stability",
+      "timestamp": 1779593647.124509,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 190,
+        "duration_s": 3.8,
+        "sway": {
+          "mean_velocity_ms": 0.0174,
+          "cv_pct": 14.58,
+          "stability_score": 85.4
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "31db7e9f-7c90-4edd-9291-6aeb48eaca8e"
+      }
+    },
+    {
+      "session_id": "3bf165b3-1c9c-44be-9da4-72af785614b4",
+      "test_id": "stability",
+      "timestamp": 1779594925.9074123,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 77,
+        "duration_s": 1.5,
+        "sway": {
+          "mean_velocity_ms": 0.0092,
+          "cv_pct": 56.45,
+          "stability_score": 43.5
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.12232,
+          "jerk_trend": -0.00913,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00913,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "3bf165b3-1c9c-44be-9da4-72af785614b4"
+      }
+    },
+    {
+      "session_id": "56c7530d-7397-46ce-8c26-aad685b5fbce",
+      "test_id": "cmj",
+      "timestamp": 1779606514.4219525,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 322,
+        "duration_s": 6.4,
+        "sway": {
+          "mean_velocity_ms": 0.018,
+          "cv_pct": 13.9,
+          "stability_score": 86.1
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "cmj",
+        "session_id": "56c7530d-7397-46ce-8c26-aad685b5fbce"
+      }
+    },
+    {
+      "session_id": "c34365cd-f1a6-452a-9917-b79d685fa0f7",
+      "test_id": "stability",
+      "timestamp": 1779607132.9369588,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 256,
+        "duration_s": 5.1,
+        "sway": {
+          "mean_velocity_ms": 0.0099,
+          "cv_pct": 31.92,
+          "stability_score": 68.1
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.00385,
+          "jerk_trend": -9e-05,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -9e-05,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "c34365cd-f1a6-452a-9917-b79d685fa0f7"
+      }
+    }
+  ]
+}

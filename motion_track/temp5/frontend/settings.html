@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2P — Settings</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0f1117; --surface:#181c27; --border:rgba(255,255,255,0.08);
+    --text:#e8e6de; --muted:#888680; --accent:#4f9cf9;
+    --green:#3ecf8e; --amber:#f5a623; --red:#e74c3c; --radius:10px; --gap:14px;
+  }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; font-size:14px; min-height:100vh; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:12px 24px; border-bottom:1px solid var(--border); background:var(--surface); gap:12px; }
+  header h1 { font-size:16px; font-weight:600; white-space:nowrap; }
+  .nav-links { display:flex; align-items:center; gap:4px; }
+  .nav-link { font-size:12px; padding:5px 11px; border-radius:6px; border:1px solid transparent; color:var(--muted); text-decoration:none; transition:all .15s; white-space:nowrap; }
+  .nav-link:hover { background:rgba(255,255,255,.06); color:var(--text); }
+  .nav-link.active { background:rgba(79,156,249,.12); border-color:rgba(79,156,249,.3); color:var(--accent); }
+  .nav-sep { width:1px; height:16px; background:var(--border); margin:0 4px; }
+  .main { max-width:820px; margin:0 auto; padding:28px var(--gap); display:flex; flex-direction:column; gap:var(--gap); }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; }
+  .card-title { font-size:11px; font-weight:600; letter-spacing:.8px; text-transform:uppercase; color:var(--muted); margin-bottom:14px; }
+
+  /* ── Fields ── */
+  .field { display:flex; flex-direction:column; gap:5px; margin-bottom:12px; }
+  .field:last-child { margin-bottom:0; }
+  .field label { font-size:12px; color:var(--muted); }
+  .field input, .field select {
+    background:rgba(255,255,255,.04); border:1px solid var(--border); color:var(--text);
+    border-radius:7px; padding:8px 12px; font-size:13px; font-family:inherit;
+    outline:none; transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus { border-color:rgba(79,156,249,.5); }
+  .field input[type=range] { padding:4px 0; background:transparent; border:none; accent-color:var(--accent); cursor:pointer; }
+  .field .range-row { display:flex; align-items:center; gap:10px; }
+  .field .range-val { font-size:12px; font-weight:600; color:var(--text); min-width:44px; text-align:right; font-variant-numeric:tabular-nums; }
+
+  /* ── Buttons ── */
+  .btn { padding:9px 18px; border-radius:var(--radius); border:1px solid var(--border); background:transparent; color:var(--text); font-size:13px; font-weight:500; cursor:pointer; transition:background .15s; }
+  .btn:hover { background:rgba(255,255,255,.06); }
+  .btn.primary { background:var(--accent); color:#fff; border-color:transparent; }
+  .btn.primary:hover { filter:brightness(1.1); }
+  .btn.danger { background:rgba(231,76,60,.12); border-color:rgba(231,76,60,.3); color:var(--red); }
+  .btn.warn-btn { background:rgba(245,166,35,.1); border-color:rgba(245,166,35,.3); color:var(--amber); }
+  .btn-row { display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* ── Status messages ── */
+  .msg { font-size:12px; color:var(--green); margin-top:8px; min-height:18px; }
+  .msg.err { color:var(--red); }
+
+  /* ── Profiles ── */
+  .profile-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+  .profile-row:last-child { border-bottom:none; }
+  .profile-name { flex:1; font-size:13px; }
+  .profile-active { font-size:11px; color:var(--accent); }
+
+  /* ── BLE devices ── */
+  .ble-device { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; border:1px solid var(--border); font-size:12px; margin-bottom:6px; }
+  .ble-device:last-child { margin-bottom:0; }
+  .ble-dot { width:7px; height:7px; border-radius:50%; background:var(--green); flex-shrink:0; }
+
+  /* ── Mode segment ── */
+  .mode-seg { display:flex; gap:4px; }
+  .mseg-btn { flex:1; padding:7px 10px; font-size:12px; border-radius:7px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all .15s; }
+  .mseg-btn.on { background:rgba(79,156,249,.12); border-color:var(--accent); color:var(--accent); }
+
+  /* ── Integrator debug grid ── */
+  .debug-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .debug-stat { background:rgba(255,255,255,.03); border-radius:7px; padding:10px 12px; }
+  .debug-stat-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+  .debug-stat-value { font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .divider { height:1px; background:var(--border); margin:12px 0; }
+
+  /* ── Toggle ── */
+  .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:6px 0; }
+  .toggle-sw { position:relative; display:inline-block; width:38px; height:20px; flex-shrink:0; }
+  .toggle-sw input { opacity:0; width:0; height:0; }
+  .slider { position:absolute; cursor:pointer; inset:0; background:rgba(255,255,255,.12); border-radius:20px; transition:.2s; }
+  .slider::before { content:''; position:absolute; height:14px; width:14px; left:3px; bottom:3px; background:var(--muted); border-radius:50%; transition:.2s; }
+  input:checked + .slider { background:var(--accent); }
+  input:checked + .slider::before { transform:translateX(18px); background:#fff; }
+</style>
+</head>
+<body>
+<header>
+  <h1>R2P · Settings</h1>
+  <nav class="nav-links">
+    <!-- FIX: backend serves calibrate page at "/" not "/calibrate" -->
+    <a href="/"          class="nav-link">Calibrate</a>
+    <a href="/select"    class="nav-link">Select test</a>
+    <a href="/test"      class="nav-link">Live</a>
+    <a href="/review"    class="nav-link">Review</a>
+    <div class="nav-sep"></div>
+    <a href="/settings"  class="nav-link active">⚙ Settings</a>
+  </nav>
+</header>
+
+<div class="main">
+
+  <!-- ── Athlete profiles ── -->
+  <div class="card">
+    <div class="card-title">Athlete profiles</div>
+    <div id="profile-list">Loading…</div>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center">
+      <input id="new-profile-name" placeholder="New profile name"
+             style="background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;flex:1;min-width:160px">
+      <button class="btn primary" onclick="createProfile()">+ Create profile</button>
+    </div>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <!-- ── Body info ── -->
+  <div class="card">
+    <div class="card-title">Body info (active profile)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Height (cm)</label><input type="number" id="body-height" placeholder="175"></div>
+      <div class="field"><label>Mass (kg)</label><input type="number"  id="body-mass"   placeholder="75"></div>
+      <div class="field"><label>Age</label>       <input type="number" id="body-age"    placeholder="25"></div>
+      <div class="field"><label>Sport</label>     <input type="text"   id="body-sport"  placeholder="e.g. football"></div>
+    </div>
+    <div style="margin-top:14px"><button class="btn primary" onclick="saveBodyInfo()">Save body info</button></div>
+    <div class="msg" id="body-msg"></div>
+  </div>
+
+  <!-- ── Motion mode ── -->
+  <div class="card">
+    <div class="card-title">Motion mode</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+      <b>Test</b> — pelvis-only bounce moves the avatar (single sensor).
+      <b>User</b> — requires leg sensors confirming anti-phase swing before translating.
+    </div>
+    <div class="mode-seg" id="mode-seg" style="margin-bottom:10px">
+      <button class="mseg-btn on" id="mseg-test" onclick="setMotionMode('test')">Test (bounce)</button>
+      <button class="mseg-btn"    id="mseg-user" onclick="setMotionMode('user')">User (legs)</button>
+    </div>
+    <div class="divider"></div>
+    <div class="toggle-row">
+      <div>
+        <div style="font-size:13px;font-weight:500">Experimental states</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Enable strafe / backward / hybrid labels (stub — needs leg IMUs)</div>
+      </div>
+      <label class="toggle-sw">
+        <input type="checkbox" id="exp-toggle" onchange="setExperimental(this.checked)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="msg" id="mode-msg"></div>
+  </div>
+
+  <!-- ── BLE devices ── -->
+  <div class="card">
+    <div class="card-title">BLE sensor devices</div>
+    <div id="ble-list" style="margin-bottom:12px;color:var(--muted);font-size:12px">Loading…</div>
+    <div class="btn-row">
+      <button class="btn" onclick="scanBle()">🔍 Scan for devices</button>
+      <button class="btn warn-btn" onclick="tposeNow()">📡 Set IMU zero (T-pose)</button>
+    </div>
+    <div class="msg" id="ble-msg"></div>
+  </div>
+
+  <!-- ── Integrator v7 tuning ── -->
+  <div class="card">
+    <div class="card-title">Locomotion tuning <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(PATCH /debug/integrator_v7)</span></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+      Adjust the v7 velocity-glide feel and gait thresholds live without restarting the server.
+      Changes take effect immediately and persist until server restart.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="field">
+        <label>move_tau (s) — glide feel <span style="color:var(--text)">snappy ↔ heavy</span></label>
+        <div class="range-row">
+          <input type="range" id="sl-move-tau" min="0.05" max="0.40" step="0.01" value="0.18"
+                 oninput="doc('rv-move-tau').textContent=parseFloat(this.value).toFixed(2)">
+          <span class="range-val" id="rv-move-tau">0.18</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>stop_decay — decel per frame</label>
+        <div class="range-row">
+          <input type="range" id="sl-stop-decay" min="0.70" max="0.99" step="0.01" value="0.90"
+                 oninput="doc('rv-stop-decay').textContent=parseFloat(this.value).toFixed(2)">
+          <span class="range-val" id="rv-stop-decay">0.90</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>max_speed (m/s)</label>
+        <div class="range-row">
+          <input type="range" id="sl-max-speed" min="1.0" max="10.0" step="0.5" value="4.0"
+                 oninput="doc('rv-max-speed').textContent=parseFloat(this.value).toFixed(1)">
+          <span class="range-val" id="rv-max-speed">4.0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>stride_length (m)</label>
+        <div class="range-row">
+          <input type="range" id="sl-stride" min="0.30" max="1.20" step="0.05" value="0.65"
+                 oninput="doc('rv-stride').textContent=parseFloat(this.value).toFixed(2)">
+          <span class="range-val" id="rv-stride">0.65</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:10px">
+      <button class="btn primary" onclick="applyIntegratorV7()">Apply</button>
+      <button class="btn"         onclick="loadIntegratorState()">↺ Read current</button>
+      <button class="btn"         onclick="recalibFwd()">🧭 Re-detect forward</button>
+      <button class="btn warn-btn" onclick="flipFwd()">⇄ Flip forward axis</button>
+    </div>
+    <div class="msg" id="integrator-msg"></div>
+
+    <div class="divider"></div>
+    <div class="card-title" style="margin-bottom:10px">Live integrator state</div>
+    <div class="debug-grid" id="debug-grid">
+      <div class="debug-stat"><div class="debug-stat-label">Gait</div><div class="debug-stat-value" id="dg-gait">—</div></div>
+      <div class="debug-stat"><div class="debug-stat-label">Speed (m/s)</div><div class="debug-stat-value" id="dg-speed">—</div></div>
+      <div class="debug-stat"><div class="debug-stat-label">Steps</div><div class="debug-stat-value" id="dg-steps">—</div></div>
+      <div class="debug-stat"><div class="debug-stat-label">Jumps</div><div class="debug-stat-value" id="dg-jumps">—</div></div>
+      <div class="debug-stat"><div class="debug-stat-label">Squats</div><div class="debug-stat-value" id="dg-squats">—</div></div>
+      <div class="debug-stat"><div class="debug-stat-label">Gravity ready</div><div class="debug-stat-value" id="dg-grav">—</div></div>
+      <div class="debug-stat"><div class="debug-stat-label">Forward detected</div><div class="debug-stat-value" id="dg-fwd">—</div></div>
+      <div class="debug-stat"><div class="debug-stat-label">Translation conf.</div><div class="debug-stat-value" id="dg-conf">—</div></div>
+    </div>
+  </div>
+
+  <!-- ── Recent sessions ── -->
+  <div class="card">
+    <div class="card-title">Recent sessions</div>
+    <div id="history-list" style="font-size:12px;color:var(--muted)">Loading…</div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+function doc(id){ return document.getElementById(id); }
+function showMsg(id, text, ok) {
+  const el=doc(id); if(!el) return;
+  el.textContent=text; el.className='msg'+(ok===false?' err':'');
+  if (text) setTimeout(()=>{ if(el.textContent===text) el.textContent=''; }, 4000);
+}
+
+/* ══════════════════════════════════════════════════
+   PROFILES
+══════════════════════════════════════════════════ */
+async function loadProfiles() {
+  try {
+    const res=await fetch('/profiles'), d=await res.json();
+    const cur=await fetch('/profile').then(r=>r.json()).catch(()=>({}));
+    doc('profile-list').innerHTML = d.profiles.map(p=>`
+      <div class="profile-row">
+        <span class="profile-name">${p.name}</span>
+        ${p.id===cur.id ? '<span class="profile-active">● active</span>' : ''}
+        ${p.id!==cur.id ? `<button class="btn" style="padding:4px 10px;font-size:11px" onclick="switchProfile('${p.id}')">Switch</button>` : ''}
+        <button class="btn danger" style="padding:4px 10px;font-size:11px" onclick="deleteProfile('${p.id}')">Delete</button>
+      </div>`).join('') || '<span style="color:var(--muted);font-size:12px">No profiles.</span>';
+    if (cur.body) {
+      if (cur.body.height_cm) doc('body-height').value = cur.body.height_cm;
+      if (cur.body.mass_kg)   doc('body-mass').value   = cur.body.mass_kg;
+      if (cur.body.age)       doc('body-age').value    = cur.body.age;
+      if (cur.body.sport)     doc('body-sport').value  = cur.body.sport;
+    }
+  } catch(e) { doc('profile-list').textContent = 'Could not load profiles: '+e.message; }
+}
+
+async function createProfile() {
+  const name=doc('new-profile-name').value.trim(); if (!name) return;
+  try {
+    await fetch('/profile/create?name='+encodeURIComponent(name), {method:'POST'});
+    doc('new-profile-name').value=''; showMsg('msg','Profile created.'); loadProfiles();
+  } catch(e) { showMsg('msg','Error: '+e.message, false); }
+}
+async function switchProfile(id) {
+  try { await fetch('/profile/switch?profile_id='+id, {method:'POST'}); showMsg('msg','Switched.'); loadProfiles(); }
+  catch(e) { showMsg('msg','Error: '+e.message, false); }
+}
+async function deleteProfile(id) {
+  if (!confirm('Delete this profile?')) return;
+  try { await fetch('/profile/'+id, {method:'DELETE'}); showMsg('msg','Deleted.'); loadProfiles(); }
+  catch(e) { showMsg('msg','Error: '+e.message, false); }
+}
+async function saveBodyInfo() {
+  const data={};
+  const h=parseFloat(doc('body-height').value), m=parseFloat(doc('body-mass').value),
+        a=parseInt(doc('body-age').value), s=doc('body-sport').value.trim();
+  if (!isNaN(h)) data.height_cm=h; if (!isNaN(m)) data.mass_kg=m;
+  if (!isNaN(a)) data.age=a;       if (s) data.sport=s;
+  try {
+    await fetch('/profile/body', {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+    showMsg('body-msg','Body info saved.');
+  } catch(e) { showMsg('body-msg','Error: '+e.message, false); }
+}
+
+/* ══════════════════════════════════════════════════
+   MOTION MODE
+══════════════════════════════════════════════════ */
+async function setMotionMode(mode) {
+  try {
+    await fetch(`/motion_mode?mode=${mode}`, {method:'POST'});
+    syncModeUI(mode); showMsg('mode-msg','Mode set: '+mode);
+  } catch(e) { showMsg('mode-msg','Error: '+e.message, false); }
+}
+function syncModeUI(mode) {
+  doc('mseg-test').className = 'mseg-btn'+(mode==='test'?' on':'');
+  doc('mseg-user').className = 'mseg-btn'+(mode==='user'?' on':'');
+}
+async function setExperimental(enabled) {
+  try {
+    await fetch(`/motion_mode/experimental?enabled=${enabled}`, {method:'POST'});
+    showMsg('mode-msg','Experimental states: '+(enabled?'ON':'OFF'));
+  } catch(e) { showMsg('mode-msg','Error: '+e.message, false); }
+}
+// Load current mode
+fetch('/motion_mode').then(r=>r.json()).then(d=>syncModeUI(d.mode)).catch(()=>{});
+
+/* ══════════════════════════════════════════════════
+   BLE
+══════════════════════════════════════════════════ */
+async function scanBle() {
+  doc('ble-list').textContent='Scanning…';
+  try {
+    const res=await fetch('/ble/scan',{method:'POST'}), d=await res.json();
+    if (d.devices&&d.devices.length>0) {
+      doc('ble-list').innerHTML = d.devices.map(dev=>
+        `<div class="ble-device"><span class="ble-dot"></span><span>${dev.name||'Unknown'}</span><span style="color:var(--muted);margin-left:auto">${dev.mac}</span></div>`
+      ).join('');
+    } else { doc('ble-list').textContent='No R2P devices found nearby.'; }
+  } catch(e) { doc('ble-list').textContent='Scan error: '+e.message; }
+}
+async function tposeNow() {
+  try { await fetch('/ble/tpose',{method:'POST'}); showMsg('ble-msg','IMU zero set (T-pose sent).'); }
+  catch(e) { showMsg('ble-msg','Error: '+e.message, false); }
+}
+async function loadBleStatus() {
+  try {
+    const res=await fetch('/ble/status'), d=await res.json();
+    const devs=d.connected_devices||[];
+    if (devs.length>0) {
+      doc('ble-list').innerHTML=devs.map(dev=>
+        `<div class="ble-device"><span class="ble-dot"></span><span>${dev.name||'Unknown'}</span><span style="color:var(--muted);margin-left:auto">${dev.mac}</span></div>`
+      ).join('');
+    } else { doc('ble-list').textContent='No devices connected. Click Scan to search.'; }
+  } catch(_) {}
+}
+
+/* ══════════════════════════════════════════════════
+   INTEGRATOR V7 TUNING
+══════════════════════════════════════════════════ */
+async function applyIntegratorV7() {
+  const params = new URLSearchParams({
+    move_tau:      doc('sl-move-tau').value,
+    stop_decay:    doc('sl-stop-decay').value,
+    max_speed:     doc('sl-max-speed').value,
+    stride_length: doc('sl-stride').value,
+  });
+  try {
+    const res=await fetch('/debug/integrator_v7?'+params, {method:'PATCH'});
+    const d=await res.json();
+    showMsg('integrator-msg','Applied. move_tau='+d.move_tau+' stop_decay='+d.stop_decay);
+    renderDebugState(d);
+  } catch(e) { showMsg('integrator-msg','Error: '+e.message, false); }
+}
+
+async function loadIntegratorState() {
+  try {
+    const res=await fetch('/debug/integrator_state'), d=await res.json();
+    // Sync sliders to current values
+    if (d.move_tau      != null) { doc('sl-move-tau').value   = d.move_tau;      doc('rv-move-tau').textContent   = (+d.move_tau).toFixed(2); }
+    if (d.stride_length != null) { doc('sl-stride').value     = d.stride_length; doc('rv-stride').textContent     = (+d.stride_length).toFixed(2); }
+    renderDebugState(d);
+    showMsg('integrator-msg','Loaded current state.');
+  } catch(e) { showMsg('integrator-msg','Error: '+e.message, false); }
+}
+
+function renderDebugState(d) {
+  const set=(id,val)=>{ const el=doc(id); if(el&&val!=null) el.textContent=val; };
+  set('dg-gait',   d.gait||'—');
+  set('dg-speed',  d.translation_speed_ms!=null ? (+d.translation_speed_ms).toFixed(3)+' m/s' : '—');
+  set('dg-steps',  d.step_count  ?? '—');
+  set('dg-jumps',  d.jump_count  ?? '—');
+  set('dg-squats', d.squat_count ?? '—');
+  set('dg-grav',   d.gravity_ready!=null ? (d.gravity_ready?'✓ yes':'waiting…') : '—');
+  set('dg-fwd',    d.forward_detected!=null ? (d.forward_detected?'✓ yes':'auto…') : '—');
+  set('dg-conf',   d.translation_confidence!=null ? (+d.translation_confidence*100).toFixed(1)+'%' : '—');
+}
+
+async function recalibFwd() {
+  try {
+    const res=await fetch('/debug/recalibrate_forward',{method:'POST'}), d=await res.json();
+    showMsg('integrator-msg', d.message||'Walk ~5 steps to re-detect forward.');
+  } catch(e) { showMsg('integrator-msg','Error: '+e.message, false); }
+}
+
+async function flipFwd() {
+  try {
+    const res=await fetch('/debug/flip_forward',{method:'POST'}), d=await res.json();
+    showMsg('integrator-msg', d.message||'Axis flipped.');
+  } catch(e) { showMsg('integrator-msg','Error: '+e.message, false); }
+}
+
+// Auto-refresh integrator state every 3 s while page is open
+setInterval(() => {
+  fetch('/debug/integrator_state').then(r=>r.json()).then(renderDebugState).catch(()=>{});
+}, 3000);
+
+/* ══════════════════════════════════════════════════
+   HISTORY
+══════════════════════════════════════════════════ */
+async function loadHistory() {
+  try {
+    const res=await fetch('/profile/history'), d=await res.json();
+    const h=d.history||[];
+    if (!h.length) { doc('history-list').textContent='No sessions recorded yet.'; return; }
+    doc('history-list').innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr>
+        <th style="text-align:left;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--border)">Test</th>
+        <th style="text-align:left;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--border)">Reps</th>
+        <th style="text-align:left;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--border)">Stability</th>
+        <th style="text-align:right;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--border)">View</th>
+      </tr></thead>
+      <tbody>${h.slice().reverse().slice(0,15).map(s=>`<tr>
+        <td style="padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.04)">${s.test_id||'—'}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.04)">${s.total_reps??'—'}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.04)">${s.sway?.stability_score??'—'}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right">
+          <a href="/review?sid=${s.session_id}" style="color:var(--accent);font-size:11px">Review →</a>
+        </td></tr>`).join('')}</tbody></table>`;
+  } catch(e) { doc('history-list').textContent='Could not load history.'; }
+}
+
+/* ══════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════ */
+loadProfiles();
+loadHistory();
+loadBleStatus();
+loadIntegratorState();
+</script>
+</body>
+</html>

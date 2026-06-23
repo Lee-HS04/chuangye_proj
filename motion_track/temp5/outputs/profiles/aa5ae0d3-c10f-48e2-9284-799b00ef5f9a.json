@@ -1,0 +1,1466 @@
+{
+  "id": "aa5ae0d3-c10f-48e2-9284-799b00ef5f9a",
+  "name": "james",
+  "created_at": 1779607684.2850747,
+  "updated_at": 1779874417.720617,
+  "body": {
+    "height_cm": null,
+    "weight_kg": null,
+    "age": null,
+    "gender": null,
+    "sport": null
+  },
+  "limb_lengths": {
+    "thigh_l": 0.4367262125015259,
+    "shin_l": 0.462110310792923,
+    "thigh_r": 0.4159527122974396,
+    "shin_r": 0.46901342272758484,
+    "hip_width": 0.06108498573303223,
+    "pelvis_height": 0.9371429085731506
+  },
+  "derived": {
+    "leg_length_l_cm": 89.9,
+    "leg_length_r_cm": 88.5,
+    "leg_symmetry_pct": 98.4
+  },
+  "imu_offsets": {
+    "pelvis": [
+      0.1604660282053695,
+      -0.5917184790073,
+      -0.7822718875011763,
+      -0.11032039439119153
+    ],
+    "chest": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "thigh_l": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "thigh_r": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "shin_l": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "shin_r": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "l_upper_arm": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "r_upper_arm": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "l_forearm": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "r_forearm": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "head": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "l_foot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "r_foot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "calibration_history": [
+    {
+      "timestamp": 1779622164.505507,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779632934.2317607,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779692634.183125,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779872270.3780355,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779872422.620072,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779872623.5698938,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779872674.577631,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    },
+    {
+      "timestamp": 1779874417.7206125,
+      "limb_lengths": {
+        "thigh_l": 0.4367262125015259,
+        "shin_l": 0.462110310792923,
+        "thigh_r": 0.4159527122974396,
+        "shin_r": 0.46901342272758484,
+        "hip_width": 0.06108498573303223,
+        "pelvis_height": 0.9371429085731506
+      },
+      "has_imu": true
+    }
+  ],
+  "test_history": [
+    {
+      "session_id": "3676cebf-8555-473f-9469-60737dd61642",
+      "test_id": "stability",
+      "timestamp": 1779608797.7636669,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 116,
+        "duration_s": 2.3,
+        "sway": {
+          "mean_velocity_ms": 0.015,
+          "cv_pct": 26.11,
+          "stability_score": 73.9
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "3676cebf-8555-473f-9469-60737dd61642"
+      }
+    },
+    {
+      "session_id": "0314ce41-c7fc-4c22-9215-dc3de46f3864",
+      "test_id": "stability",
+      "timestamp": 1779609450.6312864,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 1529,
+        "duration_s": 30.6,
+        "sway": {
+          "mean_velocity_ms": 0.0194,
+          "cv_pct": 3.18,
+          "stability_score": 96.8
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "0314ce41-c7fc-4c22-9215-dc3de46f3864"
+      }
+    },
+    {
+      "session_id": "3ffe11e5-06b6-42e4-a6d8-5e0d8f331afc",
+      "test_id": "stability",
+      "timestamp": 1779610271.3353865,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 122,
+        "duration_s": 2.4,
+        "sway": {
+          "mean_velocity_ms": 0.0177,
+          "cv_pct": 8.49,
+          "stability_score": 91.5
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.02043,
+          "jerk_trend": -0.00098,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00098,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "3ffe11e5-06b6-42e4-a6d8-5e0d8f331afc"
+      }
+    },
+    {
+      "session_id": "a0f28f25-d425-4133-8cf2-02ee5aff2e9b",
+      "test_id": "stability",
+      "timestamp": 1779610296.9149477,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 127,
+        "duration_s": 2.5,
+        "sway": {
+          "mean_velocity_ms": 0.0165,
+          "cv_pct": 21.31,
+          "stability_score": 78.7
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.02799,
+          "jerk_trend": -0.00128,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00128,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "a0f28f25-d425-4133-8cf2-02ee5aff2e9b"
+      }
+    },
+    {
+      "session_id": "724cee66-933c-4cf1-8d98-aafe291ab855",
+      "test_id": "stability",
+      "timestamp": 1779610556.4543543,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 91,
+        "duration_s": 1.8,
+        "sway": {
+          "mean_velocity_ms": 0.0142,
+          "cv_pct": 20.47,
+          "stability_score": 79.5
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.13716,
+          "jerk_trend": -0.00867,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00867,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "724cee66-933c-4cf1-8d98-aafe291ab855"
+      }
+    },
+    {
+      "session_id": "4473664b-d0bf-4a4f-b13d-df4c2f7d2ca9",
+      "test_id": "stability",
+      "timestamp": 1779610606.3279393,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 27,
+        "duration_s": 0.5,
+        "sway": {
+          "mean_velocity_ms": 0.0185,
+          "cv_pct": 10.88,
+          "stability_score": 89.1
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "4473664b-d0bf-4a4f-b13d-df4c2f7d2ca9"
+      }
+    },
+    {
+      "session_id": "c3686c89-ba8c-4a0c-a569-5c2785cd1c38",
+      "test_id": "stability",
+      "timestamp": 1779611775.1675758,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 186,
+        "duration_s": 4.4,
+        "sway": {
+          "mean_velocity_ms": 0.0129,
+          "cv_pct": 7.82,
+          "stability_score": 92.2
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.00624,
+          "jerk_trend": -0.0002,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.0002,
+          "sway_trend_per_frame": 2e-05,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "c3686c89-ba8c-4a0c-a569-5c2785cd1c38"
+      }
+    },
+    {
+      "session_id": "6fd83623-28c4-4120-8a00-4578d7e1ae27",
+      "test_id": "stability",
+      "timestamp": 1779611800.8045468,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 287,
+        "duration_s": 6.9,
+        "sway": {
+          "mean_velocity_ms": 0.0414,
+          "cv_pct": 29.74,
+          "stability_score": 70.3
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.03168,
+          "jerk_trend": -0.00066,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00066,
+          "sway_trend_per_frame": 0.00014,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "6fd83623-28c4-4120-8a00-4578d7e1ae27"
+      }
+    },
+    {
+      "session_id": "488f626e-9484-4ffd-b28a-91f0ef954de8",
+      "test_id": "stability",
+      "timestamp": 1779611865.4178052,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 826,
+        "duration_s": 20.5,
+        "sway": {
+          "mean_velocity_ms": 0.0135,
+          "cv_pct": 44.34,
+          "stability_score": 55.7
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "sway_trend_per_frame": -0.00017,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "488f626e-9484-4ffd-b28a-91f0ef954de8"
+      }
+    },
+    {
+      "session_id": "d89e8500-a4a7-446b-bf1a-0750107574bb",
+      "test_id": "stability",
+      "timestamp": 1779611872.7138908,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 115,
+        "duration_s": 2.6,
+        "sway": {
+          "mean_velocity_ms": 0.0149,
+          "cv_pct": 41.67,
+          "stability_score": 58.3
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.10532,
+          "jerk_trend": -0.00527,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00527,
+          "sway_trend_per_frame": -9e-05,
+          "detected": false
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "d89e8500-a4a7-446b-bf1a-0750107574bb"
+      }
+    },
+    {
+      "session_id": "6a13ac1c-b6d1-449f-ab20-3994bd74bcb5",
+      "test_id": "stability",
+      "timestamp": 1779612603.5676548,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 98,
+        "duration_s": 2.6,
+        "sway": {
+          "mean_velocity_ms": 0.0183,
+          "cv_pct": 26.31,
+          "stability_score": 73.7
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "sway_trend_per_frame": -2e-05,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "6a13ac1c-b6d1-449f-ab20-3994bd74bcb5"
+      }
+    },
+    {
+      "session_id": "6f3e7ef0-f384-4ed3-8a46-9061f73db58d",
+      "test_id": "cmj",
+      "timestamp": 1779613320.3483257,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 22,
+        "duration_s": 0.5,
+        "sway": {
+          "mean_velocity_ms": 0.0186,
+          "cv_pct": 11.98,
+          "stability_score": 88.0
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "sway_trend_per_frame": 0.00021,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "cmj",
+        "session_id": "6f3e7ef0-f384-4ed3-8a46-9061f73db58d"
+      }
+    },
+    {
+      "session_id": "c2b69a2d-4919-4c3d-ab7f-973334f25760",
+      "test_id": "stability",
+      "timestamp": 1779613376.0525782,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 67,
+        "duration_s": 2.0,
+        "sway": {
+          "mean_velocity_ms": 0.0192,
+          "cv_pct": 7.01,
+          "stability_score": 93.0
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "sway_trend_per_frame": 2e-05,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "c2b69a2d-4919-4c3d-ab7f-973334f25760"
+      }
+    },
+    {
+      "session_id": "72b35709-3c40-48c0-96e0-d072e4342599",
+      "test_id": "stability",
+      "timestamp": 1779613428.6207757,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 43,
+        "duration_s": 1.3,
+        "sway": {
+          "mean_velocity_ms": 0.0308,
+          "cv_pct": 42.67,
+          "stability_score": 57.3
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 1.09757,
+          "jerk_trend": -0.1378,
+          "grade": "moderate"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.1378,
+          "sway_trend_per_frame": 0.0005,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "72b35709-3c40-48c0-96e0-d072e4342599"
+      }
+    },
+    {
+      "session_id": "30cac29e-a0ca-4f78-9a94-4ddefd00b1bc",
+      "test_id": "stability",
+      "timestamp": 1779613683.6095984,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 33,
+        "duration_s": 1.0,
+        "sway": {
+          "mean_velocity_ms": 0.0153,
+          "cv_pct": 37.67,
+          "stability_score": 62.3
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.16181,
+          "jerk_trend": -0.02569,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.02569,
+          "sway_trend_per_frame": -2e-05,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "30cac29e-a0ca-4f78-9a94-4ddefd00b1bc"
+      }
+    },
+    {
+      "session_id": "4b41078f-6c32-471b-9cc8-e778560ed6f8",
+      "test_id": "stability",
+      "timestamp": 1779613811.5198114,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 38,
+        "duration_s": 1.2,
+        "sway": {
+          "mean_velocity_ms": 0.0151,
+          "cv_pct": 32.44,
+          "stability_score": 67.6
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "sway_trend_per_frame": -0.00029,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "4b41078f-6c32-471b-9cc8-e778560ed6f8"
+      }
+    },
+    {
+      "session_id": "ffef5d47-a063-489e-ab4b-fc96d753862d",
+      "test_id": "stability",
+      "timestamp": 1779613821.1011615,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 74,
+        "duration_s": 1.8,
+        "sway": {
+          "mean_velocity_ms": 0.0189,
+          "cv_pct": 6.66,
+          "stability_score": 93.3
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.00128,
+          "jerk_trend": -0.0001,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.0001,
+          "sway_trend_per_frame": 2e-05,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "ffef5d47-a063-489e-ab4b-fc96d753862d"
+      }
+    },
+    {
+      "session_id": "6be2d2fa-0862-4d70-ba1c-1c22d1bbc554",
+      "test_id": "stability",
+      "timestamp": 1779615143.9448895,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 31,
+        "duration_s": 1.5,
+        "sway": {
+          "mean_velocity_ms": 0.0081,
+          "cv_pct": 42.11,
+          "stability_score": 57.9
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.24677,
+          "jerk_trend": -0.04234,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.04234,
+          "sway_trend_per_frame": 0.00018,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "6be2d2fa-0862-4d70-ba1c-1c22d1bbc554"
+      }
+    },
+    {
+      "session_id": "65f8329a-e3f8-412e-8bca-39174017ea63",
+      "test_id": "cmj",
+      "timestamp": 1779615170.9287908,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 285,
+        "duration_s": 6.8,
+        "sway": {
+          "mean_velocity_ms": 0.0128,
+          "cv_pct": 54.16,
+          "stability_score": 45.8
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.03229,
+          "jerk_trend": -0.00067,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00067,
+          "sway_trend_per_frame": 2e-05,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "cmj",
+        "session_id": "65f8329a-e3f8-412e-8bca-39174017ea63"
+      }
+    },
+    {
+      "session_id": "3c4bdfa9-10d3-4a9c-98b7-9d241cb34841",
+      "test_id": "stability",
+      "timestamp": 1779616133.0404277,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 24,
+        "duration_s": 0.8,
+        "sway": {
+          "mean_velocity_ms": 0.0961,
+          "cv_pct": 39.65,
+          "stability_score": 62.1,
+          "stability_score_raw": 60.4
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 3.87353,
+          "jerk_trend": 0.01286,
+          "grade": "rough"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.01286,
+          "sway_trend_per_frame": 0.0051,
+          "detected": true,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "3c4bdfa9-10d3-4a9c-98b7-9d241cb34841"
+      }
+    },
+    {
+      "session_id": "ffc10223-5645-44bd-83c8-7b45ec496f33",
+      "test_id": "cmj",
+      "timestamp": 1779621813.9797616,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 37,
+        "duration_s": 2.0,
+        "sway": {
+          "mean_velocity_ms": 0.4563,
+          "cv_pct": 29.9,
+          "stability_score": 61.6,
+          "stability_score_raw": 70.1
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 48.35719,
+          "jerk_trend": 1.55565,
+          "grade": "rough"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 1.55565,
+          "sway_trend_per_frame": 0.00414,
+          "detected": true,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "cmj",
+        "session_id": "ffc10223-5645-44bd-83c8-7b45ec496f33"
+      }
+    },
+    {
+      "session_id": "0a6396dd-474a-4877-a7df-05f6eb16bd25",
+      "test_id": "stability",
+      "timestamp": 1779621855.8546903,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 255,
+        "duration_s": 6.9,
+        "sway": {
+          "mean_velocity_ms": 0.1184,
+          "cv_pct": 42.85,
+          "stability_score": 38.8,
+          "stability_score_raw": 57.1
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 59.25404,
+          "jerk_trend": 0.04206,
+          "grade": "rough"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.04206,
+          "sway_trend_per_frame": -0.00117,
+          "detected": true,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "0a6396dd-474a-4877-a7df-05f6eb16bd25"
+      }
+    },
+    {
+      "session_id": "ba64f98a-ae69-4625-b530-d5e019534380",
+      "test_id": "stability",
+      "timestamp": 1779621871.2742743,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 335,
+        "duration_s": 9.6,
+        "sway": {
+          "mean_velocity_ms": 0.117,
+          "cv_pct": 62.83,
+          "stability_score": 43.9,
+          "stability_score_raw": 37.2
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 74.3906,
+          "jerk_trend": 0.16341,
+          "grade": "rough"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.16341,
+          "sway_trend_per_frame": -0.00047,
+          "detected": true,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "ba64f98a-ae69-4625-b530-d5e019534380"
+      }
+    },
+    {
+      "session_id": "75905681-b47b-4214-b2f2-4dd0154ea0e9",
+      "test_id": "stability",
+      "timestamp": 1779622010.3440301,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 1006,
+        "duration_s": 24.6,
+        "sway": {
+          "mean_velocity_ms": 0.1271,
+          "cv_pct": 78.78,
+          "stability_score": 37.1,
+          "stability_score_raw": 21.2
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 50.44147,
+          "jerk_trend": 0.00852,
+          "grade": "rough"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.00852,
+          "sway_trend_per_frame": 4e-05,
+          "detected": true,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "75905681-b47b-4214-b2f2-4dd0154ea0e9"
+      }
+    },
+    {
+      "session_id": "8b15794d-81e5-4d7b-b756-11113e7d1b9b",
+      "test_id": "stability",
+      "timestamp": 1779622219.9087753,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 208,
+        "duration_s": 5.2,
+        "sway": {
+          "mean_velocity_ms": 0.0831,
+          "cv_pct": 60.22,
+          "stability_score": 37.1,
+          "stability_score_raw": 39.8
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 64.62384,
+          "jerk_trend": -0.01355,
+          "grade": "rough"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.01355,
+          "sway_trend_per_frame": -0.00192,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "8b15794d-81e5-4d7b-b756-11113e7d1b9b"
+      }
+    },
+    {
+      "session_id": "62aaffc0-d39f-40f5-bba1-27c359ddd192",
+      "test_id": "stability",
+      "timestamp": 1779622397.0242543,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 235,
+        "duration_s": 5.9,
+        "sway": {
+          "mean_velocity_ms": 0.052,
+          "cv_pct": 41.43,
+          "stability_score": 53.1,
+          "stability_score_raw": 58.6
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 9.09098,
+          "jerk_trend": 0.04043,
+          "grade": "rough"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.04043,
+          "sway_trend_per_frame": 0.00014,
+          "detected": true,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "62aaffc0-d39f-40f5-bba1-27c359ddd192"
+      }
+    },
+    {
+      "session_id": "6c6d5f3e-5043-4ae9-8de4-a5f90007c7e4",
+      "test_id": "stability",
+      "timestamp": 1779630916.6824212,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 170,
+        "duration_s": 5.0,
+        "sway": {
+          "mean_velocity_ms": 0.5595,
+          "cv_pct": 421.89,
+          "stability_score": 54.3,
+          "stability_score_raw": 0.0
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 3823.57876,
+          "jerk_trend": 107.96052,
+          "grade": "rough"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 107.96052,
+          "sway_trend_per_frame": 0.01077,
+          "detected": true,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "6c6d5f3e-5043-4ae9-8de4-a5f90007c7e4"
+      }
+    },
+    {
+      "session_id": "41d7dba8-6758-4a3b-978e-acda90a263df",
+      "test_id": "stability",
+      "timestamp": 1779632637.3994262,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 1137,
+        "duration_s": 28.7,
+        "sway": {
+          "mean_velocity_ms": 0.1431,
+          "cv_pct": 60.97,
+          "stability_score": 46.1,
+          "stability_score_raw": 39.0
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "sway_trend_per_frame": 8e-05,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "41d7dba8-6758-4a3b-978e-acda90a263df"
+      }
+    },
+    {
+      "session_id": "bb199404-652e-40aa-8858-a43ddc464025",
+      "test_id": "stability",
+      "timestamp": 1779634021.1545455,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 492,
+        "duration_s": 12.3,
+        "sway": {
+          "mean_velocity_ms": 0.0282,
+          "stability_score": 80.1,
+          "stability_score_raw": 79.8
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "sway_trend_per_frame": 9e-05,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "bb199404-652e-40aa-8858-a43ddc464025"
+      }
+    },
+    {
+      "session_id": "9561e694-c9ad-4849-adf4-fc2950299092",
+      "test_id": "stability",
+      "timestamp": 1779647602.4307113,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 369,
+        "duration_s": 10.2,
+        "sway": {
+          "mean_velocity_ms": 0.0292,
+          "cv_pct": 6.85,
+          "stability_score": 93.2,
+          "stability_score_raw": 93.2
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "sway_trend_per_frame": 4e-05,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "9561e694-c9ad-4849-adf4-fc2950299092"
+      }
+    },
+    {
+      "session_id": "c0064a60-815c-4974-869b-b40f515ff328",
+      "test_id": "stability",
+      "timestamp": 1779692750.8759692,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 344,
+        "duration_s": 9.6,
+        "sway": {
+          "mean_velocity_ms": 0.0261,
+          "cv_pct": 14.08,
+          "stability_score": 85.9,
+          "stability_score_raw": 85.9
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0,
+          "jerk_trend": 0.0,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": 0.0,
+          "sway_trend_per_frame": -6e-05,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "c0064a60-815c-4974-869b-b40f515ff328"
+      }
+    },
+    {
+      "session_id": "6ff391df-5940-4573-99a0-4679b4ccbcc0",
+      "test_id": "stability",
+      "timestamp": 1779692797.5332427,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 97,
+        "duration_s": 4.9,
+        "sway": {
+          "mean_velocity_ms": 0.2448,
+          "cv_pct": 61.57,
+          "stability_score": 37.8,
+          "stability_score_raw": 38.4
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.0109,
+          "jerk_trend": -0.00065,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00065,
+          "sway_trend_per_frame": 0.00483,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "6ff391df-5940-4573-99a0-4679b4ccbcc0"
+      }
+    },
+    {
+      "session_id": "3eb95fc5-3c89-40c4-97ec-315dfa2767d6",
+      "test_id": "stability",
+      "timestamp": 1779693179.7952023,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 234,
+        "duration_s": 7.4,
+        "sway": {
+          "mean_velocity_ms": 0.0214,
+          "cv_pct": 6.81,
+          "stability_score": 93.2,
+          "stability_score_raw": 93.2
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.02023,
+          "jerk_trend": -0.00051,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00051,
+          "sway_trend_per_frame": -1e-05,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "3eb95fc5-3c89-40c4-97ec-315dfa2767d6"
+      }
+    },
+    {
+      "session_id": "03991016-e8b2-4b2a-b071-73cce285d4f4",
+      "test_id": "stability",
+      "timestamp": 1779693201.2184143,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 247,
+        "duration_s": 6.9,
+        "sway": {
+          "mean_velocity_ms": 0.0144,
+          "cv_pct": 5.47,
+          "stability_score": 94.5,
+          "stability_score_raw": 94.5
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.00972,
+          "jerk_trend": -0.00023,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00023,
+          "sway_trend_per_frame": -3e-05,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "03991016-e8b2-4b2a-b071-73cce285d4f4"
+      }
+    },
+    {
+      "session_id": "a29de2e9-0c91-4941-9a02-b5bf98bc35b7",
+      "test_id": "stability",
+      "timestamp": 1779871822.2964475,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 75,
+        "duration_s": 3.0,
+        "sway": {
+          "mean_velocity_ms": 0.0266,
+          "cv_pct": 7.57,
+          "stability_score": 92.4,
+          "stability_score_raw": 92.4
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.00287,
+          "jerk_trend": -0.00022,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00022,
+          "sway_trend_per_frame": 0.00055,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "a29de2e9-0c91-4941-9a02-b5bf98bc35b7"
+      }
+    },
+    {
+      "session_id": "18950344-bf30-4910-9935-fd420a8ff306",
+      "test_id": "stability",
+      "timestamp": 1779873055.4982698,
+      "summary": {
+        "total_reps": 0,
+        "total_frames": 481,
+        "duration_s": 12.3,
+        "sway": {
+          "mean_velocity_ms": 0.0199,
+          "cv_pct": 16.17,
+          "stability_score": 83.8,
+          "stability_score_raw": 83.8
+        },
+        "symmetry": {
+          "mean_knee_asym_deg": 0.0,
+          "max_knee_asym_deg": 0.0,
+          "grade": "excellent"
+        },
+        "smoothness": {
+          "mean_jerk": 0.04823,
+          "jerk_trend": -0.00093,
+          "grade": "smooth"
+        },
+        "fatigue": {
+          "asym_trend_per_frame": 0.0,
+          "jerk_trend_per_frame": -0.00093,
+          "sway_trend_per_frame": -0.00033,
+          "detected": false,
+          "stability_tier": null
+        },
+        "per_rep": [],
+        "test_id": "stability",
+        "session_id": "18950344-bf30-4910-9935-fd420a8ff306"
+      }
+    }
+  ]
+}

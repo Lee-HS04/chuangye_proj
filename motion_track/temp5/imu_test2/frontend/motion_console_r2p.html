@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motion Console — Live IMU Skeletal Rig</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14171c;
+    --panel:#1b2027;
+    --panel-alt:#20262f;
+    --border:#2a313c;
+    --text:#e8e6e0;
+    --text-dim:#8b919c;
+    --amber:#f0a830;
+    --amber-dim:#c98a26;
+    --steel:#6fa8c4;
+    --steel-dim:#4d7891;
+    --bone-idle:#3a4350;
+    --ok:#4caf8a;
+    --warn:#e0b34d;
+    --err:#e0654d;
+    --font-display:'Space Grotesk', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    overflow:hidden;
+  }
+  :focus-visible{outline:2px solid var(--amber); outline-offset:2px;}
+
+  #app{display:flex; flex-direction:column; height:100vh;}
+
+  /* ---------- header ---------- */
+  header.console-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 22px;
+    border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, var(--panel), var(--bg));
+    flex-shrink:0;
+  }
+  .brand{display:flex; flex-direction:column; gap:2px;}
+  .brand .eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:0.14em;
+    color:var(--steel); text-transform:uppercase;
+  }
+  .brand h1{
+    font-family:var(--font-display); font-size:20px; font-weight:600; margin:0;
+    letter-spacing:0.01em;
+  }
+  .brand .tag{font-family:var(--font-mono); font-size:11px; color:var(--text-dim);}
+
+  .header-actions{display:flex; align-items:center; gap:14px;}
+  .chip{
+    font-family:var(--font-mono); font-size:12px; color:var(--text-dim);
+    border:1px solid var(--border); border-radius:999px; padding:5px 12px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .chip .dot{width:7px; height:7px; border-radius:50%; background:var(--text-dim);}
+  .chip.live .dot{background:var(--ok); box-shadow:0 0 6px var(--ok);}
+
+  button{font-family:var(--font-body); cursor:pointer; border:none;}
+  .btn-primary{
+    background:var(--amber); color:#241a08; font-weight:600;
+    padding:10px 18px; border-radius:8px; font-size:14px;
+    transition:transform .12s ease, background .12s ease;
+  }
+  .btn-primary:hover{background:#f5b746;}
+  .btn-primary:active{transform:scale(0.97);}
+  .btn-primary:disabled{background:#4a4536; color:#8a8470; cursor:not-allowed;}
+
+  .btn-secondary{
+    background:transparent; color:var(--steel); border:1px solid var(--steel-dim);
+    padding:7px 12px; border-radius:7px; font-size:12.5px; font-weight:500;
+  }
+  .btn-secondary:hover{background:rgba(111,168,196,0.1);}
+
+  .icon-btn{
+    background:transparent; color:var(--text-dim); font-size:13px;
+    width:24px; height:24px; border-radius:6px; line-height:1;
+  }
+  .icon-btn:hover{color:var(--err); background:rgba(224,101,77,0.12);}
+
+  /* ---------- bluetooth banner ---------- */
+  #bt-banner{
+    background:rgba(224,101,77,0.12); color:#f0a995; border-bottom:1px solid rgba(224,101,77,0.35);
+    font-size:13px; padding:9px 22px; font-family:var(--font-body);
+  }
+  #bt-banner.hidden{display:none;}
+
+  /* ---------- main layout ---------- */
+  main.console-main{flex:1; display:flex; min-height:0;}
+
+  #viewport-container{
+    position:relative; flex:1; min-width:0;
+    background:radial-gradient(ellipse at 50% 30%, #1a1f26 0%, #14171c 70%);
+  }
+  #viewport-canvas{display:block; width:100%; height:100%;}
+  #viewport-empty{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:8px; pointer-events:none;
+    text-align:center; padding:0 30px;
+  }
+  #viewport-empty .big{font-family:var(--font-display); font-size:16px; color:var(--text-dim);}
+  #viewport-empty .small{font-family:var(--font-body); font-size:13px; color:#5b616c; max-width:360px;}
+  #viewport-empty.hidden{display:none;}
+
+  /* ---------- sidebar ---------- */
+  aside.control-panel{
+    width:380px; flex-shrink:0; border-left:1px solid var(--border);
+    background:var(--panel); display:flex; flex-direction:column; min-height:0;
+  }
+  .panel-section{padding:16px 18px; border-bottom:1px solid var(--border);}
+  .panel-section h2{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--text-dim); margin:0 0 12px 0;
+  }
+
+  details.advanced{margin-top:10px;}
+  details.advanced summary{
+    font-size:12px; color:var(--steel); cursor:pointer; list-style:none; user-select:none;
+  }
+  details.advanced summary::-webkit-details-marker{display:none;}
+  details.advanced summary::before{content:"▸ "; color:var(--text-dim);}
+  details.advanced[open] summary::before{content:"▾ ";}
+  .advanced-body{margin-top:8px; display:flex; flex-direction:column; gap:6px;}
+  .advanced-body label{font-size:11px; color:var(--text-dim);}
+  .advanced-body input{width:100%; margin-top:4px;}
+
+  input[type=text]{
+    background:var(--panel-alt); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:7px 9px; font-size:12px; font-family:var(--font-mono);
+    width:100%;
+  }
+  select{
+    background:var(--panel-alt); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:6px 8px; font-size:12.5px; width:100%; margin-top:4px;
+  }
+  label{display:block; font-size:11.5px; color:var(--text-dim); font-weight:500;}
+
+  .help-text{font-size:12px; color:#5b616c; line-height:1.5; margin-top:8px;}
+
+  #sensor-section{flex-shrink:0;}
+  #sensor-list-wrap{flex:1; overflow-y:auto; min-height:80px;}
+  #sensor-list{padding:10px 14px; display:flex; flex-direction:column; gap:12px;}
+  #empty-sensor-hint{
+    font-size:12.5px; color:#5b616c; text-align:center; padding:18px 10px; line-height:1.6;
+  }
+  #empty-sensor-hint.hidden{display:none;}
+
+  .sensor-card{
+    background:var(--panel-alt); border:1px solid var(--border); border-radius:10px;
+    padding:12px 13px;
+  }
+  .sensor-card-head{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .status-dot{width:8px; height:8px; border-radius:50%; background:var(--text-dim); flex-shrink:0;}
+  .status-dot.status-connected{background:var(--ok); box-shadow:0 0 6px var(--ok);}
+  .status-dot.status-disconnected{background:var(--err);}
+  .sensor-name{font-family:var(--font-display); font-size:13.5px; font-weight:600; flex:1;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+  .sensor-card-body{display:flex; gap:12px; align-items:center; margin-bottom:10px;}
+  svg.attitude{width:72px; height:72px; flex-shrink:0;}
+  .ai-sky{fill:var(--steel-dim);}
+  .ai-ground{fill:#3a2a1a;}
+  .ai-horizon{stroke:var(--amber); stroke-width:2;}
+  .ai-bezel{fill:none; stroke:var(--border); stroke-width:2;}
+  .ai-index{stroke:var(--text); stroke-width:2;}
+
+  .sensor-readout{flex:1; min-width:0; display:flex; flex-direction:column; gap:5px;}
+  .readout-row{display:flex; flex-direction:column; font-size:11px; color:var(--text-dim);}
+  .readout-row .mono{font-family:var(--font-mono); color:var(--text); font-size:11.5px; margin-top:1px;}
+
+  .sensor-card-controls{display:flex; flex-direction:column; gap:9px;}
+  .uuid-row{display:flex; flex-direction:column; gap:8px;}
+  .uuid-row input{margin-top:4px;}
+  .sensor-card-controls .btn-secondary{align-self:flex-start; margin-top:2px;}
+
+  /* ---------- log ---------- */
+  #log-section{flex-shrink:0; display:flex; flex-direction:column; max-height:190px;}
+  #log-panel{
+    flex:1; overflow-y:auto; background:var(--bg); border:1px solid var(--border);
+    border-radius:8px; padding:8px 10px; font-family:var(--font-mono); font-size:11px;
+    line-height:1.6;
+  }
+  .log-line{color:var(--text-dim); white-space:pre-wrap; word-break:break-word;}
+  .log-line.log-ok{color:var(--ok);}
+  .log-line.log-warn{color:var(--warn);}
+  .log-line.log-error{color:var(--err);}
+  .log-line.log-mono{color:var(--steel);}
+
+  /* ---------- calibration overlay ---------- */
+  #calib-overlay{
+    position:fixed; inset:0; background:rgba(20,23,28,0.86); z-index:50;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-size:120px; font-weight:700; color:var(--amber);
+  }
+  #calib-overlay.hidden{display:none;}
+  @media (prefers-reduced-motion: no-preference){
+    #calib-overlay{animation:calibPulse .7s ease infinite;}
+  }
+  @keyframes calibPulse{0%{opacity:.55;}50%{opacity:1;}100%{opacity:.55;}}
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 860px){
+    main.console-main{flex-direction:column;}
+    aside.control-panel{width:100%; border-left:none; border-top:1px solid var(--border); max-height:55vh;}
+    #viewport-container{min-height:38vh;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="console-header">
+    <div class="brand">
+      <span class="eyebrow">Motion Console</span>
+      <h1>Live IMU → Skeletal Rig</h1>
+      <span class="tag" id="joint-count-tag">BLE · 21 JOINTS</span>
+    </div>
+    <div class="header-actions">
+      <span class="chip" id="connection-chip"><span class="dot"></span><span id="connection-count-text">0 connected</span></span>
+      <button class="btn-primary" id="calibrate-btn">Calibrate All (T-Pose)</button>
+    </div>
+  </header>
+
+  <div id="bt-banner" class="hidden"></div>
+
+  <main class="console-main">
+    <div id="viewport-container">
+      <canvas id="viewport-canvas"></canvas>
+      <div id="viewport-empty">
+        <span class="big">No sensors driving the rig yet</span>
+        <span class="small">Pair a sensor on the right, assign it to a body part, then stand in a reference pose and hit Calibrate All.</span>
+      </div>
+    </div>
+
+    <aside class="control-panel">
+      <section class="panel-section" id="sensor-section">
+        <h2>Sensors</h2>
+        <button class="btn-primary" id="add-sensor-btn" style="width:100%;">+ Add Sensor</button>
+        <details class="advanced">
+          <summary>Advanced: custom service UUID</summary>
+          <div class="advanced-body">
+            <label>Service UUID to declare before pairing
+              <input type="text" id="custom-uuid-input" placeholder="e.g. 0000xxxx-0000-1000-8000-00805f9a34fb">
+            </label>
+          </div>
+        </details>
+        <p class="help-text">Defaults assume Nordic UART Service (common on ESP32 / nRF52 custom firmware). If your sensor uses a different service, paste its UUID above <em>before</em> clicking Add Sensor — Web Bluetooth only allows access to services declared at pairing time.</p>
+      </section>
+
+      <div id="sensor-list-wrap">
+        <div id="sensor-list"></div>
+        <div id="empty-sensor-hint">No sensors added yet.</div>
+      </div>
+
+      <section class="panel-section" id="log-section">
+        <h2>Activity Log</h2>
+        <div id="log-panel"></div>
+      </section>
+
+      <section class="panel-section" id="guide-section">
+        <details class="advanced">
+          <summary>Setup guide</summary>
+          <div class="advanced-body" style="gap:10px;">
+            <p class="help-text" style="margin:0;"><strong style="color:var(--text);">Protocols.</strong> "Quaternion (binary float32)" expects 16 bytes per notification: w,x,y,z as little-endian float32. "Text JSON/CSV" expects newline-terminated lines like <code>{"w":1,"x":0,"y":0,"z":0}</code> or <code>w,x,y,z</code> (roll,pitch,yaw in degrees also works as 3 CSV values).</p>
+            <p class="help-text" style="margin:0;"><strong style="color:var(--text);">Unknown hardware.</strong> Set a sensor's protocol to "Discover / Debug", declare its service UUID under Advanced, then Add Sensor. The log will list every reachable service/characteristic and stream raw hex so you can identify the right one and your data format.</p>
+            <p class="help-text" style="margin:0;"><strong style="color:var(--text);">Calibration.</strong> Assign each connected sensor to a body part, get into your reference pose (e.g. T-pose), then click Calibrate All — that pose becomes each joint's zero rotation.</p>
+            <p class="help-text" style="margin:0;"><strong style="color:var(--text);">Axis remap.</strong> If a limb rotates on the wrong plane, try the per-sensor axis remap — most IMU boards report a Z-up frame, this rig is Y-up.</p>
+            <p class="help-text" style="margin:0;"><strong style="color:var(--text);">Browser.</strong> Web Bluetooth needs Chrome or Edge on desktop/Android, opened as a real page — not Safari/Firefox, and not an embedded preview. If pairing fails when double-clicking the file, serve it locally: <code>python3 -m http.server</code> in its folder, then open <code>http://localhost:8000/</code>.</p>
+          </div>
+        </details>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<div id="calib-overlay" class="hidden">3</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ============================================================
+   Known BLE UUIDs
+   ============================================================ */
+const R2P_SERVICE   = '12345678-1234-1234-1234-1234567890ab';
+const R2P_CHAR      = 'abcd1234-5678-1234-5678-abcdef123456';
+const NUS_SERVICE   = R2P_SERVICE;
+const NUS_RX_CHAR    = R2P_CHAR;
+const NUS_TX_CHAR    = R2P_CHAR;
+const GENERIC_UART_SERVICE = '0000ffe0-0000-1000-8000-00805f9a34fb'; // HM-10 / HM-11 style modules
+const GENERIC_UART_CHAR    = '0000ffe1-0000-1000-8000-00805f9a34fb';
+const KNOWN_OPTIONAL_SERVICES = [R2P_SERVICE, GENERIC_UART_SERVICE, 'battery_service', 'device_information'];
+
+/* ============================================================
+   Skeleton definition (key, parent key, offset from parent in meters, joint radius)
+   +X = wearer's left side, +Y = up, +Z = forward (toward camera at default pose)
+   ============================================================ */
+const SKELETON_DEF = [
+  { key:'pelvis',        parent:null,         offset:[0,0,0],          radius:0.09 },
+  { key:'spineLower',    parent:'pelvis',     offset:[0,0.15,0],       radius:0.085 },
+  { key:'spineUpper',    parent:'spineLower', offset:[0,0.16,0],       radius:0.09 },
+  { key:'neck',          parent:'spineUpper', offset:[0,0.14,0],       radius:0.045 },
+  { key:'head',          parent:'neck',       offset:[0,0.10,0],       radius:0.09 },
+
+  { key:'leftShoulder',  parent:'spineUpper', offset:[0.10,0.10,0],    radius:0.05 },
+  { key:'leftUpperArm',  parent:'leftShoulder',offset:[0.10,-0.02,0],  radius:0.045 },
+  { key:'leftForearm',   parent:'leftUpperArm',offset:[0.27,0,0],      radius:0.04 },
+  { key:'leftHand',      parent:'leftForearm', offset:[0.20,0,0],      radius:0.035 },
+
+  { key:'rightShoulder', parent:'spineUpper', offset:[-0.10,0.10,0],   radius:0.05 },
+  { key:'rightUpperArm', parent:'rightShoulder',offset:[-0.10,-0.02,0],radius:0.045 },
+  { key:'rightForearm',  parent:'rightUpperArm',offset:[-0.27,0,0],    radius:0.04 },
+  { key:'rightHand',     parent:'rightForearm',offset:[-0.20,0,0],     radius:0.035 },
+
+  { key:'leftHip',       parent:'pelvis',     offset:[0.10,-0.02,0],   radius:0.06 },
+  { key:'leftThigh',     parent:'leftHip',    offset:[0,-0.45,0],      radius:0.06 },
+  { key:'leftShin',      parent:'leftThigh',  offset:[0,-0.43,0],      radius:0.05 },
+  { key:'leftFoot',      parent:'leftShin',   offset:[0,-0.10,0.12],   radius:0.04 },
+
+  { key:'rightHip',      parent:'pelvis',     offset:[-0.10,-0.02,0],  radius:0.06 },
+  { key:'rightThigh',    parent:'rightHip',   offset:[0,-0.45,0],      radius:0.06 },
+  { key:'rightShin',     parent:'rightThigh', offset:[0,-0.43,0],      radius:0.05 },
+  { key:'rightFoot',     parent:'rightShin',  offset:[0,-0.10,0.12],   radius:0.04 },
+];
+
+const BODY_PART_LABELS = {
+  pelvis:'Pelvis / Hips', spineLower:'Lower Spine', spineUpper:'Chest / Upper Spine',
+  neck:'Neck', head:'Head',
+  leftShoulder:'Left Shoulder', leftUpperArm:'Left Upper Arm', leftForearm:'Left Forearm', leftHand:'Left Hand',
+  rightShoulder:'Right Shoulder', rightUpperArm:'Right Upper Arm', rightForearm:'Right Forearm', rightHand:'Right Hand',
+  leftHip:'Left Hip', leftThigh:'Left Thigh', leftShin:'Left Shin', leftFoot:'Left Foot',
+  rightHip:'Right Hip', rightThigh:'Right Thigh', rightShin:'Right Shin', rightFoot:'Right Foot',
+};
+
+const R2P_LOC_TO_BODY_PART = {
+  PELVIS:'pelvis',
+  CHEST:'spineUpper',
+  HEAD:'head',
+  L_SHOULDER:'leftShoulder',
+  R_SHOULDER:'rightShoulder',
+  L_UPPER_ARM:'leftUpperArm',
+  R_UPPER_ARM:'rightUpperArm',
+  L_FOREARM:'leftForearm',
+  R_FOREARM:'rightForearm',
+  L_THIGH:'leftThigh',
+  R_THIGH:'rightThigh',
+  L_SHIN:'leftShin',
+  R_SHIN:'rightShin',
+  L_FOOT:'leftFoot',
+  R_FOOT:'rightFoot',
+};
+
+const AXIS_REMAPS = {
+  none: null,
+  zUpToYUpPos: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0), -Math.PI/2),
+  zUpToYUpNeg: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),  Math.PI/2),
+};
+function applyAxisRemap(qSensor, remapKey){
+  const basis = AXIS_REMAPS[remapKey];
+  if (!basis) return qSensor.clone();
+  return basis.clone().multiply(qSensor).multiply(basis.clone().invert());
+}
+
+/* ============================================================
+   Three.js scene
+   ============================================================ */
+const canvas = document.getElementById('viewport-canvas');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x14171c);
+scene.fog = new THREE.Fog(0x14171c, 4, 13);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+camera.position.set(0, 1.45, 3.3);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1.05, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 1.2;
+controls.maxDistance = 9;
+
+scene.add(new THREE.HemisphereLight(0x9fb8c8, 0x14171c, 0.65));
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.1);
+keyLight.position.set(2, 4, 3);
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight(0x6fa8c4, 0.35);
+rimLight.position.set(-3, 2, -2);
+scene.add(rimLight);
+
+const grid = new THREE.GridHelper(8, 16, 0x2a313c, 0x20262f);
+scene.add(grid);
+
+const joints = {};
+const boneMeshes = {};
+
+function addJointMarker(group, radius){
+  const sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(radius*0.55, 12, 10),
+    new THREE.MeshStandardMaterial({ color:0xf0a830, roughness:0.4, metalness:0.2, emissive:0x3a2a0c, emissiveIntensity:0.4 })
+  );
+  group.add(sphere);
+}
+
+function buildSkeleton(parentObject3D){
+  const root = new THREE.Group();
+  root.position.set(0, 1.0, 0);
+  parentObject3D.add(root);
+
+  for (const def of SKELETON_DEF){
+    const group = new THREE.Group();
+    if (def.parent === null){
+      root.add(group);
+      joints[def.key] = group;
+      addJointMarker(group, def.radius);
+      continue;
+    }
+    const parentGroup = joints[def.parent];
+    group.position.set(def.offset[0], def.offset[1], def.offset[2]);
+    parentGroup.add(group);
+    joints[def.key] = group;
+
+    const dir = new THREE.Vector3(def.offset[0], def.offset[1], def.offset[2]);
+    const len = dir.length();
+    const mesh = new THREE.Mesh(
+      new THREE.CapsuleGeometry(def.radius*0.6, Math.max(len - def.radius*1.2, 0.02), 4, 8),
+      new THREE.MeshStandardMaterial({ color:0x3a4350, roughness:0.55, metalness:0.15, emissive:0x000000 })
+    );
+    mesh.position.copy(dir.clone().multiplyScalar(0.5));
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
+    parentGroup.add(mesh);
+    boneMeshes[def.key] = mesh;
+
+    addJointMarker(group, def.radius);
+  }
+}
+buildSkeleton(scene);
+
+function setBoneActive(key, active){
+  const mesh = boneMeshes[key];
+  if (!mesh) return;
+  mesh.material.color.set(active ? 0x6fa8c4 : 0x3a4350);
+  mesh.material.emissive.set(active ? 0x18313d : 0x000000);
+}
+
+function resize(){
+  const container = document.getElementById('viewport-container');
+  const w = container.clientWidth, h = container.clientHeight;
+  if (w === 0 || h === 0) return;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', resize);
+resize();
+
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+/* ============================================================
+   Logging
+   ============================================================ */
+function log(msg, level='info'){
+  const el = document.getElementById('log-panel');
+  const line = document.createElement('div');
+  line.className = `log-line log-${level}`;
+  const time = new Date().toLocaleTimeString();
+  line.textContent = `[${time}] ${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+  while (el.children.length > 300) el.removeChild(el.firstChild);
+}
+function toHex(dataView){
+  const bytes = [];
+  for (let i=0; i<dataView.byteLength; i++) bytes.push(dataView.getUint8(i).toString(16).padStart(2,'0'));
+  return bytes.join(' ');
+}
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+/* ============================================================
+   Sensor data model
+   ============================================================ */
+let sensors = [];
+let nextSensorId = 1;
+
+function updateConnectionChip(){
+  const count = sensors.filter(s => s.connected).length;
+  document.getElementById('connection-count-text').textContent = `${count} connected`;
+  document.getElementById('connection-chip').classList.toggle('live', count > 0);
+  document.getElementById('viewport-empty').classList.toggle('hidden', count > 0 && sensors.some(s => s.bodyPart));
+}
+function updateEmptyState(){
+  document.getElementById('empty-sensor-hint').classList.toggle('hidden', sensors.length > 0);
+  updateConnectionChip();
+}
+
+function parseQuatF32(dataView){
+  if (dataView.byteLength < 16) return null;
+  const w = dataView.getFloat32(0, true);
+  const x = dataView.getFloat32(4, true);
+  const y = dataView.getFloat32(8, true);
+  const z = dataView.getFloat32(12, true);
+  return new THREE.Quaternion(x, y, z, w);
+}
+function eulerDegToQuat(roll, pitch, yaw){
+  const euler = new THREE.Euler(
+    THREE.MathUtils.degToRad(pitch),
+    THREE.MathUtils.degToRad(yaw),
+    THREE.MathUtils.degToRad(roll),
+    'XYZ'
+  );
+  return new THREE.Quaternion().setFromEuler(euler);
+}
+
+function applyOrientation(sensor, qRaw){
+  const qRemapped = applyAxisRemap(qRaw, sensor.axisRemap);
+  sensor.lastQuat = qRemapped;
+  updateLiveReadout(sensor);
+  if (sensor.bodyPart && joints[sensor.bodyPart]){
+    let qToApply = qRemapped;
+    if (sensor.calibrated) qToApply = sensor.calibOffset.clone().multiply(qRemapped);
+    joints[sensor.bodyPart].quaternion.slerp(qToApply, 0.6);
+  }
+}
+
+function handleBinaryQuat(sensor, dataView){
+  const q = parseQuatF32(dataView);
+  if (!q){ log(`${sensor.name}: unexpected packet length (${dataView.byteLength} bytes) for binary quaternion protocol.`, 'warn'); return; }
+  applyOrientation(sensor, q);
+}
+
+function applyR2PLocation(sensor, locRaw){
+  const bodyPart = R2P_LOC_TO_BODY_PART[locRaw];
+  if (!bodyPart || sensor.bodyPart === bodyPart) return;
+  setBoneActive(sensor.bodyPart, false);
+  sensor.bodyPart = bodyPart;
+  sensor.calibrated = false;
+  const card = document.getElementById(`sensor-${sensor.id}`);
+  if (card) card.querySelector('[data-role="bodypart"]').value = bodyPart;
+  setBoneActive(sensor.bodyPart, sensor.connected);
+  log(`${sensor.name}: assigned ${locRaw} -> ${BODY_PART_LABELS[bodyPart]}.`, 'ok');
+}
+
+function parseR2PLine(sensor, line){
+  const parts = line.trim().split(/\s+/);
+  if (parts.length < 11 || !parts[0].startsWith('LOC')) return null;
+
+  const locRaw = parts[0].slice(3);
+  const values = {};
+  for (const part of parts.slice(1)) {
+    const key = part.slice(0, 2);
+    const value = Number(part.slice(2));
+    if (!Number.isNaN(value)) values[key] = value;
+  }
+
+  const required = ['QW', 'QX', 'QY', 'QZ'];
+  if (!required.every(k => k in values)) return null;
+  applyR2PLocation(sensor, locRaw);
+  return new THREE.Quaternion(values.QX, values.QY, values.QZ, values.QW).normalize();
+}
+
+function parseTextChunk(sensor, dataView){
+  const text = new TextDecoder().decode(dataView);
+  sensor.textBuffer += text;
+  if (sensor.textBuffer.includes('LOC') && !sensor.textBuffer.includes('\n')) {
+    const maybePacket = sensor.textBuffer.trim();
+    const q = parseR2PLine(sensor, maybePacket);
+    if (q) {
+      sensor.textBuffer = '';
+      applyOrientation(sensor, q);
+      return;
+    }
+  }
+  let idx;
+  while ((idx = sensor.textBuffer.indexOf('\n')) >= 0){
+    const line = sensor.textBuffer.slice(0, idx).trim();
+    sensor.textBuffer = sensor.textBuffer.slice(idx + 1);
+    if (!line) continue;
+    let q = null;
+    q = parseR2PLine(sensor, line);
+    if (!q) {
+      try {
+        const obj = JSON.parse(line);
+        if ('w' in obj) q = new THREE.Quaternion(obj.x, obj.y, obj.z, obj.w);
+        else if ('roll' in obj) q = eulerDegToQuat(obj.roll, obj.pitch, obj.yaw);
+      } catch (e){
+        const parts = line.split(',').map(Number);
+        if (parts.length === 4 && parts.every(n => !Number.isNaN(n))){
+          q = new THREE.Quaternion(parts[1], parts[2], parts[3], parts[0]);
+        } else if (parts.length === 3 && parts.every(n => !Number.isNaN(n))){
+          q = eulerDegToQuat(parts[0], parts[1], parts[2]);
+        }
+      }
+    }
+    if (q) applyOrientation(sensor, q);
+    else log(`${sensor.name}: couldn't parse line "${line.slice(0,40)}"`, 'warn');
+  }
+}
+
+function updateLiveReadout(sensor){
+  const card = document.getElementById(`sensor-${sensor.id}`);
+  if (!card) return;
+  const q = sensor.lastQuat;
+  card.querySelector('[data-role="quat"]').textContent =
+    `w ${q.w.toFixed(2)} x ${q.x.toFixed(2)} y ${q.y.toFixed(2)} z ${q.z.toFixed(2)}`;
+  const euler = new THREE.Euler().setFromQuaternion(q, 'YXZ');
+  const rollDeg = THREE.MathUtils.radToDeg(euler.z);
+  const pitchDeg = THREE.MathUtils.radToDeg(euler.x);
+  card.querySelector('[data-role="rp"]').textContent = `${rollDeg.toFixed(1)}° / ${pitchDeg.toFixed(1)}°`;
+  const rotateG = card.querySelector('[data-role="ai-rotate"]');
+  const translateG = card.querySelector('[data-role="ai-translate"]');
+  rotateG.setAttribute('transform', `rotate(${(-rollDeg).toFixed(1)} 36 36)`);
+  const pitchPx = THREE.MathUtils.clamp(pitchDeg * 0.9, -34, 34);
+  translateG.setAttribute('transform', `translate(0 ${pitchPx.toFixed(1)})`);
+}
+
+function updateSensorStatus(sensor, connected){
+  sensor.connected = connected;
+  const card = document.getElementById(`sensor-${sensor.id}`);
+  if (card){
+    const dot = card.querySelector('[data-role="status"]');
+    dot.classList.toggle('status-connected', connected);
+    dot.classList.toggle('status-disconnected', !connected);
+  }
+  setBoneActive(sensor.bodyPart, connected && !!sensor.bodyPart);
+  updateConnectionChip();
+}
+
+/* ============================================================
+   GATT connection
+   ============================================================ */
+async function connectSensorWithConfig(sensor){
+  const card = document.getElementById(`sensor-${sensor.id}`);
+  sensor.protocol = card.querySelector('[data-role="protocol"]').value;
+  sensor.svcUUID = card.querySelector('[data-role="svc"]').value.trim();
+  sensor.chrUUID = card.querySelector('[data-role="chr"]').value.trim();
+  sensor.axisRemap = card.querySelector('[data-role="remap"]').value;
+
+  try {
+    if (!sensor.device.gatt.connected) sensor.server = await sensor.device.gatt.connect();
+    else sensor.server = sensor.device.gatt;
+  } catch (err){
+    log(`${sensor.name}: GATT connect failed — ${err.message}`, 'error');
+    return;
+  }
+
+  if (sensor.protocol === 'debug'){
+    await runDiscoverMode(sensor);
+    return;
+  }
+
+  try {
+    const service = await sensor.server.getPrimaryService(sensor.svcUUID);
+    const characteristic = await service.getCharacteristic(sensor.chrUUID);
+    if (sensor.characteristic){
+      try { await sensor.characteristic.stopNotifications(); } catch (e){}
+    }
+    sensor.characteristic = characteristic;
+    await characteristic.startNotifications();
+    characteristic.addEventListener('characteristicvaluechanged', (e) => {
+      if (sensor.protocol === 'quat-f32') handleBinaryQuat(sensor, e.target.value);
+      else if (sensor.protocol === 'text') parseTextChunk(sensor, e.target.value);
+    });
+    updateSensorStatus(sensor, true);
+    log(`${sensor.name}: streaming via ${sensor.protocol === 'quat-f32' ? 'binary quaternion' : 'text'} protocol.`, 'ok');
+  } catch (err){
+    updateSensorStatus(sensor, false);
+    log(`${sensor.name}: couldn't reach ${sensor.svcUUID.slice(0,8)}…/${sensor.chrUUID.slice(0,8)}… — ${err.message}. Try Discover/Debug mode to find the right UUIDs.`, 'error');
+  }
+}
+
+async function runDiscoverMode(sensor){
+  log(`${sensor.name}: discovering reachable services...`);
+  try {
+    const services = await sensor.server.getPrimaryServices();
+    if (services.length === 0){
+      log(`${sensor.name}: no GATT services reachable. Its service UUID likely isn't declared yet — add it under Advanced and re-add the sensor.`, 'warn');
+      return;
+    }
+    for (const service of services){
+      log(`service ${service.uuid}`);
+      const chars = await service.getCharacteristics();
+      for (const ch of chars){
+        const props = Object.entries(ch.properties).filter(([,v]) => v).map(([k]) => k).join(',');
+        log(`  characteristic ${ch.uuid}  [${props}]`);
+        if (ch.properties.notify || ch.properties.indicate){
+          try {
+            await ch.startNotifications();
+            ch.addEventListener('characteristicvaluechanged', (e) => {
+              log(`  ${ch.uuid.slice(0,8)}…: ${toHex(e.target.value)}`, 'mono');
+            });
+          } catch (err){
+            log(`  couldn't subscribe to ${ch.uuid}: ${err.message}`, 'warn');
+          }
+        }
+      }
+    }
+    updateSensorStatus(sensor, true);
+  } catch (err){
+    log(`${sensor.name}: discovery failed — ${err.message}`, 'error');
+    updateSensorStatus(sensor, false);
+  }
+}
+
+/* ============================================================
+   Sensor cards (UI)
+   ============================================================ */
+function renderSensorCard(sensor){
+  const card = document.createElement('div');
+  card.className = 'sensor-card';
+  card.id = `sensor-${sensor.id}`;
+
+  const bodyPartOptions = ['<option value="">— unassigned —</option>']
+    .concat(Object.entries(BODY_PART_LABELS).map(([k,v]) => `<option value="${k}">${v}</option>`))
+    .join('');
+
+  card.innerHTML = `
+    <div class="sensor-card-head">
+      <span class="status-dot" data-role="status"></span>
+      <span class="sensor-name">${escapeHtml(sensor.name)}</span>
+      <button class="icon-btn" data-action="remove" title="Disconnect & remove">✕</button>
+    </div>
+    <div class="sensor-card-body">
+      <svg class="attitude" viewBox="0 0 72 72">
+        <defs><clipPath id="clip-${sensor.id}"><circle cx="36" cy="36" r="34"/></clipPath></defs>
+        <g clip-path="url(#clip-${sensor.id})">
+          <g data-role="ai-rotate">
+            <g data-role="ai-translate">
+              <rect x="-40" y="-80" width="152" height="80" class="ai-sky"></rect>
+              <rect x="-40" y="0" width="152" height="80" class="ai-ground"></rect>
+              <line x1="-40" y1="0" x2="112" y2="0" class="ai-horizon"></line>
+            </g>
+          </g>
+        </g>
+        <circle cx="36" cy="36" r="34" class="ai-bezel"></circle>
+        <line x1="18" y1="36" x2="54" y2="36" class="ai-index"></line>
+      </svg>
+      <div class="sensor-readout">
+        <div class="readout-row"><span>quaternion</span><span data-role="quat" class="mono">w 1.00 x 0.00 y 0.00 z 0.00</span></div>
+        <div class="readout-row"><span>roll / pitch</span><span data-role="rp" class="mono">0.0° / 0.0°</span></div>
+      </div>
+    </div>
+    <div class="sensor-card-controls">
+      <label>Body part
+        <select data-role="bodypart">${bodyPartOptions}</select>
+      </label>
+      <label>Protocol
+        <select data-role="protocol">
+          <option value="text" selected>R2P text / JSON / CSV</option>
+          <option value="quat-f32">Quaternion (binary float32)</option>
+          <option value="debug">Discover / Debug (raw)</option>
+        </select>
+      </label>
+      <div class="uuid-row">
+        <label>Service UUID<input type="text" data-role="svc" value="${NUS_SERVICE}"></label>
+        <label>Characteristic UUID<input type="text" data-role="chr" value="${NUS_TX_CHAR}"></label>
+      </div>
+      <label>Axis remap
+        <select data-role="remap">
+          <option value="none">None</option>
+          <option value="zUpToYUpPos">Z-up → Y-up (-90° about X)</option>
+          <option value="zUpToYUpNeg">Z-up → Y-up (+90° about X)</option>
+        </select>
+      </label>
+      <button class="btn-secondary" data-action="reconnect">Connect</button>
+    </div>
+  `;
+
+  card.querySelector('[data-action="remove"]').addEventListener('click', () => removeSensor(sensor));
+  card.querySelector('[data-action="reconnect"]').addEventListener('click', () => connectSensorWithConfig(sensor));
+  card.querySelector('[data-role="bodypart"]').addEventListener('change', (e) => {
+    setBoneActive(sensor.bodyPart, false);
+    if (sensor.bodyPart && joints[sensor.bodyPart]) joints[sensor.bodyPart].quaternion.identity();
+    sensor.bodyPart = e.target.value || null;
+    sensor.calibrated = false;
+    setBoneActive(sensor.bodyPart, sensor.connected);
+    updateConnectionChip();
+  });
+
+  document.getElementById('sensor-list').appendChild(card);
+  updateEmptyState();
+}
+
+async function removeSensor(sensor){
+  try {
+    if (sensor.characteristic){ try { await sensor.characteristic.stopNotifications(); } catch (e){} }
+    if (sensor.device && sensor.device.gatt && sensor.device.gatt.connected) sensor.device.gatt.disconnect();
+  } catch (e){}
+  setBoneActive(sensor.bodyPart, false);
+  if (sensor.bodyPart && joints[sensor.bodyPart]) joints[sensor.bodyPart].quaternion.identity();
+  sensors = sensors.filter(s => s.id !== sensor.id);
+  const card = document.getElementById(`sensor-${sensor.id}`);
+  if (card) card.remove();
+  updateEmptyState();
+  log(`${sensor.name} removed.`);
+}
+
+async function addSensor(){
+  const customUUID = document.getElementById('custom-uuid-input').value.trim();
+  const optionalServices = [...KNOWN_OPTIONAL_SERVICES];
+  if (customUUID) optionalServices.push(customUUID);
+
+  try {
+    const device = await navigator.bluetooth.requestDevice({ acceptAllDevices:true, optionalServices });
+    const sensor = {
+      id: nextSensorId++,
+      device,
+      name: device.name || `Sensor ${nextSensorId}`,
+      server: null,
+      characteristic: null,
+      protocol: 'text',
+      svcUUID: NUS_SERVICE,
+      chrUUID: NUS_TX_CHAR,
+      bodyPart: null,
+      axisRemap: 'none',
+      connected: false,
+      lastQuat: new THREE.Quaternion(),
+      calibOffset: new THREE.Quaternion(),
+      calibrated: false,
+      textBuffer: '',
+    };
+    sensors.push(sensor);
+    renderSensorCard(sensor);
+    device.addEventListener('gattserverdisconnected', () => {
+      updateSensorStatus(sensor, false);
+      log(`${sensor.name}: disconnected.`, 'warn');
+    });
+    log(`Paired with ${sensor.name}. Connecting…`);
+    await connectSensorWithConfig(sensor);
+  } catch (err){
+    log(`Add sensor cancelled or failed — ${err.message}`, 'warn');
+  }
+}
+
+/* ============================================================
+   Calibration
+   ============================================================ */
+async function calibrateAll(){
+  const overlay = document.getElementById('calib-overlay');
+  overlay.classList.remove('hidden');
+  for (let n=3; n>=1; n--){
+    overlay.textContent = String(n);
+    await sleep(700);
+  }
+  overlay.textContent = '✓';
+  await sleep(350);
+  overlay.classList.add('hidden');
+
+  let count = 0;
+  for (const sensor of sensors){
+    if (sensor.connected && sensor.bodyPart){
+      sensor.calibOffset = sensor.lastQuat.clone().invert();
+      sensor.calibrated = true;
+      count++;
+    }
+  }
+  log(`Calibrated ${count} sensor(s) — current pose set as zero.`, count ? 'ok' : 'warn');
+}
+
+/* ============================================================
+   Wiring + Bluetooth availability check
+   ============================================================ */
+document.getElementById('add-sensor-btn').addEventListener('click', addSensor);
+document.getElementById('calibrate-btn').addEventListener('click', calibrateAll);
+
+function checkBluetoothAvailability(){
+  const banner = document.getElementById('bt-banner');
+  if (!('bluetooth' in navigator)){
+    banner.classList.remove('hidden');
+    banner.textContent = "Web Bluetooth isn't available in this view — this page may be inside an embedded preview, or your browser doesn't support it (Chrome/Edge desktop or Android only). Download this file and open it directly in a full browser tab.";
+    document.getElementById('add-sensor-btn').disabled = true;
+    log('Web Bluetooth not available in this context.', 'error');
+  } else {
+    log('Ready. Click "+ Add Sensor" and pick your IMU from the Bluetooth pairing list.');
+  }
+}
+checkBluetoothAvailability();
+updateEmptyState();
+</script>
+</body>
+</html>

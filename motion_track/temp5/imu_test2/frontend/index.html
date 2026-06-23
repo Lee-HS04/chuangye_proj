@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>R2P IMU Visualizer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0b0b11;color:#d8d8e8;font-family:'Segoe UI',system-ui,sans-serif;
+  display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* ── top bar ── */
+#topbar{display:flex;align-items:center;gap:12px;padding:8px 16px;
+  background:#111118;border-bottom:1px solid #22223a;flex-shrink:0;min-height:42px}
+#topbar h1{font-size:13px;font-weight:600;letter-spacing:.06em;color:#8888aa;white-space:nowrap}
+#ws-dot{width:8px;height:8px;border-radius:50%;background:#ff4040;
+  box-shadow:0 0 6px #ff4040;transition:all .3s;flex-shrink:0}
+#ws-dot.ok{background:#33ee77;box-shadow:0 0 8px #33ee77}
+#ws-label{font-size:11px;color:#555;white-space:nowrap}
+#sensor-bar{display:flex;gap:5px;flex-wrap:wrap;margin-left:auto}
+.sbtn{padding:3px 10px;border-radius:20px;border:1px solid #2a2a40;
+  background:#15151f;color:#666;font-size:11px;cursor:pointer;transition:all .15s}
+.sbtn:hover{border-color:#444;color:#aaa}
+.sbtn.active{background:#22224a;border-color:#5555cc;color:#9999ff}
+
+/* ── layout ── */
+#main{display:flex;flex:1;overflow:hidden}
+#wrap{flex:1;position:relative}
+canvas{display:block;width:100%!important;height:100%!important}
+
+/* ── controls overlay ── */
+#controls{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:6px}
+.ctrl-btn{padding:5px 12px;border-radius:6px;border:1px solid #2a2a40;
+  background:rgba(15,15,26,.85);color:#888;font-size:11px;cursor:pointer;
+  backdrop-filter:blur(4px);transition:all .15s;white-space:nowrap}
+.ctrl-btn:hover{border-color:#555;color:#bbb}
+.ctrl-btn.active{border-color:#5555cc;color:#9999ff;background:rgba(30,30,70,.9)}
+
+#hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  font-size:10px;color:#333;pointer-events:none;white-space:nowrap}
+
+/* ── side panel ── */
+#panel{width:208px;flex-shrink:0;background:#111118;border-left:1px solid #1a1a2a;
+  padding:14px 12px;display:flex;flex-direction:column;gap:14px;
+  font-size:12px;overflow-y:auto}
+.sec h3{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#444;
+  margin-bottom:6px;border-bottom:1px solid #1a1a2a;padding-bottom:3px}
+.row{display:flex;justify-content:space-between;padding:2px 0;color:#666}
+.row span:last-child{color:#b8b8d8;font-variant-numeric:tabular-nums;min-width:60px;text-align:right}
+.lg{display:flex;align-items:center;gap:7px;padding:2px 0;color:#777;font-size:11px}
+.sw{width:24px;height:4px;border-radius:2px;flex-shrink:0}
+
+#badge{margin-top:auto;padding:6px 8px;border-radius:6px;background:#141420;
+  border:1px solid #222230;font-size:11px;color:#555;text-align:center}
+#badge.ok{color:#44dd88;border-color:#224433}
+#badge.warn{color:#ddaa33;border-color:#554422}
+
+/* reset btn in panel */
+.reset-btn{width:100%;padding:5px;border-radius:5px;border:1px solid #2a2a40;
+  background:#18182a;color:#777;font-size:11px;cursor:pointer;transition:all .15s}
+.reset-btn:hover{border-color:#4444aa;color:#aaaaee}
+.reset-btn:active{background:#222240}
+.record-btn{width:100%;padding:5px;border-radius:5px;border:1px solid #443322;
+  background:#211814;color:#cc8866;font-size:11px;cursor:pointer;transition:all .15s}
+.record-btn:hover{border-color:#aa5533;color:#ffb088}
+.record-btn.active{border-color:#aa3333;color:#ff7777;background:#2a1515}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div id="ws-dot"></div>
+  <h1>R2P IMU · Orientation + Position</h1>
+  <span id="ws-label">Disconnected</span>
+  <div id="sensor-bar"></div>
+</div>
+
+<div id="main">
+  <div id="wrap">
+    <canvas id="c"></canvas>
+    <div id="controls">
+      <button class="ctrl-btn active" id="btn-follow">📍 Follow sensor</button>
+      <button class="ctrl-btn"        id="btn-trail" >〰 Trail: ON</button>
+      <button class="ctrl-btn"        id="btn-grid"  >⊞ Grid: ON</button>
+    </div>
+    <div id="hint">Drag to orbit · Scroll to zoom · Shift+drag to pan</div>
+  </div>
+
+  <div id="panel">
+    <div class="sec">
+      <h3>Sensor</h3>
+      <div class="row"><span>ID</span>    <span id="p-id">—</span></div>
+      <div class="row"><span>Device</span><span id="p-dev">—</span></div>
+      <div class="row"><span>Age</span>   <span id="p-age">—</span></div>
+    </div>
+
+    <div class="sec">
+      <h3>Position (m)</h3>
+      <div class="row"><span>X (right)</span>  <span id="px">—</span></div>
+      <div class="row"><span>Y (forward)</span><span id="py">—</span></div>
+      <div class="row"><span>Z (up)</span>     <span id="pz">—</span></div>
+    </div>
+
+    <div class="sec">
+      <h3>Velocity (m/s)</h3>
+      <div class="row"><span>X</span><span id="vx">—</span></div>
+      <div class="row"><span>Y</span><span id="vy">—</span></div>
+      <div class="row"><span>Z</span><span id="vz">—</span></div>
+      <div class="row"><span>Speed</span><span id="spd">—</span></div>
+    </div>
+
+    <div class="sec">
+      <h3>Quaternion</h3>
+      <div class="row"><span>W</span><span id="qw">—</span></div>
+      <div class="row"><span>X</span><span id="qx">—</span></div>
+      <div class="row"><span>Y</span><span id="qy">—</span></div>
+      <div class="row"><span>Z</span><span id="qz">—</span></div>
+    </div>
+
+    <div class="sec">
+      <h3>Accel (m/s²)</h3>
+      <div class="row"><span>X</span><span id="ax">—</span></div>
+      <div class="row"><span>Y</span><span id="ay">—</span></div>
+      <div class="row"><span>Z</span><span id="az">—</span></div>
+    </div>
+
+    <div class="sec">
+      <h3>Gyro (°/s)</h3>
+      <div class="row"><span>X</span><span id="gx">—</span></div>
+      <div class="row"><span>Y</span><span id="gy">—</span></div>
+      <div class="row"><span>Z</span><span id="gz">—</span></div>
+    </div>
+
+    <div class="sec">
+      <h3>Axis Legend</h3>
+      <div class="lg"><div class="sw" style="background:#ff4444"></div>Local X</div>
+      <div class="lg"><div class="sw" style="background:#44ff88"></div>Local Y</div>
+      <div class="lg"><div class="sw" style="background:#4488ff"></div>Local Z</div>
+    </div>
+
+    <button class="reset-btn" id="btn-reset">Initialize</button>
+    <button class="record-btn" id="btn-record">Record</button>
+    <div id="badge">Waiting for data…</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// 1.  RENDERER + SCENE
+// ═══════════════════════════════════════════════════════════════════
+const canvas   = document.getElementById('c');
+const wrap     = document.getElementById('wrap');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x0b0b11);
+renderer.shadowMap.enabled = true;
+
+const scene  = new THREE.Scene();
+scene.fog    = new THREE.Fog(0x0b0b11, 30, 80);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 200);
+camera.position.set(3, 2.5, 4);
+camera.lookAt(0, 0, 0);
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+sun.position.set(6, 10, 8);
+sun.castShadow = true;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x4466aa, 0.3);
+fill.position.set(-6, 2, -4);
+scene.add(fill);
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 2.  PIVOT (moves with position) + SPHERE + ARROWS
+// ═══════════════════════════════════════════════════════════════════
+// Everything that should move AND rotate lives under `pivot`.
+const pivot = new THREE.Object3D();
+scene.add(pivot);
+
+const skeleton = new THREE.Object3D();
+pivot.add(skeleton);
+
+const BONE_DEFS = [
+  ['pelvis','lumbar','c'], ['lumbar','chest','c'], ['chest','neck','c'], ['neck','head','c'], ['head','head_top','c'],
+  ['pelvis','hip_l','l'], ['hip_l','knee_l','l'], ['knee_l','ankle_l','l'], ['ankle_l','foot_l','l'],
+  ['pelvis','hip_r','r'], ['hip_r','knee_r','r'], ['knee_r','ankle_r','r'], ['ankle_r','foot_r','r'],
+  ['chest','shoulder_l','l'], ['shoulder_l','elbow_l','l'], ['elbow_l','wrist_l','l'], ['wrist_l','hand_l','l'],
+  ['chest','shoulder_r','r'], ['shoulder_r','elbow_r','r'], ['elbow_r','wrist_r','r'], ['wrist_r','hand_r','r'],
+  ['shoulder_l','shoulder_r','c'], ['hip_l','hip_r','c'],
+];
+const JOINT_NAMES = [...new Set(BONE_DEFS.flatMap(b => [b[0], b[1]]))];
+const BONE_COLORS = { c:0x38bdf8, l:0x34d399, r:0xf472b6 };
+const JOINT_COLORS = { c:0x00ffe0, l:0x34d399, r:0xf472b6 };
+
+const jointMeshes = {};
+const jointGeo = new THREE.SphereGeometry(0.035, 12, 12);
+JOINT_NAMES.forEach(name => {
+  const side = name.endsWith('_l') ? 'l' : name.endsWith('_r') ? 'r' : 'c';
+  const mesh = new THREE.Mesh(
+    jointGeo,
+    new THREE.MeshPhongMaterial({
+      color: JOINT_COLORS[side],
+      emissive: JOINT_COLORS[side],
+      emissiveIntensity: 0.45,
+      transparent: true,
+      opacity: 0.95,
+    })
+  );
+  mesh.castShadow = true;
+  skeleton.add(mesh);
+  jointMeshes[name] = mesh;
+});
+
+const boneMeshes = {};
+BONE_DEFS.forEach(([parent, child, side]) => {
+  const mesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, 1, 10),
+    new THREE.MeshPhongMaterial({
+      color: BONE_COLORS[side],
+      emissive: BONE_COLORS[side],
+      emissiveIntensity: 0.22,
+      transparent: true,
+      opacity: 0.88,
+    })
+  );
+  mesh.castShadow = true;
+  skeleton.add(mesh);
+  boneMeshes[`${parent}-${child}`] = mesh;
+});
+
+const LL = {
+  pelvis_h:0.92, pelvis_to_lumbar:0.10, lumbar:0.15, chest:0.20, neck:0.10, head:0.13,
+  thigh:0.42, shin:0.40, foot:0.17,
+  clavicle:0.175, upper_arm:0.30, forearm:0.26, hand:0.09,
+};
+
+function vadd(a,b){ return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
+function vscale(v,s){ return [v[0]*s, v[1]*s, v[2]*s]; }
+
+function neutralSkeletonJoints() {
+  const J = {};
+  const up = [0,1,0], down = [0,-1,0];
+  J.pelvis = [0, LL.pelvis_h, 0];
+  J.lumbar = vadd(J.pelvis, vscale(up, LL.pelvis_to_lumbar));
+  J.chest = vadd(J.lumbar, vscale(up, LL.lumbar));
+  J.neck = vadd(J.chest, vscale(up, LL.chest));
+  J.head = vadd(J.neck, vscale(up, LL.neck));
+  J.head_top = vadd(J.head, vscale(up, LL.head));
+  J.hip_l = vadd(J.pelvis, [-0.105,-0.05,0]);
+  J.knee_l = vadd(J.hip_l, vscale(down, LL.thigh));
+  J.ankle_l = vadd(J.knee_l, vscale(down, LL.shin));
+  J.foot_l = vadd(J.ankle_l, [0,-0.015,LL.foot]);
+  J.hip_r = vadd(J.pelvis, [0.105,-0.05,0]);
+  J.knee_r = vadd(J.hip_r, vscale(down, LL.thigh));
+  J.ankle_r = vadd(J.knee_r, vscale(down, LL.shin));
+  J.foot_r = vadd(J.ankle_r, [0,-0.015,LL.foot]);
+  J.shoulder_l = vadd(J.chest, [-LL.clavicle,0,0]);
+  J.elbow_l = vadd(J.shoulder_l, vscale(down, LL.upper_arm));
+  J.wrist_l = vadd(J.elbow_l, vscale(down, LL.forearm));
+  J.hand_l = vadd(J.wrist_l, vscale(down, LL.hand));
+  J.shoulder_r = vadd(J.chest, [LL.clavicle,0,0]);
+  J.elbow_r = vadd(J.shoulder_r, vscale(down, LL.upper_arm));
+  J.wrist_r = vadd(J.elbow_r, vscale(down, LL.forearm));
+  J.hand_r = vadd(J.wrist_r, vscale(down, LL.hand));
+  return J;
+}
+
+const _ba = new THREE.Vector3(), _bb = new THREE.Vector3();
+function updateBone(mesh, a, b) {
+  _ba.set(...a); _bb.set(...b);
+  const dir = _bb.clone().sub(_ba);
+  const len = dir.length();
+  if (len < 0.001) { mesh.visible = false; return; }
+  mesh.visible = true;
+  mesh.position.copy(_ba).addScaledVector(dir.normalize(), len / 2);
+  mesh.scale.set(1, len, 1);
+  mesh.setRotationFromQuaternion(
+    new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), dir.normalize())
+  );
+}
+
+function renderSkeleton() {
+  const joints = neutralSkeletonJoints();
+  for (const [name, pos] of Object.entries(joints)) {
+    jointMeshes[name].position.set(...pos);
+  }
+  BONE_DEFS.forEach(([parent, child]) => {
+    updateBone(boneMeshes[`${parent}-${child}`], joints[parent], joints[child]);
+  });
+}
+renderSkeleton();
+
+// Velocity arrow (shows current velocity direction/magnitude, attached to pivot)
+const velArrow = new THREE.ArrowHelper(
+  new THREE.Vector3(0,1,0), new THREE.Vector3(), 0, 0xffcc00, 0.18, 0.08
+);
+pivot.add(velArrow);
+
+// World-frame reference triad (static, near origin)
+const REF = new THREE.Object3D();
+REF.position.set(-3.5, 0, -3.5);
+scene.add(REF);
+function addRef(color, dir) {
+  const a = new THREE.ArrowHelper(dir, new THREE.Vector3(), 0.55, color, 0.12, 0.055);
+  a.line.material.opacity = 0.35; a.line.material.transparent = true;
+  a.cone.material.opacity = 0.35; a.cone.material.transparent = true;
+  REF.add(a);
+}
+addRef(0xff4444, new THREE.Vector3(1,0,0));
+addRef(0x44ff88, new THREE.Vector3(0,1,0));
+addRef(0x4488ff, new THREE.Vector3(0,0,1));
+
+// ref label (canvas texture)
+(function() {
+  const c2 = document.createElement('canvas'); c2.width=256; c2.height=48;
+  const cx  = c2.getContext('2d');
+  cx.fillStyle = 'rgba(160,160,210,0.55)'; cx.font='bold 22px sans-serif';
+  cx.fillText('world frame', 6, 34);
+  const sp  = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c2), transparent:true }));
+  sp.position.set(0, -0.5, 0); sp.scale.set(1.4, 0.28, 1);
+  REF.add(sp);
+})();
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 3.  FLOOR GRID
+// ═══════════════════════════════════════════════════════════════════
+const grid = new THREE.GridHelper(40, 40, 0x222233, 0x1a1a2a);
+grid.position.y = 0;
+scene.add(grid);
+
+// Shadow receiver plane
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(40,40),
+  new THREE.MeshStandardMaterial({ color: 0x0d0d18, transparent: true, opacity: 0.6, roughness:1 })
+);
+floor.rotation.x = -Math.PI/2;
+floor.position.y = -0.01;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// Axis labels at origin
+function makeAxisLabel(text, pos, color) {
+  const c2 = document.createElement('canvas'); c2.width=64; c2.height=64;
+  const cx  = c2.getContext('2d');
+  cx.fillStyle = color; cx.font = 'bold 44px sans-serif'; cx.textAlign='center';
+  cx.fillText(text, 32, 48);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c2), transparent:true }));
+  sp.position.copy(pos); sp.scale.set(0.4,0.4,1);
+  scene.add(sp);
+}
+makeAxisLabel('+X', new THREE.Vector3(2.2,  0.8, 0), '#ff6666');
+makeAxisLabel('+Y', new THREE.Vector3(0,    3.2, 0), '#66ff99');
+makeAxisLabel('+Z', new THREE.Vector3(0,    0.8, 2.2), '#6699ff');
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 4.  TRAIL
+// ═══════════════════════════════════════════════════════════════════
+const TRAIL_MAX = 600;
+const trailBuf  = new Float32Array(TRAIL_MAX * 3);
+let   trailLen  = 0;
+
+const trailGeo  = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailBuf, 3));
+trailGeo.setDrawRange(0, 0);
+
+const trailLine = new THREE.Line(
+  trailGeo,
+  new THREE.LineBasicMaterial({ color: 0x6666ff, transparent: true, opacity: 0.55, vertexColors: false })
+);
+scene.add(trailLine);
+
+let trailVisible = true;
+
+function pushTrail(x, y, z) {
+  if (!trailVisible) return;
+  if (trailLen < TRAIL_MAX) {
+    trailBuf.set([x, y, z], trailLen * 3);
+    trailLen++;
+  } else {
+    // shift buffer left by one point (fast native memmove)
+    trailBuf.copyWithin(0, 3);
+    trailBuf.set([x, y, z], (TRAIL_MAX - 1) * 3);
+  }
+  trailGeo.setDrawRange(0, trailLen);
+  trailGeo.attributes.position.needsUpdate = true;
+}
+
+function clearTrail() {
+  trailLen = 0;
+  trailGeo.setDrawRange(0, 0);
+  trailGeo.attributes.position.needsUpdate = true;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 5.  ORBIT CAMERA
+// ═══════════════════════════════════════════════════════════════════
+let theta = 0.8, phi = 1.1, radius = 6.5;
+let followSensor = true;
+let targetLook   = new THREE.Vector3();
+let currentLook  = new THREE.Vector3();
+
+function updateCamera() {
+  const lx = currentLook.x, ly = currentLook.y, lz = currentLook.z;
+  camera.position.set(
+    lx + radius * Math.sin(phi) * Math.sin(theta),
+    ly + radius * Math.cos(phi),
+    lz + radius * Math.sin(phi) * Math.cos(theta)
+  );
+  camera.lookAt(currentLook);
+}
+updateCamera();
+
+let isDrag = false, isShift = false, lastMX = 0, lastMY = 0;
+wrap.addEventListener('mousedown', e => {
+  isDrag = true; isShift = e.shiftKey; lastMX = e.clientX; lastMY = e.clientY;
+});
+window.addEventListener('mouseup',   () => isDrag = false);
+window.addEventListener('mousemove', e => {
+  if (!isDrag) return;
+  const dx = e.clientX - lastMX, dy = e.clientY - lastMY;
+  lastMX = e.clientX; lastMY = e.clientY;
+  if (isShift) {
+    // pan: move look-at point
+    const right = new THREE.Vector3(), up = new THREE.Vector3();
+    camera.getWorldDirection(new THREE.Vector3());
+    right.crossVectors(camera.getWorldDirection(new THREE.Vector3()), camera.up).normalize();
+    up.copy(camera.up);
+    targetLook.addScaledVector(right, -dx * 0.01);
+    targetLook.addScaledVector(up,     dy * 0.01);
+    followSensor = false;
+    document.getElementById('btn-follow').classList.remove('active');
+  } else {
+    theta -= dx * 0.007;
+    phi    = Math.max(0.05, Math.min(Math.PI - 0.05, phi + dy * 0.007));
+  }
+  updateCamera();
+});
+wrap.addEventListener('wheel', e => {
+  radius = Math.max(1.0, Math.min(40, radius + e.deltaY * 0.015));
+  updateCamera();
+  e.preventDefault();
+}, { passive:false });
+
+// Touch orbit
+let pt0x=0, pt0y=0, ptDist=0;
+wrap.addEventListener('touchstart', e => {
+  pt0x = e.touches[0].clientX; pt0y = e.touches[0].clientY;
+  if(e.touches.length===2) ptDist = Math.hypot(
+    e.touches[1].clientX-e.touches[0].clientX,
+    e.touches[1].clientY-e.touches[0].clientY);
+});
+wrap.addEventListener('touchmove', e => {
+  if(e.touches.length===1){
+    theta -= (e.touches[0].clientX-pt0x)*0.007;
+    phi    = Math.max(0.05,Math.min(Math.PI-0.05, phi+(e.touches[0].clientY-pt0y)*0.007));
+    pt0x = e.touches[0].clientX; pt0y = e.touches[0].clientY;
+    updateCamera();
+  } else if(e.touches.length===2){
+    const d = Math.hypot(e.touches[1].clientX-e.touches[0].clientX,
+                          e.touches[1].clientY-e.touches[0].clientY);
+    radius = Math.max(1,Math.min(40, radius-(d-ptDist)*0.04));
+    ptDist = d; updateCamera();
+  }
+  e.preventDefault();
+},{passive:false});
+
+// Resize
+function resize() {
+  const w=wrap.clientWidth, h=wrap.clientHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(wrap);
+resize();
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 6.  QUATERNION APPLICATION
+//     IMU world frame (Z-up): X=right, Y=forward, Z=up
+//     Three.js (Y-up):        X=right, Y=up,      Z=backward
+//     Mapping: imu(x,y,z) → three(x, z, -y)
+// ═══════════════════════════════════════════════════════════════════
+// Three.js axes are Y-up; the IMU firmware is Z-up.
+// To align: apply a fixed -90° rotation about X to bring Z-up → Y-up.
+const FRAME_FIX = new THREE.Quaternion().setFromAxisAngle(
+  new THREE.Vector3(1,0,0), -Math.PI/2
+);
+
+let initialized = false;
+let initPos = [0,0,0];
+let initQuat = new THREE.Quaternion();
+let smoothRoot = new THREE.Vector3();
+const rawQuat = new THREE.Quaternion();
+const displayQuat = new THREE.Quaternion();
+
+function initializeFromMessage(msg) {
+  if (!msg || !msg.q || !msg.pos) return;
+  initPos = msg.pos.slice();
+  const [w,x,y,z] = msg.q;
+  initQuat.set(x, y, z, w).normalize().premultiply(FRAME_FIX);
+  smoothRoot.set(0, 0, 0);
+  pivot.position.set(0, 0, 0);
+  pivot.quaternion.identity();
+  targetLook.set(0, LL.pelvis_h, 0);
+  currentLook.copy(targetLook);
+  clearTrail();
+  initialized = true;
+  badge.textContent = 'Initialized: neutral forward set';
+  badge.className = 'ok';
+}
+
+function applySensorData(w, x, y, z, pos, vel) {
+  if (!initialized) {
+    initializeFromMessage({ q:[w,x,y,z], pos });
+  }
+
+  // Orientation
+  rawQuat.set(x, y, z, w).normalize().premultiply(FRAME_FIX);
+  displayQuat.copy(rawQuat).multiply(initQuat.clone().invert());
+  pivot.setRotationFromQuaternion(displayQuat);
+
+  // Position (remap Z-up → Three.js Y-up)
+  const rx = pos[0] - initPos[0];
+  const ry = pos[1] - initPos[1];
+  const rz = pos[2] - initPos[2];
+  const tx = Math.abs(rx) < 0.003 ? 0 : rx;
+  const ty = Math.max(-0.03, Math.abs(rz) < 0.01 ? 0 : rz);
+  const tz = Math.abs(ry) < 0.003 ? 0 : -ry;
+  smoothRoot.lerp(new THREE.Vector3(tx, ty, tz), 0.28);
+  pivot.position.copy(smoothRoot);
+  pushTrail(smoothRoot.x, smoothRoot.y + LL.pelvis_h, smoothRoot.z);
+
+  // Velocity arrow (length clamped to 2 units)
+  const speed = Math.sqrt(vel[0]**2 + vel[1]**2 + vel[2]**2);
+  if (speed > 0.02) {
+    const vd = new THREE.Vector3( vel[0]/speed,  vel[2]/speed, -vel[1]/speed);
+    velArrow.setDirection(vd);
+    velArrow.setLength(Math.min(speed * 0.8, 2.0), 0.18, 0.08);
+    velArrow.visible = true;
+  } else {
+    velArrow.visible = false;
+  }
+
+  // Camera follow
+  if (followSensor) {
+    targetLook.set(smoothRoot.x, smoothRoot.y + LL.pelvis_h, smoothRoot.z);
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 7.  RENDER LOOP
+// ═══════════════════════════════════════════════════════════════════
+function animate() {
+  requestAnimationFrame(animate);
+  // Smooth camera lerp toward target
+  currentLook.lerp(targetLook, 0.08);
+  updateCamera();
+  renderer.render(scene, camera);
+}
+animate();
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 8.  WEBSOCKET
+// ═══════════════════════════════════════════════════════════════════
+const WS_URL = 'ws://localhost:8765';
+const dot    = document.getElementById('ws-dot');
+const wsLbl  = document.getElementById('ws-label');
+const badge  = document.getElementById('badge');
+const sBar   = document.getElementById('sensor-bar');
+const recBtn = document.getElementById('btn-record');
+
+const f3 = n => (typeof n==='number' ? n.toFixed(3) : '—');
+const f2 = n => (typeof n==='number' ? n.toFixed(2) : '—');
+
+let activeSensor = null;
+const latest = {};
+let ws = null;
+let recording = false;
+let recordingFrames = 0;
+const ROOT_SENSOR_ID = 'pelvis';
+
+function selectSensor(id) {
+  const changed = activeSensor !== id;
+  activeSensor = id;
+  document.querySelectorAll('.sbtn').forEach(b => b.classList.toggle('active', b.dataset.id===id));
+  if (changed && id === ROOT_SENSOR_ID) {
+    initialized = false;
+    clearTrail();
+  }
+}
+
+function ensureBtn(id) {
+  if (document.querySelector(`.sbtn[data-id="${id}"]`)) return;
+  const b = document.createElement('button');
+  b.className = 'sbtn'; b.textContent = id; b.dataset.id = id;
+  b.addEventListener('click', () => selectSensor(id));
+  sBar.appendChild(b);
+  if (id === ROOT_SENSOR_ID || !activeSensor) selectSensor(id);
+}
+
+function onPacket(msg) {
+  if (msg.type === 'recording') {
+    onRecordingStatus(msg);
+    return;
+  }
+
+  if (recording) {
+    recordingFrames += 1;
+    const target = activeSensor || 'all';
+    recBtn.textContent = `Stop (${target}, ${recordingFrames})`;
+  }
+
+  latest[msg.sensor_id] = msg;
+  ensureBtn(msg.sensor_id);
+
+  const [w,x,y,z] = msg.q;
+  const vel   = msg.vel   || [0,0,0];
+  const pos   = msg.pos   || [0,0,0];
+  if (msg.sensor_id === ROOT_SENSOR_ID) {
+    applySensorData(w,x,y,z, pos, vel);
+  } else if (!latest[ROOT_SENSOR_ID]) {
+    badge.textContent = 'Waiting for PELVIS root IMU';
+    badge.className = 'warn';
+  }
+
+  if (msg.sensor_id !== activeSensor) return;
+
+  document.getElementById('p-id').textContent  = msg.sensor_id;
+  document.getElementById('p-dev').textContent = msg.device.replace(/^R2P-/,'');
+  document.getElementById('px').textContent  = f3(pos[0]);
+  document.getElementById('py').textContent  = f3(pos[1]);
+  document.getElementById('pz').textContent  = f3(pos[2]);
+  document.getElementById('vx').textContent  = f3(vel[0]);
+  document.getElementById('vy').textContent  = f3(vel[1]);
+  document.getElementById('vz').textContent  = f3(vel[2]);
+  const spd = Math.sqrt(vel[0]**2+vel[1]**2+vel[2]**2);
+  document.getElementById('spd').textContent = f3(spd) + ' m/s';
+  document.getElementById('qw').textContent  = f3(w);
+  document.getElementById('qx').textContent  = f3(x);
+  document.getElementById('qy').textContent  = f3(y);
+  document.getElementById('qz').textContent  = f3(z);
+  document.getElementById('ax').textContent  = f2(msg.accel[0]);
+  document.getElementById('ay').textContent  = f2(msg.accel[1]);
+  document.getElementById('az').textContent  = f2(msg.accel[2]);
+  document.getElementById('gx').textContent  = f2(msg.gyro[0]);
+  document.getElementById('gy').textContent  = f2(msg.gyro[1]);
+  document.getElementById('gz').textContent  = f2(msg.gyro[2]);
+}
+
+function onRecordingStatus(msg) {
+  recording = !!msg.recording;
+  recordingFrames = msg.frame_count || 0;
+  recBtn.classList.toggle('active', recording);
+  if (recording) {
+    const target = msg.sensor_id || 'all';
+    recBtn.textContent = `Stop (${target}, ${msg.frame_count || 0})`;
+  } else {
+    recBtn.textContent = 'Record';
+    if (msg.file) {
+      const parts = msg.file.split(/[\\/]/);
+      badge.textContent = `Saved ${parts[parts.length - 1]}`;
+      badge.className = 'ok';
+    }
+  }
+}
+
+// Age display (100ms tick)
+setInterval(() => {
+  if (!activeSensor || !latest[activeSensor]) return;
+  const age = (Date.now()/1000) - latest[activeSensor].ts;
+  document.getElementById('p-age').textContent = f2(age) + ' s';
+  badge.textContent = age < 1 ? '● Live' : `⚠ Stale  (${f2(age)}s)`;
+  badge.className   = age < 1 ? 'ok'     : 'warn';
+}, 100);
+
+// WS connect with auto-reconnect
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen  = () => { dot.classList.add('ok'); wsLbl.textContent = 'Connected'; };
+  ws.onmessage = e => { try { onPacket(JSON.parse(e.data)); } catch {} };
+  ws.onclose = ws.onerror = () => {
+    dot.classList.remove('ok'); wsLbl.textContent = 'Reconnecting…';
+    badge.textContent = '● Disconnected'; badge.className = 'warn';
+    setTimeout(connect, 2000);
+  };
+}
+connect();
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 9.  UI BUTTONS
+// ═══════════════════════════════════════════════════════════════════
+
+// Follow toggle
+document.getElementById('btn-follow').addEventListener('click', function() {
+  followSensor = !followSensor;
+  this.classList.toggle('active', followSensor);
+  if (followSensor && activeSensor && latest[activeSensor]) {
+    targetLook.set(smoothRoot.x, smoothRoot.y + LL.pelvis_h, smoothRoot.z);
+  }
+});
+
+// Trail toggle
+let trailOn = true;
+document.getElementById('btn-trail').addEventListener('click', function() {
+  trailOn = !trailOn; trailVisible = trailOn;
+  trailLine.visible = trailOn;
+  this.textContent  = `〰 Trail: ${trailOn?'ON':'OFF'}`;
+  this.classList.toggle('active', trailOn);
+  if (!trailOn) clearTrail();
+});
+document.getElementById('btn-trail').classList.add('active');
+
+// Grid toggle
+let gridOn = true;
+document.getElementById('btn-grid').addEventListener('click', function() {
+  gridOn = !gridOn;
+  grid.visible = floor.visible = gridOn;
+  this.textContent = `⊞ Grid: ${gridOn?'ON':'OFF'}`;
+  this.classList.toggle('active', gridOn);
+});
+document.getElementById('btn-grid').classList.add('active');
+
+// Initialize spatial coordinate and facing direction
+document.getElementById('btn-reset').addEventListener('click', () => {
+  if (!ws || ws.readyState !== 1) return;
+  const rootId = latest[ROOT_SENSOR_ID] ? ROOT_SENSOR_ID : activeSensor;
+  const cmd = rootId
+    ? { cmd:'reset_pos', sensor_id: rootId }
+    : { cmd:'reset_all' };
+  ws.send(JSON.stringify(cmd));
+  initialized = false;
+  smoothRoot.set(0,0,0);
+  clearTrail();
+  pivot.position.set(0,0,0);
+  pivot.quaternion.identity();
+  targetLook.set(0, LL.pelvis_h, 0);
+  currentLook.copy(targetLook);
+  if (latest[ROOT_SENSOR_ID]) {
+    initializeFromMessage(latest[ROOT_SENSOR_ID]);
+  } else {
+    badge.textContent = 'Waiting for PELVIS root IMU';
+    badge.className = 'warn';
+  }
+});
+
+// Recording
+recBtn.addEventListener('click', () => {
+  if (!ws || ws.readyState !== 1) return;
+  if (recording) {
+    ws.send(JSON.stringify({ cmd:'record_stop' }));
+  } else {
+    ws.send(JSON.stringify({ cmd:'record_start', sensor_id: activeSensor }));
+  }
+});
+</script>
+</body>
+</html>

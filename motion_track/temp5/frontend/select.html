@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2P — Select Test</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f1117; --surface: #181c27; --border: rgba(255,255,255,0.08);
+  --text: #e8e6de; --muted: #888680;
+  --accent: #4f9cf9; --green: #3ecf8e; --amber: #f5a623; --red: #e74c3c;
+  --radius: 12px; --gap: 14px;
+}
+body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; font-size:14px; min-height:100vh; display:flex; flex-direction:column; }
+
+header { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; border-bottom:1px solid var(--border); background:var(--surface); flex-shrink:0; gap:12px; }
+header h1 { font-size:16px; font-weight:600; letter-spacing:.3px; white-space:nowrap; }
+.nav-links { display:flex; align-items:center; gap:4px; }
+.nav-link { font-size:12px; padding:5px 11px; border-radius:6px; border:1px solid transparent; color:var(--muted); text-decoration:none; transition:all .15s; white-space:nowrap; }
+.nav-link:hover { background:rgba(255,255,255,.06); color:var(--text); }
+.nav-link.active { background:rgba(79,156,249,.12); border-color:rgba(79,156,249,.3); color:var(--accent); }
+.nav-sep { width:1px; height:16px; background:var(--border); margin:0 4px; }
+.badge { font-size:11px; font-weight:500; padding:4px 8px; border-radius:20px; background:rgba(255,255,255,0.08); color:var(--muted); }
+.badge.ok   { background:rgba(62,207,142,.15); color:var(--green); }
+.badge.warn { background:rgba(245,166,35,.15);  color:var(--amber); }
+.badge.err  { background:rgba(231,76,60,.15);   color:var(--red); }
+.header-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+
+.main { width:100%; max-width:1200px; margin:0 auto; padding:28px 20px 120px; }
+.page-title { font-size:30px; font-weight:700; margin-bottom:8px; }
+.page-sub { font-size:14px; color:var(--muted); margin-bottom:34px; line-height:1.6; }
+
+.sensor-banner {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px; border-radius:8px;
+  background:rgba(79,156,249,.07); border:1px solid rgba(79,156,249,.18);
+  font-size:12px; color:var(--muted);
+  margin-bottom:24px;
+}
+.sensor-banner .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.sensor-banner.live { background:rgba(62,207,142,.07); border-color:rgba(62,207,142,.2); }
+
+.group-section { margin-bottom:40px; }
+.group-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.group-label { font-size:11px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
+.group-count { font-size:11px; color:var(--muted); }
+
+.test-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+
+.test-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:20px; cursor:pointer;
+  transition:border-color .18s,transform .15s,background .18s,box-shadow .18s;
+  display:flex; flex-direction:column; gap:14px; min-height:220px; position:relative; overflow:hidden;
+}
+.test-card:hover { transform:translateY(-3px); border-color:rgba(79,156,249,.45); background:rgba(79,156,249,.05); box-shadow:0 10px 30px rgba(0,0,0,.18); }
+.test-card.selected { border-color:var(--accent); background:linear-gradient(180deg,rgba(79,156,249,.12),rgba(79,156,249,.04)); box-shadow:0 0 0 1px rgba(79,156,249,.15),0 10px 30px rgba(0,0,0,.22); }
+.test-card.unavailable { opacity:.45; cursor:not-allowed; }
+.test-card.unavailable:hover { transform:none; border-color:var(--border); background:var(--surface); box-shadow:none; }
+
+.test-top { display:flex; align-items:flex-start; justify-content:space-between; }
+.test-icon { font-size:36px; line-height:1; }
+.test-name { font-size:16px; font-weight:600; }
+.test-desc { font-size:13px; color:var(--muted); line-height:1.6; flex:1; }
+.test-meta { display:flex; flex-wrap:wrap; gap:8px; }
+.meta-pill { font-size:11px; padding:4px 9px; border-radius:999px; background:rgba(255,255,255,.06); color:var(--muted); border:1px solid rgba(255,255,255,.05); }
+
+.sensor-row { margin-top:auto; }
+.sensor-ok   { font-size:12px; color:var(--green); line-height:1.5; }
+.sensor-warn { font-size:12px; color:var(--amber); line-height:1.5; }
+
+.cta-row { position:fixed; bottom:0; left:0; right:0; background:rgba(15,17,23,.92); backdrop-filter:blur(10px); border-top:1px solid var(--border); padding:16px 24px; display:flex; align-items:center; justify-content:center; z-index:50; }
+.cta-inner { width:100%; max-width:1200px; display:flex; align-items:center; justify-content:space-between; gap:20px; }
+.selected-info { font-size:13px; color:var(--muted); }
+.btn { padding:12px 28px; border-radius:var(--radius); border:none; font-size:14px; font-weight:600; cursor:pointer; transition:transform .15s,filter .15s,opacity .15s; }
+.btn.primary { background:var(--accent); color:#fff; }
+.btn.primary:hover { filter:brightness(1.1); transform:translateY(-1px); }
+.btn.primary:disabled { opacity:.4; cursor:not-allowed; transform:none; filter:none; }
+
+.loading { text-align:center; color:var(--muted); padding:70px 0; font-style:italic; }
+
+@media (max-width:900px) {
+  .page-title { font-size:24px; }
+  .test-grid { grid-template-columns:1fr; }
+  .cta-inner { flex-direction:column; align-items:stretch; }
+  .btn.primary { width:100%; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>R2P · Select Test</h1>
+  <nav class="nav-links">
+    <!-- FIX: backend serves calibrate page at "/" not "/calibrate" -->
+    <a href="/"          class="nav-link">Calibrate</a>
+    <a href="/select"    class="nav-link active">Select test</a>
+    <a href="/test"      class="nav-link">Live</a>
+    <a href="/review"    class="nav-link">Review</a>
+    <div class="nav-sep"></div>
+    <a href="/settings"  class="nav-link">⚙ Settings</a>
+  </nav>
+  <div class="header-right">
+    <span class="badge" id="sensor-badge">scanning…</span>
+    <span class="badge" id="calib-badge">uncalibrated</span>
+  </div>
+</header>
+
+<div class="main">
+  <div class="page-title">What would you like to test?</div>
+  <div class="page-sub">Select a biomechanics protocol to begin realtime IMU analysis and movement assessment.</div>
+
+  <div class="sensor-banner" id="sensor-banner">
+    <div class="dot" id="sensor-dot" style="background:var(--muted)"></div>
+    <span id="sensor-banner-text">Checking sensors…</span>
+  </div>
+
+  <div id="protocol-container">
+    <div class="loading">Loading protocols…</div>
+  </div>
+</div>
+
+<div class="cta-row">
+  <div class="cta-inner">
+    <div class="selected-info" id="selected-info">No test selected</div>
+    <button class="btn primary" id="btn-start" disabled onclick="startSelectedTest()">Start Test →</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+let selectedTestId = null;
+let protocols      = {};
+let pollTimer      = null;
+let lastSensorKey  = '';
+
+async function loadProtocols() {
+  try {
+    const res = await fetch('/protocols');
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    const key = Object.entries(data)
+      .map(([id, p]) => id + ':' + p.can_run + ':' + (p.missing_sensors||[]).join(','))
+      .join('|');
+    if (key !== lastSensorKey) { lastSensorKey = key; protocols = data; renderProtocols(data); }
+    updateSensorBanner(data);
+  } catch(err) {
+    console.error('loadProtocols:', err);
+    document.getElementById('protocol-container').innerHTML =
+      '<div class="loading">Failed to load protocols — retrying…</div>';
+  }
+}
+
+function startPolling() { loadProtocols(); pollTimer = setInterval(loadProtocols, 2000); }
+function stopPolling()  { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+window.addEventListener('beforeunload', stopPolling);
+
+function updateSensorBanner(all) {
+  const active = [...new Set(Object.values(all).flatMap(p => p.active_sensors || []))];
+  const n = active.length;
+  const banner=doc('sensor-banner'), dot=doc('sensor-dot'), text=doc('sensor-banner-text');
+  const badge=doc('sensor-badge'), calib=doc('calib-badge');
+  if (n === 0) {
+    banner.className='sensor-banner'; dot.style.background='var(--amber)';
+    text.textContent='No IMU sensors detected yet — waiting for BLE connection…';
+    badge.textContent='no sensors'; badge.className='badge warn';
+  } else {
+    banner.className='sensor-banner live'; dot.style.background='var(--green)';
+    text.textContent=n+' sensor'+(n>1?'s':'')+' live: '+active.map(s=>s.replaceAll('_',' ')).join(', ');
+    badge.textContent=n+' sensor'+(n>1?'s':'')+' connected'; badge.className='badge ok';
+  }
+  const pelvisActive = active.includes('pelvis');
+  calib.textContent = pelvisActive ? 'pelvis live' : 'uncalibrated';
+  calib.className   = 'badge ' + (pelvisActive ? 'ok' : 'warn');
+}
+
+function renderProtocols(all) {
+  const container = doc('protocol-container'); container.innerHTML = '';
+  const groups = {
+    muscle_condition: { label:'Muscle Condition', items:[] },
+    sports:           { label:'Sports',           items:[] },
+    balance:          { label:'Balance',          items:[] },
+  };
+  for (const [id, p] of Object.entries(all)) { const g=groups[p.group]; if (g) g.items.push({id,...p}); }
+  for (const group of Object.values(groups)) {
+    if (!group.items.length) continue;
+    const section = document.createElement('div'); section.className='group-section';
+    section.innerHTML=`<div class="group-header"><div class="group-label">${group.label}</div><div class="group-count">${group.items.length} protocol${group.items.length>1?'s':''}</div></div>`;
+    const grid = document.createElement('div'); grid.className='test-grid';
+    for (const p of group.items) {
+      const unavailable = !p.can_run;
+      const card = document.createElement('div');
+      card.className = 'test-card' + (unavailable ? ' unavailable' : '');
+      if (p.id === selectedTestId && !unavailable) card.classList.add('selected');
+      card.dataset.id = p.id;
+      const sensorHtml = unavailable
+        ? `<div class="sensor-warn">⚠ Missing: ${(p.missing_sensors||[]).map(s=>s.replaceAll('_',' ')).join(', ')}</div>`
+        : `<div class="sensor-ok">✓ ${p.required_sensors.length===1?p.required_sensors[0].replaceAll('_',' '):p.required_sensors.length+' sensors'} ready</div>`;
+      card.innerHTML=`<div class="test-top"><div class="test-icon">${p.icon||'📊'}</div><div class="meta-pill">${p.record_duration}s</div></div><div class="test-name">${p.name}</div><div class="test-desc">${p.description}</div><div class="test-meta">${p.sport?`<div class="meta-pill">${p.sport}</div>`:''}</div><div class="sensor-row">${sensorHtml}</div>`;
+      if (!unavailable) card.addEventListener('click', () => selectTest(p.id, card));
+      grid.appendChild(card);
+    }
+    section.appendChild(grid); container.appendChild(section);
+  }
+  if (selectedTestId && protocols[selectedTestId]?.can_run) doc('btn-start').disabled = false;
+}
+
+function selectTest(id, cardEl) {
+  document.querySelectorAll('.test-card').forEach(c => c.classList.remove('selected'));
+  cardEl.classList.add('selected'); selectedTestId = id;
+  const p = protocols[id];
+  doc('btn-start').disabled = false;
+  doc('selected-info').textContent = `Selected: ${p.name} · ${p.record_duration}s`;
+}
+
+function startSelectedTest() {
+  if (!selectedTestId) return; stopPolling(); location.href = `/test?id=${selectedTestId}`;
+}
+
+function doc(id) { return document.getElementById(id); }
+startPolling();
+</script>
+</body>
+</html>

@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2P — Live Session</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #181c27; --border: rgba(255,255,255,0.08);
+    --text: #e8e6de; --muted: #888680; --accent: #4f9cf9;
+    --green: #3ecf8e; --amber: #f5a623; --red: #e74c3c;
+    --radius: 10px; --gap: 14px;
+  }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; font-size:14px; min-height:100vh; display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; border-bottom:1px solid var(--border); background:var(--surface); flex-shrink:0; gap:12px; }
+  header h1 { font-size:16px; font-weight:600; white-space:nowrap; }
+  .nav-links { display:flex; align-items:center; gap:4px; }
+  .nav-link { font-size:12px; padding:5px 11px; border-radius:6px; border:1px solid transparent; color:var(--muted); text-decoration:none; transition:all .15s; white-space:nowrap; }
+  .nav-link:hover { background:rgba(255,255,255,.06); color:var(--text); }
+  .nav-link.active { background:rgba(79,156,249,.12); border-color:rgba(79,156,249,.3); color:var(--accent); }
+  .nav-sep { width:1px; height:16px; background:var(--border); margin:0 4px; }
+  .status-row { display:flex; gap:10px; align-items:center; flex-shrink:0; }
+  .badge { font-size:11px; font-weight:500; padding:3px 8px; border-radius:20px; background:rgba(255,255,255,0.08); color:var(--muted); }
+  .badge.ok   { background:rgba(62,207,142,.15); color:var(--green); }
+  .badge.warn { background:rgba(245,166,35,.15);  color:var(--amber); }
+  .badge.err  { background:rgba(231,76,60,.15);   color:var(--red); }
+  .main { flex:1; display:grid; grid-template-columns:270px 1fr 270px; gap:var(--gap); padding:var(--gap); min-height:0; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; }
+  .card-title { font-size:11px; font-weight:600; letter-spacing:.8px; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+  .gauge-grid { display:flex; flex-direction:column; gap:9px; }
+  .gauge { display:flex; flex-direction:column; gap:3px; }
+  .gauge-label { font-size:11px; color:var(--muted); }
+  .gauge-row { display:flex; align-items:center; gap:8px; }
+  .gauge-bar-bg { flex:1; height:5px; background:rgba(255,255,255,0.07); border-radius:3px; overflow:hidden; }
+  .gauge-bar { height:100%; border-radius:3px; transition:width .2s, background .3s; width:0%; }
+  .gauge-val { font-size:12px; font-weight:500; min-width:52px; text-align:right; }
+  .bm-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .bm-count-row { display:flex; align-items:baseline; gap:5px; }
+  .bm-count-big { font-size:22px; font-weight:700; line-height:1; }
+  .bm-count-den { font-size:12px; color:var(--muted); }
+  .bm-mode { display:flex; gap:4px; width:100%; }
+  .bm-btn { flex:1; padding:4px 5px; font-size:11px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all .15s; }
+  .bm-btn.on { background:rgba(79,156,249,.12); border-color:var(--accent); color:var(--accent); }
+  .leg-row { display:flex; gap:10px; }
+  .lpill { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--muted); }
+  .lpill-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .center-col { display:flex; flex-direction:column; gap:var(--gap); min-height:0; }
+  .charts-row { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
+  .chart-card { position:relative; height:240px; display:flex; flex-direction:column; }
+  .chart-card canvas.canvas2d { position:absolute; top:35px; left:0; right:0; bottom:0; width:100%; height:calc(100% - 35px); display:block; }
+  .chart-no-data { position:absolute; top:35px; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px; pointer-events:none; }
+  #skel-card { position:relative; height:240px; display:flex; flex-direction:column; overflow:hidden; }
+  #skel-canvas { position:absolute; top:35px; left:0; right:0; bottom:0; width:100%; height:calc(100% - 35px); display:block; }
+  #skel-no-data { position:absolute; top:35px; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px; pointer-events:none; z-index:2; }
+  #skel-badge { position:absolute; bottom:6px; right:8px; font-size:10px; color:var(--muted); opacity:.7; pointer-events:none; z-index:2; }
+  #skel-pos-hud { position:absolute; top:40px; left:8px; font-size:10px; color:rgba(136,134,128,0.7); pointer-events:none; z-index:2; line-height:1.7; font-variant-numeric:tabular-nums; background:rgba(13,17,26,0.5); padding:3px 6px; border-radius:4px; }
+  .stat-row { display:flex; gap:var(--gap); }
+  .stat-box { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .stat-num { font-size:28px; font-weight:700; line-height:1; }
+  .stat-lbl { font-size:11px; color:var(--muted); }
+  .right-col { display:flex; flex-direction:column; gap:var(--gap); }
+  .btn { width:100%; padding:9px 14px; border-radius:var(--radius); border:1px solid var(--border); font-size:13px; font-weight:500; cursor:pointer; transition:background .15s; background:transparent; color:var(--text); }
+  .btn:hover { background:rgba(255,255,255,0.05); }
+  .btn.primary { background:var(--accent); color:#fff; border-color:transparent; }
+  .btn.primary:hover { filter:brightness(1.1); }
+  .btn.danger  { background:rgba(231,76,60,.12); border-color:rgba(231,76,60,.3); color:var(--red); }
+  .btn.warn-btn { background:rgba(245,166,35,.1); border-color:rgba(245,166,35,.3); color:var(--amber); }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .btn-row { display:flex; gap:6px; }
+  .btn-row .btn { flex:1; padding:7px 8px; font-size:12px; }
+  .session-status { padding:10px 12px; border-radius:var(--radius); border:1px solid var(--border); font-size:12px; color:var(--muted); min-height:38px; word-break:break-all; }
+  .feed { display:flex; flex-direction:column; gap:6px; max-height:200px; overflow-y:auto; }
+  .feed-item { font-size:12px; padding:7px 10px; border-radius:7px; border-left:3px solid var(--accent); background:rgba(79,156,249,.06); color:var(--text); line-height:1.5; }
+  .feed-item.warn { border-color:var(--amber); background:rgba(245,166,35,.06); }
+  .feed-item.bad  { border-color:var(--red);   background:rgba(231,76,60,.06); }
+
+  /* ── Gait / direction / action HUD ── */
+  .motion-hud { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .hud-cell { background:rgba(255,255,255,.03); border-radius:8px; padding:8px 10px; }
+  .hud-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px; }
+  .hud-value { font-size:15px; font-weight:600; color:var(--text); line-height:1.2; font-variant-numeric:tabular-nums; }
+  .hud-value.idle    { color:var(--muted); }
+  .hud-value.walk    { color:var(--green); }
+  .hud-value.jog     { color:var(--amber); }
+  .hud-value.run     { color:var(--red); }
+  .hud-value.jumping   { color:var(--accent); }
+  .hud-value.squatting { color:var(--amber); }
+
+  /* ── Mode toggle ── */
+  .mode-seg { display:flex; gap:4px; }
+  .mseg-btn { flex:1; padding:5px 6px; font-size:11px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all .15s; }
+  .mseg-btn.on { background:rgba(79,156,249,.12); border-color:var(--accent); color:var(--accent); }
+
+  /* ── Direction status ── */
+  .dir-status { font-size:11px; color:var(--muted); padding:6px 8px; border-radius:6px; background:rgba(255,255,255,.03); border:1px solid var(--border); line-height:1.5; }
+  .dir-status.ok { border-color:rgba(62,207,142,.3); color:var(--green); background:rgba(62,207,142,.04); }
+  .status-msg { font-size:11px; color:var(--muted); margin-top:4px; min-height:14px; }
+  .status-msg.ok  { color:var(--green); }
+  .status-msg.err { color:var(--red); }
+
+  @media (max-width:900px) { .main { grid-template-columns:1fr; } .charts-row { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>R2P · Live Session</h1>
+  <nav class="nav-links">
+    <!-- FIX: calibrate page is served at "/" not "/calibrate" -->
+    <a href="/"          class="nav-link">Calibrate</a>
+    <a href="/select"    class="nav-link">Select test</a>
+    <a href="/test"      class="nav-link active">Live</a>
+    <a href="/review"    class="nav-link">Review</a>
+    <div class="nav-sep"></div>
+    <a href="/settings"  class="nav-link">&#9881; Settings</a>
+  </nav>
+  <div class="status-row">
+    <span class="badge" id="ws-badge">connecting&hellip;</span>
+    <span class="badge" id="calib-badge">uncalibrated</span>
+    <span class="badge" id="rec-badge">idle</span>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ════ LEFT ════ -->
+  <div style="display:flex;flex-direction:column;gap:var(--gap)">
+
+    <div class="card">
+      <div class="card-title">IMU sensors</div>
+      <div class="bm-wrap">
+        <div style="width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div class="bm-count-row">
+            <span class="bm-count-big" id="bm-count">0</span>
+            <span class="bm-count-den" id="bm-total">/ 6</span>
+          </div>
+          <div class="bm-mode">
+            <button class="bm-btn on" id="bm-btn-c" onclick="setBMMode('consumer')">Consumer</button>
+            <button class="bm-btn"    id="bm-btn-p" onclick="setBMMode('pro')">Pro</button>
+          </div>
+        </div>
+        <svg width="120" height="280" viewBox="0 0 170 390">
+          <ellipse cx="85" cy="28" rx="18" ry="21" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <rect x="80" y="46" width="10" height="11" rx="2" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <path d="M57 56 Q52 65 50 98 Q49 122 52 142 Q65 147 85 147 Q105 147 118 142 Q121 122 120 98 Q118 65 113 56 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <path d="M57 60 Q45 63 41 82 Q38 98 41 114 Q47 118 52 114 Q53 98 55 82 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <path d="M113 60 Q125 63 129 82 Q132 98 129 114 Q123 118 118 114 Q117 98 115 82 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <path d="M41 114 Q38 126 38 142 Q41 150 46 148 Q51 147 51 142 Q51 128 52 114 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <path d="M129 114 Q132 126 132 142 Q129 150 124 148 Q119 147 119 142 Q119 128 118 114 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <path d="M52 142 Q50 155 52 167 Q65 172 85 172 Q105 172 118 167 Q120 155 118 142 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <path d="M52 167 Q49 186 50 210 Q53 220 60 221 Q67 221 68 210 Q67 186 66 169 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <path d="M118 167 Q121 186 120 210 Q117 220 110 221 Q103 221 102 210 Q103 186 104 169 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <path d="M50 221 Q48 246 50 271 Q53 281 60 281 Q67 281 67 271 Q67 246 68 221 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <path d="M120 221 Q122 246 120 271 Q117 281 110 281 Q103 281 103 271 Q103 246 102 221 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <path d="M50 281 Q48 291 50 299 Q53 305 62 305 Q70 304 72 298 Q70 290 67 281 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <path d="M120 281 Q122 291 120 299 Q117 305 108 305 Q100 304 98 298 Q100 290 103 281 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <g class="bm-pro" style="opacity:0.2"><circle cx="85" cy="10" r="7" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="85" cy="10" r="4" id="bmdot-head" fill="#e74c3c"/></g>
+          <g><circle cx="85" cy="85" r="8" fill="var(--bg)" stroke="rgba(255,255,255,.28)" stroke-width="1.5"/><circle cx="85" cy="85" r="4.5" id="bmdot-chest" fill="#e74c3c"/></g>
+          <g><circle cx="85" cy="155" r="10" fill="var(--bg)" stroke="rgba(255,255,255,.35)" stroke-width="2"/><circle cx="85" cy="155" r="5.5" id="bmdot-pelvis" fill="#e74c3c"/><text x="97" y="159" font-size="7" fill="rgba(255,255,255,.25)" font-family="system-ui">ROOT</text></g>
+          <g class="bm-pro" style="opacity:0.2"><circle cx="54" cy="61" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="54" cy="61" r="3.5" id="bmdot-l_shoulder" fill="#e74c3c"/></g>
+          <g class="bm-pro" style="opacity:0.2"><circle cx="116" cy="61" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="116" cy="61" r="3.5" id="bmdot-r_shoulder" fill="#e74c3c"/></g>
+          <g class="bm-pro" style="opacity:0.2"><circle cx="43" cy="89" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="43" cy="89" r="3.5" id="bmdot-l_upper_arm" fill="#e74c3c"/></g>
+          <g class="bm-pro" style="opacity:0.2"><circle cx="127" cy="89" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="127" cy="89" r="3.5" id="bmdot-r_upper_arm" fill="#e74c3c"/></g>
+          <g class="bm-pro" style="opacity:0.2"><circle cx="42" cy="131" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="42" cy="131" r="3.5" id="bmdot-l_forearm" fill="#e74c3c"/></g>
+          <g class="bm-pro" style="opacity:0.2"><circle cx="128" cy="131" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="128" cy="131" r="3.5" id="bmdot-r_forearm" fill="#e74c3c"/></g>
+          <g><circle cx="59" cy="192" r="8" fill="var(--bg)" stroke="rgba(255,255,255,.28)" stroke-width="1.5"/><circle cx="59" cy="192" r="4.5" id="bmdot-thigh_l" fill="#e74c3c"/></g>
+          <g><circle cx="111" cy="192" r="8" fill="var(--bg)" stroke="rgba(255,255,255,.28)" stroke-width="1.5"/><circle cx="111" cy="192" r="4.5" id="bmdot-thigh_r" fill="#e74c3c"/></g>
+          <g><circle cx="59" cy="250" r="8" fill="var(--bg)" stroke="rgba(255,255,255,.28)" stroke-width="1.5"/><circle cx="59" cy="250" r="4.5" id="bmdot-shin_l" fill="#e74c3c"/></g>
+          <g><circle cx="111" cy="250" r="8" fill="var(--bg)" stroke="rgba(255,255,255,.28)" stroke-width="1.5"/><circle cx="111" cy="250" r="4.5" id="bmdot-shin_r" fill="#e74c3c"/></g>
+          <g class="bm-pro" style="opacity:0.2"><circle cx="61" cy="293" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="61" cy="293" r="3.5" id="bmdot-l_foot" fill="#e74c3c"/></g>
+          <g class="bm-pro" style="opacity:0.2"><circle cx="109" cy="293" r="6" fill="var(--bg)" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/><circle cx="109" cy="293" r="3.5" id="bmdot-r_foot" fill="#e74c3c"/></g>
+        </svg>
+        <div class="leg-row">
+          <div class="lpill"><div class="lpill-dot" style="background:#3ecf8e"></div>connected</div>
+          <div class="lpill"><div class="lpill-dot" style="background:#e74c3c"></div>off</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Stability</div>
+      <div class="gauge-grid">
+        <div class="gauge"><div class="gauge-label">Sway velocity</div>
+          <div class="gauge-row"><div class="gauge-bar-bg"><div class="gauge-bar" id="bar-sway"></div></div><div class="gauge-val" id="val-sway">&#8212;</div></div></div>
+        <div class="gauge"><div class="gauge-label">Stability score</div>
+          <div class="gauge-row"><div class="gauge-bar-bg"><div class="gauge-bar" id="bar-stab"></div></div><div class="gauge-val" id="val-stab">&#8212;</div></div></div>
+        <div class="gauge"><div class="gauge-label">Sway CV</div>
+          <div class="gauge-row"><div class="gauge-bar-bg"><div class="gauge-bar" id="bar-cv"></div></div><div class="gauge-val" id="val-cv">&#8212;</div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Symmetry</div>
+      <div class="gauge-grid">
+        <div class="gauge"><div class="gauge-label">Knee L</div>
+          <div class="gauge-row"><div class="gauge-bar-bg"><div class="gauge-bar" id="bar-kl"></div></div><div class="gauge-val" id="val-kl">&#8212;</div></div></div>
+        <div class="gauge"><div class="gauge-label">Knee R</div>
+          <div class="gauge-row"><div class="gauge-bar-bg"><div class="gauge-bar" id="bar-kr"></div></div><div class="gauge-val" id="val-kr">&#8212;</div></div></div>
+        <div class="gauge"><div class="gauge-label">L/R asymmetry</div>
+          <div class="gauge-row"><div class="gauge-bar-bg"><div class="gauge-bar" id="bar-asym"></div></div><div class="gauge-val" id="val-asym">&#8212;</div></div></div>
+        <div class="gauge"><div class="gauge-label">Smoothness</div>
+          <div class="gauge-row"><div class="gauge-bar-bg"><div class="gauge-bar" id="bar-jerk"></div></div><div class="gauge-val" id="val-jerk">&#8212;</div></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════ CENTRE ════ -->
+  <div class="center-col">
+
+    <div class="charts-row">
+
+      <div class="card chart-card" id="skel-card">
+        <div class="card-title">3D skeleton</div>
+        <canvas id="skel-canvas"></canvas>
+        <div id="skel-no-data">Waiting for IMU data&hellip;</div>
+        <div id="skel-pos-hud"></div>
+        <div id="skel-badge"></div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-title">Stability over time</div>
+        <canvas id="line-canvas" class="canvas2d"></canvas>
+        <div class="chart-no-data" id="line-no-data">Waiting for IMU data&hellip;</div>
+      </div>
+    </div>
+
+    <!-- ── Motion HUD: gait / direction / action / speed ── -->
+    <div class="card">
+      <div class="card-title">Motion state</div>
+      <div class="motion-hud">
+        <div class="hud-cell">
+          <div class="hud-label">Gait</div>
+          <div class="hud-value idle" id="hud-gait">idle</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-label">Action</div>
+          <div class="hud-value idle" id="hud-action">none</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-label">Move dir</div>
+          <div class="hud-value" id="hud-movedir">—</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-label">Heading</div>
+          <div class="hud-value" id="hud-heading">—</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-label">Speed</div>
+          <div class="hud-value" id="hud-speed">— m/s</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-label">Turn</div>
+          <div class="hud-value" id="hud-turn">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-box"><div class="stat-num" id="stat-reps" style="color:var(--accent)">&#8212;</div><div class="stat-lbl">Reps</div></div>
+      <div class="stat-box"><div class="stat-num" id="stat-phase" style="font-size:18px;color:var(--muted)">&#8212;</div><div class="stat-lbl">Phase</div></div>
+      <div class="stat-box"><div class="stat-num" id="stat-fatigue" style="color:var(--green)">&#8212;</div><div class="stat-lbl">Fatigue</div></div>
+      <div class="stat-box"><div class="stat-num" id="stat-frames" style="font-size:18px;color:var(--muted)">0</div><div class="stat-lbl">Frames</div></div>
+    </div>
+
+  </div>
+
+  <!-- ════ RIGHT ════ -->
+  <div class="right-col">
+
+    <div class="card">
+      <div class="card-title">Session</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn primary" id="btn-start" onclick="startSession()">Start recording</button>
+        <button class="btn danger"  id="btn-stop"  onclick="stopSession()" disabled>Stop recording</button>
+        <div class="session-status" id="session-status">No session active.</div>
+      </div>
+    </div>
+
+    <!-- ── Motion mode + direction + re-zero ── -->
+    <div class="card">
+      <div class="card-title">Motion setup</div>
+
+      <!-- Mode -->
+      <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Translation mode</div>
+      <div class="mode-seg" style="margin-bottom:10px">
+        <button class="mseg-btn on" id="mseg-test" onclick="setMotionMode('test')">Test (bounce)</button>
+        <button class="mseg-btn"    id="mseg-user" onclick="setMotionMode('user')">User (legs)</button>
+      </div>
+
+      <!-- Direction -->
+      <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Forward direction</div>
+      <div class="btn-row" style="margin-bottom:6px">
+        <button class="btn" onclick="setForward()" style="font-size:12px;padding:6px">➡ Set fwd</button>
+        <button class="btn" id="btn-fwd-right" onclick="setRight()" disabled style="font-size:12px;padding:6px">↩ Confirm right</button>
+        <button class="btn warn-btn" onclick="flipForward()" style="font-size:12px;padding:6px" title="Flip if avatar walks backward">⇄ Flip</button>
+      </div>
+      <div class="dir-status" id="dir-status-live">No forward set.</div>
+      <div class="status-msg" id="dir-msg-live"></div>
+
+      <!-- Re-zero -->
+      <div style="height:8px"></div>
+      <button class="btn warn-btn" onclick="reZero()">📡 Re-zero IMU (T-pose)</button>
+      <div class="status-msg" id="rezero-msg"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Calibration</div>
+      <div style="font-size:12px;line-height:1.6;color:var(--muted)" id="calib-info">Checking&hellip;</div>
+      <a href="/" style="display:block;margin-top:8px;font-size:12px;color:var(--accent);text-decoration:none">&#8592; Re-calibrate</a>
+    </div>
+
+    <div class="card" id="card-review" style="display:none">
+      <div class="card-title">Session complete</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px" id="review-info"></div>
+      <a id="link-review" href="/review" style="display:block;width:100%;padding:10px;border-radius:var(--radius);background:var(--accent);color:#fff;text-align:center;font-size:13px;font-weight:500;text-decoration:none">
+        View AI coaching report &#8594;
+      </a>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Coaching feed</div>
+      <div class="feed" id="coaching-feed">
+        <div class="feed-item">Waiting for session data&hellip;</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════
+   BONE / JOINT DEFS
+══════════════════════════════════════════════════════ */
+const BONE_DEFS = [
+  ['pelvis','lumbar','c'],['lumbar','chest','c'],['chest','neck','c'],
+  ['neck','head','c'],['head','head_top','c'],
+  ['pelvis','hip_l','l'],['hip_l','knee_l','l'],['knee_l','ankle_l','l'],['ankle_l','foot_l','l'],
+  ['pelvis','hip_r','r'],['hip_r','knee_r','r'],['knee_r','ankle_r','r'],['ankle_r','foot_r','r'],
+  ['chest','shoulder_l','l'],['shoulder_l','elbow_l','l'],['elbow_l','wrist_l','l'],['wrist_l','hand_l','l'],
+  ['chest','shoulder_r','r'],['shoulder_r','elbow_r','r'],['elbow_r','wrist_r','r'],['wrist_r','hand_r','r'],
+  ['shoulder_l','shoulder_r','c'],['hip_l','hip_r','c'],
+];
+const JOINT_NAMES  = [...new Set(BONE_DEFS.flatMap(b => [b[0], b[1]]))];
+const BONE_COLORS  = { c:0x38bdf8, l:0x22c55e, r:0xff4d6d };
+const JOINT_COLORS = { c:0x00e5ff, l:0x22c55e, r:0xff4d6d };
+
+/* ══════════════════════════════════════════════════════
+   MATH HELPERS  (ported from the standalone animator)
+══════════════════════════════════════════════════════ */
+function _qmul(a,b){return[a[0]*b[0]-a[1]*b[1]-a[2]*b[2]-a[3]*b[3],a[0]*b[1]+a[1]*b[0]+a[2]*b[3]-a[3]*b[2],a[0]*b[2]-a[1]*b[3]+a[2]*b[0]+a[3]*b[1],a[0]*b[3]+a[1]*b[2]-a[2]*b[1]+a[3]*b[0]];}
+function _qconj(q){return[q[0],-q[1],-q[2],-q[3]];}
+function _qrot(q,v){const r=_qmul(_qmul(q,[0,...v]),_qconj(q));return[r[1],r[2],r[3]];}
+function _qnorm(q){const n=Math.hypot(...q);return n<1e-9?[1,0,0,0]:q.map(x=>x/n);}
+// Build a quaternion from axis+angle (axis = unit [x,y,z], angle in radians)
+function _axAngle(ax,a){const h=a/2,s=Math.sin(h);return _qnorm([Math.cos(h),ax[0]*s,ax[1]*s,ax[2]*s]);}
+// Add two [x,y,z] positions
+function _padd(a,b){return[a[0]+b[0],a[1]+b[1],a[2]+b[2]];}
+// Scale a [x,y,z] vector
+function _psc(v,s){return[v[0]*s,v[1]*s,v[2]*s];}
+// Scalar lerp
+function _lerp(a,b,t){return a+(b-a)*t;}
+// Vector lerp (joint positions)
+function _vlerp(a,b,t){return[_lerp(a[0],b[0],t),_lerp(a[1],b[1],t),_lerp(a[2],b[2],t)];}
+
+/* ══════════════════════════════════════════════════════
+   THREE.JS STATE
+══════════════════════════════════════════════════════ */
+let skelRenderer, skelScene, skelCamera;
+let jointMeshes = {}, boneMeshes = {};
+let skelGrid = null, skelPtLight = null;
+let skelSpherical = { theta:0.3, phi:1.05, r:2.6 };
+let skelTarget;
+let isDragging = false, prevMouse = { x:0, y:0 };
+let skelInited = false;
+
+// ── Animation state ───────────────────────────────────
+// "target" joints: latest raw positions from the WebSocket (updated ~50 fps)
+// "display" joints: smoothed version, updated every rAF (~60 fps) by lerping toward target
+let targetJoints  = null;   // set by handleMessage → updateCharts
+let displayJoints = null;   // lerped each rAF frame, then rendered
+
+// Procedural animation clock and state (driven by msg.gait + msg.action)
+let _procT  = 0;            // seconds since last session start, advances each rAF
+let _lastRAF = 0;           // previous rAF timestamp for dt
+
+// Current gait/action received from the backend — updated by updateMotionHUD()
+let _liveGait   = 'idle';   // 'idle' | 'walk' | 'jog' | 'run'
+let _liveAction = 'none';   // 'none' | 'jumping' | 'squatting'
+
+// Joint lerp speed: higher = snappier, lower = smoother
+// 0.18 at 60 fps ≈ ~2-frame lag, which removes jitter without visible delay
+const JOINT_LERP = 0.18;
+
+/* ══════════════════════════════════════════════════════
+   PROCEDURAL SECONDARY MOTION
+   These functions return per-joint OFFSETS in world space
+   that are ADDED on top of the lerped IMU positions.
+   They are intentionally subtle so they don't fight the IMU data.
+══════════════════════════════════════════════════════ */
+
+// Idle: gentle sway + breathing bob
+function _procIdle(t, joints) {
+  if (!joints) return {};
+  const sway  = Math.sin(t * 0.9)  * 0.008;   // very slight lateral sway
+  const breath= Math.sin(t * 0.35) * 0.006;   // slow chest rise
+  return {
+    chest:      [sway*0.4, breath, 0],
+    neck:       [sway*0.5, breath*0.5, 0],
+    head:       [sway*0.6, breath*0.3, 0],
+    head_top:   [sway*0.7, breath*0.2, 0],
+    shoulder_l: [sway*0.3, breath*0.5, 0],
+    shoulder_r: [sway*0.3, breath*0.5, 0],
+    elbow_l:    [sway*0.2, 0, 0],
+    elbow_r:    [sway*0.2, 0, 0],
+    wrist_l:    [sway*0.15, 0, 0],
+    wrist_r:    [sway*0.15, 0, 0],
+    hand_l:     [sway*0.1, 0, 0],
+    hand_r:     [sway*0.1, 0, 0],
+  };
+}
+
+// Walk/jog: arm swing + pelvis roll + subtle head bob
+// speed = 0.9 for walk, 1.5 for jog, 2.0 for run (cadence factor)
+function _procWalk(t, joints, speed) {
+  if (!joints) return {};
+  const phi    = 2 * Math.PI * speed * t;
+  const armAmp = speed < 1.2 ? 0.045 : speed < 1.8 ? 0.075 : 0.11;  // bigger swing when faster
+  const bobAmp = speed < 1.2 ? 0.008 : speed < 1.8 ? 0.012 : 0.018;
+
+  // Arm swing: opposite phase L vs R
+  const armSwingL = Math.sin(phi + Math.PI) * armAmp;
+  const armSwingR = Math.sin(phi)           * armAmp;
+
+  // Elbow follows upper arm but with slight lag (half amplitude)
+  const elbowL = Math.sin(phi + Math.PI) * armAmp * 0.5;
+  const elbowR = Math.sin(phi)           * armAmp * 0.5;
+
+  // Vertical head bob (twice per stride cycle)
+  const headBob = Math.abs(Math.sin(phi)) * bobAmp;
+
+  // Pelvis lateral lean
+  const pelvisLean = Math.sin(phi) * 0.006;
+
+  return {
+    shoulder_l: [0, 0,  armSwingL],
+    elbow_l:    [0, 0,  elbowL],
+    wrist_l:    [0, 0,  elbowL * 0.4],
+    hand_l:     [0, 0,  elbowL * 0.2],
+    shoulder_r: [0, 0,  armSwingR],
+    elbow_r:    [0, 0,  elbowR],
+    wrist_r:    [0, 0,  elbowR * 0.4],
+    hand_r:     [0, 0,  elbowR * 0.2],
+    head:       [0, headBob, 0],
+    head_top:   [0, headBob, 0],
+    neck:       [0, headBob * 0.5, 0],
+    pelvis:     [pelvisLean, 0, 0],
+    lumbar:     [pelvisLean * 0.5, 0, 0],
+  };
+}
+
+// Jump: vertical lift on whole skeleton during flight
+function _procJump(t, joints, action) {
+  if (!joints || action !== 'jumping') return {};
+  // Use a fast sine pulse — backend fires action='jumping' for ~0.8s
+  // We modulate a 0..1 envelope using a simple oscillation
+  const lift = Math.abs(Math.sin(_procT * 3.5)) * 0.18;
+  const tuck = Math.abs(Math.sin(_procT * 3.5)) * 0.06;
+  return {
+    // Pull knees up during flight — shift knee and ankle upward
+    knee_l:  [0, tuck, 0],
+    knee_r:  [0, tuck, 0],
+    ankle_l: [0, tuck * 0.7, 0],
+    ankle_r: [0, tuck * 0.7, 0],
+    foot_l:  [0, tuck * 0.5, 0],
+    foot_r:  [0, tuck * 0.5, 0],
+    // Arms lift slightly on takeoff
+    shoulder_l: [0, lift * 0.15, 0],
+    shoulder_r: [0, lift * 0.15, 0],
+    elbow_l:    [0, lift * 0.1, 0],
+    elbow_r:    [0, lift * 0.1, 0],
+  };
+}
+
+// Squat: draw the whole torso down during descent
+function _procSquat(t, joints, action) {
+  if (!joints || action !== 'squatting') return {};
+  const depth = Math.abs(Math.sin(_procT * 1.8)) * 0.12;
+  // Apply downward offset to everything above the pelvis
+  const offsets = {};
+  const spineJoints = ['lumbar','chest','neck','head','head_top','shoulder_l','shoulder_r','elbow_l','elbow_r','wrist_l','wrist_r','hand_l','hand_r'];
+  spineJoints.forEach(j => { offsets[j] = [0, -depth, 0]; });
+  // Arms extend slightly forward for balance
+  offsets.wrist_l = [0, -depth, depth * 0.5];
+  offsets.wrist_r = [0, -depth, depth * 0.5];
+  offsets.hand_l  = [0, -depth, depth * 0.5];
+  offsets.hand_r  = [0, -depth, depth * 0.5];
+  return offsets;
+}
+
+// Master: pick the right procedural layer based on gait+action
+function _applyProcedural(joints, gait, action, t) {
+  let offsets = {};
+
+  if (action === 'jumping') {
+    offsets = _procJump(t, joints, action);
+  } else if (action === 'squatting') {
+    offsets = _procSquat(t, joints, action);
+  } else {
+    switch (gait) {
+      case 'walk': offsets = _procWalk(t, joints, 0.9);  break;
+      case 'jog':  offsets = _procWalk(t, joints, 1.5);  break;
+      case 'run':  offsets = _procWalk(t, joints, 2.0);  break;
+      default:     offsets = _procIdle(t, joints);        break;
+    }
+  }
+
+  // Blend offsets INTO the display joints
+  // Scale: 0 = pure IMU, 1 = full procedural on top
+  // We use partial blend (0.6) so real IMU data still dominates
+  const BLEND = 0.6;
+  const result = {};
+  for (const name of Object.keys(joints)) {
+    const base = joints[name];
+    const off  = offsets[name];
+    if (off) {
+      result[name] = [
+        base[0] + off[0] * BLEND,
+        base[1] + off[1] * BLEND,
+        base[2] + off[2] * BLEND,
+      ];
+    } else {
+      result[name] = base;
+    }
+  }
+  return result;
+}
+
+/* ══════════════════════════════════════════════════════
+   THREE.JS INIT
+══════════════════════════════════════════════════════ */
+function initSkeleton() {
+  const canvas = document.getElementById('skel-canvas');
+  if (!canvas || typeof THREE === 'undefined') return;
+  const W = canvas.offsetWidth || 300, H = canvas.offsetHeight || 205;
+
+  skelRenderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+  skelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  skelRenderer.setSize(W, H, false);
+  skelRenderer.setClearColor(0x07090d, 1);
+
+  skelScene  = new THREE.Scene();
+  skelScene.fog = new THREE.Fog(0x07090d, 8, 22);   // depth fog like the animator
+
+  skelTarget = new THREE.Vector3(0, 0.5, 0);
+  skelCamera = new THREE.PerspectiveCamera(52, W/H, 0.01, 100);
+  updateSkelCamera();
+
+  // Lighting — matches the animator's vivid setup
+  skelScene.add(new THREE.AmbientLight(0x0d1a2a, 3));
+  const d1 = new THREE.DirectionalLight(0x00ffe0, 1.4); d1.position.set(3, 5, 3); skelScene.add(d1);
+  const d2 = new THREE.DirectionalLight(0xff3c6e, 0.5); d2.position.set(-4, 2, -2); skelScene.add(d2);
+  // Point light that follows the chest
+  skelPtLight = new THREE.PointLight(0x00ffe0, 0.6, 5);
+  skelPtLight.position.set(0, 1.3, 0);
+  skelScene.add(skelPtLight);
+
+  // Grid
+  skelGrid = new THREE.GridHelper(30, 60, 0x1c2230, 0x1c2230);
+  skelGrid.position.y = -0.92; skelScene.add(skelGrid);
+
+  // Floor glow plane
+  const fGeo = new THREE.PlaneGeometry(30, 30);
+  const fMat = new THREE.MeshBasicMaterial({ color:0x00ffe0, transparent:true, opacity:0.02, side:THREE.DoubleSide });
+  const floor = new THREE.Mesh(fGeo, fMat);
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -0.91;
+  skelScene.add(floor);
+
+  // Joint spheres — slightly larger and more emissive than before
+  const jGeo = new THREE.SphereGeometry(0.022, 10, 10);
+  JOINT_NAMES.forEach(name => {
+    const side = name.endsWith('_l') ? 'l' : name.endsWith('_r') ? 'r' : 'c';
+    const mat  = new THREE.MeshPhongMaterial({
+      color: JOINT_COLORS[side], emissive: JOINT_COLORS[side],
+      emissiveIntensity: 0.5, transparent: true, opacity: 0.9,
+    });
+    const mesh = new THREE.Mesh(jGeo, mat); mesh.visible = false;
+    skelScene.add(mesh); jointMeshes[name] = mesh;
+  });
+
+  // Bone cylinders
+  BONE_DEFS.forEach(([pa, ch, side]) => {
+    const geo = new THREE.CylinderGeometry(0.013, 0.013, 1, 8);
+    const mat = new THREE.MeshPhongMaterial({
+      color: BONE_COLORS[side], emissive: BONE_COLORS[side],
+      emissiveIntensity: 0.2, transparent: true, opacity: 0.82,
+    });
+    const mesh = new THREE.Mesh(geo, mat); mesh.visible = false;
+    skelScene.add(mesh); boneMeshes[`${pa}-${ch}`] = mesh;
+  });
+
+  // Controls
+  const cvs = canvas;
+  cvs.addEventListener('mousedown', e => { isDragging = true; prevMouse = { x:e.clientX, y:e.clientY }; });
+  window.addEventListener('mouseup', () => { isDragging = false; });
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    skelSpherical.theta -= (e.clientX - prevMouse.x) * 0.006;
+    skelSpherical.phi = Math.max(0.1, Math.min(Math.PI-0.1, skelSpherical.phi + (e.clientY - prevMouse.y) * 0.006));
+    prevMouse = { x:e.clientX, y:e.clientY }; updateSkelCamera();
+  });
+  cvs.addEventListener('wheel', e => {
+    skelSpherical.r = Math.max(0.8, Math.min(10, skelSpherical.r + e.deltaY * 0.004));
+    updateSkelCamera();
+  }, { passive:true });
+  let lastTouch = null;
+  cvs.addEventListener('touchstart', e => { if (e.touches.length===1) lastTouch={x:e.touches[0].clientX,y:e.touches[0].clientY}; }, {passive:true});
+  cvs.addEventListener('touchmove', e => {
+    if (e.touches.length===1 && lastTouch) {
+      skelSpherical.theta -= (e.touches[0].clientX-lastTouch.x)*0.005;
+      skelSpherical.phi = Math.max(0.1,Math.min(Math.PI-0.1,skelSpherical.phi+(e.touches[0].clientY-lastTouch.y)*0.005));
+      lastTouch={x:e.touches[0].clientX,y:e.touches[0].clientY}; updateSkelCamera();
+    }
+  }, {passive:true});
+  cvs.addEventListener('touchend', () => { lastTouch = null; });
+  window.addEventListener('resize', () => {
+    const c = document.getElementById('skel-canvas'); if (!c||!skelRenderer) return;
+    skelRenderer.setSize(c.offsetWidth||300, c.offsetHeight||205, false);
+    skelCamera.aspect = (c.offsetWidth||300)/(c.offsetHeight||205);
+    skelCamera.updateProjectionMatrix();
+  });
+
+  skelInited = true;
+  _lastRAF = performance.now();
+  animateSkel();
+}
+
+function updateSkelCamera() {
+  skelCamera.position.set(
+    skelTarget.x + skelSpherical.r * Math.sin(skelSpherical.phi) * Math.sin(skelSpherical.theta),
+    skelTarget.y + skelSpherical.r * Math.cos(skelSpherical.phi),
+    skelTarget.z + skelSpherical.r * Math.sin(skelSpherical.phi) * Math.cos(skelSpherical.theta)
+  );
+  skelCamera.lookAt(skelTarget);
+}
+
+const _va = new THREE.Vector3(), _vb = new THREE.Vector3();
+function updateBone(mesh, pa, pb) {
+  _va.set(...pa); _vb.set(...pb);
+  const dir = _vb.clone().sub(_va), len = dir.length();
+  if (len < 0.001) { mesh.visible = false; return; }
+  mesh.visible = true;
+  mesh.position.copy(_va).addScaledVector(dir.normalize(), len/2);
+  mesh.scale.set(1, len, 1);
+  mesh.setRotationFromQuaternion(
+    new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize())
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   ANIMATION LOOP
+   Each rAF tick:
+   1. Compute dt, advance procedural clock
+   2. Lerp displayJoints → targetJoints  (removes jitter)
+   3. Apply procedural secondary motion   (adds life)
+   4. Place joint spheres + bone cylinders
+   5. Camera follow, grid snap, HUD
+   6. Render
+══════════════════════════════════════════════════════ */
+function animateSkel() {
+  requestAnimationFrame(animateSkel);
+  if (!skelInited || !skelRenderer) return;
+
+  const now = performance.now();
+  const dt  = Math.min((now - _lastRAF) / 1000, 0.05);
+  _lastRAF  = now;
+  _procT   += dt;
+
+  // ── 1. Lerp displayed joints toward latest IMU targets ──
+  if (targetJoints) {
+    if (!displayJoints) {
+      // First frame: snap immediately so there's no jump from origin
+      displayJoints = {};
+      for (const name of Object.keys(targetJoints)) {
+        displayJoints[name] = targetJoints[name].slice();
+      }
+    } else {
+      // Smooth lerp — runs at rAF speed regardless of WS packet rate
+      for (const name of Object.keys(targetJoints)) {
+        const tgt = targetJoints[name];
+        const cur = displayJoints[name];
+        if (!cur) { displayJoints[name] = tgt.slice(); continue; }
+        displayJoints[name] = _vlerp(cur, tgt, JOINT_LERP);
+      }
+    }
+  }
+
+  if (!displayJoints) { skelRenderer.render(skelScene, skelCamera); return; }
+
+  // ── 2. Apply procedural secondary motion ──
+  const renderedJoints = _applyProcedural(displayJoints, _liveGait, _liveAction, _procT);
+
+  // ── 3. Place joints ──
+  JOINT_NAMES.forEach(name => {
+    const pos = renderedJoints[name], m = jointMeshes[name];
+    if (pos) { m.position.set(pos[0], pos[1], pos[2]); m.visible = true; }
+    else      { m.visible = false; }
+  });
+
+  // ── 4. Update bones ──
+  BONE_DEFS.forEach(([pa, ch]) => {
+    const m = boneMeshes[`${pa}-${ch}`];
+    const a = renderedJoints[pa], b = renderedJoints[ch];
+    if (a && b) updateBone(m, a, b); else m.visible = false;
+  });
+
+  // ── 5. Point light follows chest ──
+  const chest = renderedJoints['chest'];
+  if (chest && skelPtLight) {
+    skelPtLight.position.set(chest[0], chest[1] + 0.3, chest[2]);
+  }
+
+  // ── 6. Camera follow — lerp target toward pelvis ──
+  const pelvis = renderedJoints['pelvis'];
+  if (pelvis) {
+    const CLRP = 0.06;
+    skelTarget.x += (pelvis[0]       - skelTarget.x) * CLRP;
+    skelTarget.z += (pelvis[2]       - skelTarget.z) * CLRP;
+    skelTarget.y += (pelvis[1] - 0.5 - skelTarget.y) * CLRP;
+    updateSkelCamera();
+  }
+
+  // ── 7. Snap grid under pelvis (1 m steps, no visual slide) ──
+  if (skelGrid && pelvis) {
+    skelGrid.position.x = Math.round(pelvis[0]);
+    skelGrid.position.z = Math.round(pelvis[2]);
+  }
+
+  // ── 8. HUD ──
+  const hud = document.getElementById('skel-pos-hud');
+  if (hud && pelvis) {
+    hud.textContent = `X ${pelvis[0].toFixed(2)}  Y ${pelvis[1].toFixed(2)}  Z ${pelvis[2].toFixed(2)}`;
+  }
+
+  skelRenderer.render(skelScene, skelCamera);
+}
+
+window.addEventListener('load', () => setTimeout(initSkeleton, 50));
+
+/* ══════════════════════════════════════════════════════
+   SENSOR CONFIG
+══════════════════════════════════════════════════════ */
+const CONSUMER_IDS    = ['chest','pelvis','thigh_l','thigh_r','shin_l','shin_r'];
+const PRO_IDS         = ['head','l_shoulder','r_shoulder','l_upper_arm','r_upper_arm','l_forearm','r_forearm','l_foot','r_foot'];
+const ALL_IDS         = [...CONSUMER_IDS, ...PRO_IDS];
+const LINE_MAX_POINTS = 150;
+let ws = null, sessionId = null, bmMode = 'consumer', frameCount = 0;
+const lineBuf = [];
+let lastCoachTS = 0;
+
+function stampSession(sid, started_at, stopped_at) {
+  if (!sid) return;
+  try {
+    const key = 'r2p_session_' + sid, prev = JSON.parse(localStorage.getItem(key)||'{}'), next={...prev};
+    if (started_at) next.started_at = started_at;
+    if (stopped_at) next.stopped_at = stopped_at;
+    localStorage.setItem(key, JSON.stringify(next));
+  } catch(e) { console.warn('stamp failed:', e); }
+}
+
+function setBMMode(mode) {
+  bmMode = mode;
+  doc('bm-btn-c').className = 'bm-btn' + (mode==='consumer' ? ' on' : '');
+  doc('bm-btn-p').className = 'bm-btn' + (mode==='pro'      ? ' on' : '');
+  document.querySelectorAll('.bm-pro').forEach(el => { el.style.opacity = mode==='pro' ? '1' : '0.2'; });
+  updateSensors(_lastSensors);
+}
+
+let _lastSensors = [];
+function updateSensors(active) {
+  _lastSensors = active || [];
+  ALL_IDS.forEach(id => {
+    const d = document.getElementById('bmdot-' + id);
+    if (d) d.style.fill = _lastSensors.includes(id) ? '#3ecf8e' : '#e74c3c';
+  });
+  const rel = bmMode==='consumer' ? CONSUMER_IDS : ALL_IDS;
+  setText('bm-count', rel.filter(id => _lastSensors.includes(id)).length);
+  setText('bm-total', '/ ' + rel.length);
+}
+
+/* ══════════════════════════════════════════════════════
+   WEBSOCKET
+══════════════════════════════════════════════════════ */
+function connect() {
+  ws = new WebSocket('ws://' + location.host + '/ws/imu');
+  ws.onopen  = () => { setBadge('ws-badge', 'connected', 'ok'); startPing(); };
+  ws.onclose = () => { setBadge('ws-badge', 'disconnected', 'err'); setTimeout(connect, 2000); };
+  ws.onerror = () =>   setBadge('ws-badge', 'error', 'err');
+  ws.onmessage = e => handleMessage(JSON.parse(e.data));
+}
+function startPing() { setInterval(() => { if (ws && ws.readyState===1) ws.send('ping'); }, 5000); }
+
+function handleMessage(msg) {
+  if (!msg || !msg.type) return;
+  if (msg.type === 'init') {
+    setBadge('calib-badge', msg.calibrated ? 'calibrated' : 'uncalibrated', msg.calibrated ? 'ok' : 'warn');
+    setBadge('rec-badge', msg.recording ? 'recording' : 'idle', msg.recording ? 'warn' : '');
+    updateSensors(msg.sensors || []);
+    updateCalibInfo(msg.calibrated);
+    if (msg.test_id) setText('session-status', 'Active: ' + msg.test_id);
+  }
+  if (msg.type === 'frame') {
+    frameCount++;
+    updateSensors(msg.sensors || []);
+    updateMetrics(msg.metrics);
+    updateMotionHUD(msg);
+    updateCharts(msg);
+    runCoachRules(msg.metrics);
+    setText('stat-frames', frameCount);
+  }
+  if (msg.type === 'session_started') {
+    sessionId = msg.session_id;
+    stampSession(sessionId, new Date().toISOString(), null);
+    setText('session-status', 'Recording: ' + (sessionId||'').slice(0,8) + '…');
+    setBadge('rec-badge', 'recording', 'warn');
+    doc('btn-start').disabled = true; doc('btn-stop').disabled = false;
+    doc('card-review').style.display = 'none';
+    frameCount = 0; lineBuf.length = 0; targetJoints = null; displayJoints = null; _procT = 0;
+    if (skelTarget) { skelTarget.set(0, 0.5, 0); updateSkelCamera(); }
+  }
+  if (msg.type === 'session_stopped') {
+    stampSession(msg.session_id, null, new Date().toISOString());
+    setBadge('rec-badge', 'idle', '');
+    setText('session-status', 'Saved: ' + (msg.session_id||'').slice(0,8) + '…');
+    doc('btn-start').disabled = false; doc('btn-stop').disabled = true;
+    doc('card-review').style.display = 'block';
+    setText('review-info', 'Session ' + (msg.session_id||'').slice(0,8) + ' complete.');
+    doc('link-review').href = '/review?sid=' + (msg.session_id||'');
+  }
+  if (msg.type === 'calibrated' || msg.type === 'imu_zeroed') {
+    setBadge('calib-badge', 'calibrated', 'ok');
+    updateCalibInfo(true);
+    showMsg('rezero-msg', '✓ IMU zero set.', 'ok');
+  }
+  if (msg.type === 'motion_mode') syncModeUI(msg.mode);
+  if (msg.type === 'direction_forward_set') {
+    const ax = (msg.forward_axis||[]).map(v => (+v).toFixed(2)).join(', ');
+    setDirStatus(`✓ Forward set [${ax}]`, true);
+    doc('btn-fwd-right').disabled = false;
+  }
+  if (msg.type === 'direction_right_set') {
+    const note = msg.axis_flipped ? ' (axis corrected)' : '';
+    setDirStatus(doc('dir-status-live').textContent + ` · Right confirmed${note}.`, true);
+  }
+}
+
+function updateCalibInfo(calibrated) {
+  const el = doc('calib-info'); if (!el) return;
+  el.textContent = calibrated ? '✓ Limb lengths and IMU zero set. Skeleton engine ready.' : 'Not calibrated — visit the calibration page first.';
+  el.style.color = calibrated ? 'var(--green)' : '';
+}
+
+/* ══════════════════════════════════════════════════════
+   METRICS
+══════════════════════════════════════════════════════ */
+function updateMetrics(m) {
+  if (!m) return;
+  setGauge('sway', safeNum(m.sway_velocity),     0.5,  fmtNum(m.sway_velocity, 4) + ' m/s');
+  setGauge('stab', safeNum(m.sway_stability),     100,  fmtNum(m.sway_stability, 1) + '%', true);
+  setGauge('cv',   safeNum(m.sway_cv_pct),        50,   fmtNum(m.sway_cv_pct, 1) + '%');
+  setGauge('kl',   safeNum(m.knee_l_deg),         120,  fmtNum(m.knee_l_deg, 1) + '°');
+  setGauge('kr',   safeNum(m.knee_r_deg),         120,  fmtNum(m.knee_r_deg, 1) + '°');
+  setGauge('asym', safeNum(m.knee_asymmetry_deg), 20,   fmtNum(m.knee_asymmetry_deg, 1) + '°');
+  setGauge('jerk', safeNum(m.jerk_magnitude),     5,    fmtNum(m.jerk_magnitude, 3), true);
+  setText('stat-reps',  m.rep_count != null ? m.rep_count : '—');
+  setText('stat-phase', m.rep_phase || '—');
+  const fat = safeNum(m.fatigue_score);
+  setText('stat-fatigue', fat > 0 ? Math.round(fat) : '—');
+  doc('stat-fatigue').style.color = fat > 50 ? 'var(--red)' : fat > 25 ? 'var(--amber)' : 'var(--green)';
+}
+
+/* ══════════════════════════════════════════════════════
+   MOTION HUD — wires up frame.gait / .direction / .action
+══════════════════════════════════════════════════════ */
+function updateMotionHUD(msg) {
+  // Gait label — also feeds the procedural secondary motion layer
+  const gait = msg.gait || 'idle';
+  _liveGait = gait;   // read by _applyProcedural() each rAF
+  const gEl = doc('hud-gait');
+  gEl.textContent = gait;
+  gEl.className   = 'hud-value ' + gait;
+
+  // Action (jumping / squatting / none) — also feeds the procedural layer
+  const dir    = msg.direction || {};
+  const action = dir.action || msg.action?.action || 'none';
+  _liveAction = action;   // read by _applyProcedural() each rAF
+  const aEl = doc('hud-action');
+  aEl.textContent = action;
+  aEl.className   = 'hud-value ' + (action !== 'none' ? action : 'idle');
+
+  // Move direction (forward / backward / strafe_left / strafe_right / idle)
+  setText('hud-movedir', (dir.move_dir || '—').replaceAll('_', ' '));
+
+  // Heading degrees + turn
+  const hdg = dir.heading_deg;
+  doc('hud-heading').textContent = hdg != null ? hdg.toFixed(1) + '°' : '—';
+
+  const trDir  = dir.turn_dir  || 'none';
+  const trRate = dir.turn_rate_dps;
+  doc('hud-turn').textContent = trDir === 'none'
+    ? '—'
+    : (trDir === 'cw' ? '↻ ' : '↺ ') + (trRate != null ? Math.abs(trRate).toFixed(0) + ' °/s' : '');
+
+  // Speed from direction.speed_ms (also in metrics as translation_speed_ms)
+  const spd = dir.speed_ms ?? safeNum(msg.metrics?.translation_speed_ms);
+  doc('hud-speed').textContent = spd != null ? spd.toFixed(2) + ' m/s' : '— m/s';
+}
+
+function safeNum(v) { return (v != null && isFinite(v)) ? Number(v) : 0; }
+function fmtNum(v, dec) { return (v == null || !isFinite(v)) ? '—' : Number(v).toFixed(dec); }
+
+function setGauge(id, value, max, label, invert = false) {
+  const pct = Math.min(100, Math.max(0, (value / max) * 100));
+  const bar = document.getElementById('bar-' + id), val = document.getElementById('val-' + id);
+  if (!bar || !val) return;
+  bar.style.width = pct + '%';
+  const bad = invert ? pct < 30 : pct > 70, med = invert ? pct < 60 : pct > 40;
+  bar.style.background = bad ? 'var(--red)' : med ? 'var(--amber)' : 'var(--green)';
+  val.textContent = label;
+}
+
+/* ══════════════════════════════════════════════════════
+   CHARTS
+══════════════════════════════════════════════════════ */
+function sizeCanvas(canvas) {
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  if (W > 0 && H > 0 && (canvas.width !== W || canvas.height !== H)) { canvas.width = W; canvas.height = H; }
+  return { W: canvas.width, H: canvas.height };
+}
+
+function updateCharts(msg) {
+  const joints = msg.joints || {}, metrics = msg.metrics || {};
+  if (joints && Object.keys(joints).length > 0) {
+    // Write to targetJoints — the render loop lerps displayJoints toward this each rAF
+    targetJoints = joints;
+    doc('skel-no-data').style.display = 'none';
+    const sens = (msg.sensors||[]).length;
+    setText('skel-badge', sens > 0 ? sens + ' sensor' + (sens > 1 ? 's' : '') : '');
+  }
+  const stab = metrics.sway_stability;
+  if (stab != null && isFinite(stab)) {
+    lineBuf.push(Number(stab));
+    if (lineBuf.length > LINE_MAX_POINTS) lineBuf.shift();
+    doc('line-no-data').style.display = 'none';
+    drawLine();
+  }
+}
+
+function drawLine() {
+  const canvas = document.getElementById('line-canvas'); if (!canvas) return;
+  const { W, H } = sizeCanvas(canvas); if (W === 0 || H === 0) return;
+  const ctx = canvas.getContext('2d');
+  const pad = { top:10, right:10, bottom:24, left:32 }, iW = W-pad.left-pad.right, iH = H-pad.top-pad.bottom;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle='rgba(136,134,128,0.55)'; ctx.font='10px system-ui'; ctx.textAlign='right';
+  for (let v = 0; v <= 100; v += 20) {
+    const y = pad.top + iH - (v/100)*iH;
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+iW,y); ctx.stroke();
+    ctx.fillText(v, pad.left-4, y+3);
+  }
+  const y80 = pad.top + iH - 0.8*iH;
+  ctx.strokeStyle='rgba(62,207,142,0.2)'; ctx.lineWidth=1; ctx.setLineDash([3,4]);
+  ctx.beginPath(); ctx.moveTo(pad.left,y80); ctx.lineTo(pad.left+iW,y80); ctx.stroke();
+  ctx.setLineDash([]);
+  if (lineBuf.length < 2) return;
+  ctx.fillStyle='rgba(136,134,128,0.5)'; ctx.textAlign='center';
+  ctx.fillText('Time →', pad.left+iW/2, H-4);
+  const pts = lineBuf.map((v,i) => [pad.left+(i/(LINE_MAX_POINTS-1))*iW, pad.top+iH-(Math.min(100,Math.max(0,v))/100)*iH]);
+  ctx.beginPath(); ctx.moveTo(pts[0][0], pad.top+iH);
+  pts.forEach(([x,y]) => ctx.lineTo(x,y));
+  ctx.lineTo(pts[pts.length-1][0], pad.top+iH);
+  ctx.closePath(); ctx.fillStyle='rgba(79,156,249,0.08)'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+  pts.forEach(([x,y]) => ctx.lineTo(x,y));
+  ctx.strokeStyle='rgba(79,156,249,0.85)'; ctx.lineWidth=1.8; ctx.lineJoin='round'; ctx.stroke();
+  const [lx,ly] = pts[pts.length-1];
+  ctx.beginPath(); ctx.arc(lx,ly,4,0,Math.PI*2); ctx.fillStyle='#4f9cf9'; ctx.fill();
+  ctx.fillStyle='#e8e6de'; ctx.font='11px system-ui'; ctx.textAlign='left';
+  ctx.fillText(Math.round(lineBuf[lineBuf.length-1])+'%', lx+6, ly+4);
+}
+
+window.addEventListener('resize', () => { if (lineBuf.length > 1) drawLine(); });
+
+/* ══════════════════════════════════════════════════════
+   COACHING RULES
+══════════════════════════════════════════════════════ */
+function runCoachRules(m) {
+  if (!m) return;
+  const now = Date.now(); if (now - lastCoachTS < 3000) return; lastCoachTS = now;
+  const fat=safeNum(m.fatigue_score), asym=safeNum(m.knee_asymmetry_deg),
+        cv=safeNum(m.sway_cv_pct),   jerk=safeNum(m.jerk_magnitude), reps=safeNum(m.rep_count);
+  let msg=null, cls='';
+  if      (fat>60)  { msg='Fatigue score '+Math.round(fat)+' — consider resting.'; cls='bad'; }
+  else if (asym>10) { msg='Knee asymmetry '+asym.toFixed(1)+'° — check hip alignment.'; cls='warn'; }
+  else if (cv>30)   { msg='High sway CV ('+cv.toFixed(1)+'%) — brace your core.'; cls='warn'; }
+  else if (jerk>2.5){ msg='Rough movement (jerk '+jerk.toFixed(2)+') — slow down.'; cls='warn'; }
+  else if (reps>0&&reps%5===0) { msg=reps+' reps — quality is '+(fat<20?'good':'moderate')+'.'; }
+  if (msg) addFeed(msg, cls);
+}
+
+/* ══════════════════════════════════════════════════════
+   SESSION CONTROLS
+══════════════════════════════════════════════════════ */
+async function startSession() {
+  const testId = new URLSearchParams(location.search).get('id') || 'stability';
+  try {
+    const res  = await fetch('/session/start?test_id=' + testId, { method:'POST' });
+    const data = await res.json();
+    if (!res.ok) {
+      const d = data.detail || data;
+      const m = typeof d === 'object' ? d.missing : null;
+      addFeed(m ? 'Cannot start — missing sensors: '+m.join(', ') : 'Start failed: '+JSON.stringify(d), 'bad');
+      return;
+    }
+    sessionId = data.session_id;
+  } catch(e) { addFeed('Network error starting session.', 'bad'); }
+}
+
+async function stopSession() { await fetch('/session/stop', { method:'POST' }); }
+
+/* ══════════════════════════════════════════════════════
+   MOTION MODE
+══════════════════════════════════════════════════════ */
+async function setMotionMode(mode) {
+  try {
+    await fetch(`/motion_mode?mode=${mode}`, { method:'POST' });
+    syncModeUI(mode);
+  } catch(e) { addFeed('Motion mode error: ' + e.message, 'bad'); }
+}
+
+function syncModeUI(mode) {
+  doc('mseg-test').className = 'mseg-btn' + (mode==='test' ? ' on' : '');
+  doc('mseg-user').className = 'mseg-btn' + (mode==='user' ? ' on' : '');
+}
+
+fetch('/motion_mode').then(r => r.json()).then(d => syncModeUI(d.mode)).catch(() => {});
+
+/* ══════════════════════════════════════════════════════
+   DIRECTION
+══════════════════════════════════════════════════════ */
+async function setForward() {
+  try {
+    const res = await fetch('/direction/set_forward', { method:'POST' });
+    if (!res.ok) { const d=await res.json(); showMsg('dir-msg-live', d.detail||'Error', 'err'); return; }
+    const d = await res.json();
+    const ax = (d.forward_axis||[]).map(v=>(+v).toFixed(2)).join(', ');
+    setDirStatus(`✓ Forward set [${ax}]`, true);
+    doc('btn-fwd-right').disabled = false;
+    showMsg('dir-msg-live', 'Forward direction captured.', 'ok');
+  } catch(e) { showMsg('dir-msg-live', 'Error: '+e.message, 'err'); }
+}
+
+async function setRight() {
+  try {
+    const res = await fetch('/direction/set_right', { method:'POST' });
+    if (!res.ok) { const d=await res.json(); showMsg('dir-msg-live', d.detail||'Error', 'err'); return; }
+    const d = await res.json();
+    const note = d.axis_flipped ? ' (axis corrected)' : '';
+    setDirStatus(doc('dir-status-live').textContent + ` · Right confirmed${note}.`, true);
+    showMsg('dir-msg-live', 'Right direction confirmed.', 'ok');
+  } catch(e) { showMsg('dir-msg-live', 'Error: '+e.message, 'err'); }
+}
+
+async function flipForward() {
+  try {
+    const res = await fetch('/debug/flip_forward', { method:'POST' });
+    const d   = await res.json();
+    setDirStatus('↔ Axis flipped.', false);
+    showMsg('dir-msg-live', d.message || 'Axis flipped.', 'ok');
+  } catch(e) { showMsg('dir-msg-live', 'Error: '+e.message, 'err'); }
+}
+
+function setDirStatus(text, ok) {
+  const el = doc('dir-status-live'); if (!el) return;
+  el.textContent = text;
+  el.className   = 'dir-status' + (ok ? ' ok' : '');
+}
+
+/* ══════════════════════════════════════════════════════
+   RE-ZERO IMU
+══════════════════════════════════════════════════════ */
+async function reZero() {
+  try {
+    await fetch('/ble/tpose', { method:'POST' });
+    showMsg('rezero-msg', 'Sent — waiting for confirmation…', '');
+  } catch(e) { showMsg('rezero-msg', 'Error: '+e.message, 'err'); }
+}
+
+/* ══════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════ */
+function doc(id)        { return document.getElementById(id); }
+function setText(id, v) { const e=doc(id); if(e) e.textContent=v; }
+function setBadge(id, text, cls) { const el=doc(id); if(!el) return; el.textContent=text; el.className='badge '+(cls||''); }
+function addFeed(msg, cls='') {
+  const feed=doc('coaching-feed'); if(!feed) return;
+  const el=document.createElement('div'); el.className='feed-item '+cls; el.textContent=msg;
+  feed.prepend(el);
+  while (feed.children.length > 10) feed.removeChild(feed.lastChild);
+}
+function showMsg(id, text, type) {
+  const el=doc(id); if(!el) return;
+  el.textContent=text;
+  el.className='status-msg'+(type==='ok'?' ok':type==='err'?' err':'');
+}
+
+/* ══════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════ */
+setBMMode('consumer');
+connect();
+</script>
+</body>
+</html>
