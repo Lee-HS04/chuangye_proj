@@ -18,6 +18,7 @@ from pathlib import Path
 REMOTE_IP   = "101.6.162.37"
 REMOTE_PORT = 62222
 USERNAME    = "ai"
+SSH_PASSWORD = os.environ.get("R2P_SSH_PASSWORD")
 
 # ── SSH key — resolved dynamically so it works for any Windows/Mac/Linux user ─
 def _find_ssh_key() -> str:
@@ -37,6 +38,9 @@ def _find_ssh_key() -> str:
     rsa = home / ".ssh" / "id_rsa"
     if rsa.exists():
         return str(rsa)
+
+    if SSH_PASSWORD:
+        return ""
 
     raise FileNotFoundError(
         f"No SSH key found. Expected {ed} or {rsa}.\n"

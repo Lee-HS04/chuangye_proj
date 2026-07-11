@@ -196,6 +196,55 @@
                         color: #1d1d1f;
                     }
 
+                    .imu-progress-panel {
+                        min-height: 360px;
+                        background: #fbfbfd;
+                        color: #1d1d1f;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 40px 24px;
+                        text-align: center;
+                    }
+
+                    .imu-progress-title {
+                        font-size: 24px;
+                        font-weight: 600;
+                        margin-bottom: 12px;
+                    }
+
+                    .imu-progress-message {
+                        color: #515154;
+                        font-size: 16px;
+                        line-height: 1.5;
+                        max-width: 520px;
+                        margin-bottom: 28px;
+                    }
+
+                    .imu-progress-track {
+                        width: min(520px, 100%);
+                        height: 12px;
+                        border-radius: 999px;
+                        background: #e5e5ea;
+                        overflow: hidden;
+                    }
+
+                    .imu-progress-fill {
+                        width: 0%;
+                        height: 100%;
+                        border-radius: inherit;
+                        background: #0071e3;
+                        transition: width 0.35s ease;
+                    }
+
+                    .imu-progress-percent {
+                        margin-top: 12px;
+                        font-size: 14px;
+                        font-weight: 600;
+                        color: #0071e3;
+                    }
+
                     @keyframes spin {
                         0% { transform: rotate(0deg); }
                         100% { transform: rotate(360deg); }
@@ -296,6 +345,7 @@
                     const resultVideo = document.getElementById('resultVideo');
                     const resultControls = document.getElementById('resultControls');
                     const fileInput = document.getElementById('videoFileInput');
+                    const recordingControls = document.getElementById('recordingControls');
         
                     // FSM UI elements
                     const cameraBox = document.getElementById('cameraBox');
@@ -306,14 +356,170 @@
                     let recorder = null;
                     let recordedChunks = [];
                     let selectedFileMap = null;
-                    let apiHost = "http://127.0.0.1:8000";
+                    let apiHost = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : window.location.origin;
+                    const POSE_HOLD_SECONDS = 1.0;
+                    const TEMP5_POSE_RECORD_SECONDS = 60.0;
+                    const ACTION_RECORD_SECONDS = 5.0;
         
                     // WebSocket logic
                     let ws = null;
                     let wsInterval = null;
+                    let actionUploadTimer = null;
+                    let actionCountdownInterval = null;
                     let autoRecordingActive = false;
+                    let liveCheckAccepted = false;
                     let isSuccessRep = false;
-                    let previousState = 1;
+                    let previousState = "waiting";
+                    let imuPollTimer = null;
+
+                    const IMU_TEST_TYPES = new Set([
+                        "assessment",
+                        "balance",
+                        "cmj",
+                        "squat",
+                        "sls",
+                        "single-leg-stand",
+                        "single_leg_stand"
+                    ]);
+
+                    function usesImuProgressPage() {
+                        return IMU_TEST_TYPES.has(getTestType());
+                    }
+
+                    function buildImuProgressPage() {
+                        stopCamera();
+                        if (recordingControls) recordingControls.style.display = "none";
+                        document.getElementById("previewControls").style.display = "none";
+                        analysisSection.style.display = "none";
+                        uploading.style.display = "none";
+
+                        cameraBox.classList.remove("error-glow");
+                        cameraBox.style.backgroundColor = "#fbfbfd";
+                        cameraBox.innerHTML = `
+                            <div class="imu-progress-panel">
+                                <div class="imu-progress-title">Test in progress</div>
+                                <div class="imu-progress-message">test in progress, please use gyroscopes according to user manual for best effect</div>
+                                <div class="imu-progress-track">
+                                    <div class="imu-progress-fill" id="imuProgressFill"></div>
+                                </div>
+                                <div class="imu-progress-percent" id="imuProgressPercent">0%</div>
+                            </div>
+                        `;
+                    }
+
+                    function setImuProgress(progress, message) {
+                        const fill = document.getElementById("imuProgressFill");
+                        const percent = document.getElementById("imuProgressPercent");
+                        const messageEl = document.querySelector(".imu-progress-message");
+                        const safeProgress = Math.max(0, Math.min(100, Number(progress) || 0));
+                        if (fill) fill.style.width = safeProgress + "%";
+                        if (percent) percent.textContent = Math.round(safeProgress) + "%";
+                        if (messageEl && message) messageEl.textContent = message;
+                    }
+
+                    function redirectAfterCompletedTask(taskId) {
+                        const testType = getTestType();
+                        const leg = getLeg();
+                        const urlParams = new URLSearchParams(window.location.search);
+
+                        if (leg) {
+                            if (leg === "right") {
+                                window.location.href = `camera.html?type=${testType}&leg=left&rightLegTask=${taskId}`;
+                            } else if (leg === "left") {
+                                const rightLegTaskId = urlParams.get("rightLegTask");
+                                if (testType === "assessment" || testType === "balance") {
+                                    window.location.href = `camera.html?type=cmj&rightLegTask=${rightLegTaskId || ""}&leftLegTask=${taskId}`;
+                                } else if (rightLegTaskId) {
+                                    window.location.href = `index.html?leftLegTask=${taskId}&rightLegTask=${rightLegTaskId}`;
+                                } else {
+                                    window.location.href = `index.html?leftLegTask=${taskId}`;
+                                }
+                            } else {
+                                window.location.href = `video.html?type=${testType}&leg=${leg}&uploaded=true&taskId=${taskId}`;
+                            }
+                        } else if (testType === "balance" || testType === "assessment") {
+                            window.location.href = "camera.html?type=cmj&balanceTask=" + taskId;
+                        } else if (testType === "cmj") {
+                            const balanceTaskId = urlParams.get("balanceTask");
+                            const rightLegTask = urlParams.get("rightLegTask");
+                            const leftLegTask = urlParams.get("leftLegTask");
+                            let redirectUrl = "index.html?cmjTask=" + taskId;
+                            if (balanceTaskId) redirectUrl += "&balanceTask=" + balanceTaskId;
+                            if (rightLegTask) redirectUrl += "&rightLegTask=" + rightLegTask;
+                            if (leftLegTask) redirectUrl += "&leftLegTask=" + leftLegTask;
+                            window.location.href = redirectUrl;
+                        } else {
+                            window.location.href = "index.html?task=" + taskId;
+                        }
+                    }
+
+                    async function startImuTestFlow() {
+                        buildImuProgressPage();
+                        setImuProgress(0, "test in progress, please use gyroscopes according to user manual for best effect");
+
+                        let currentUser = {};
+                        try {
+                            currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}") || {};
+                        } catch (error) {
+                            currentUser = {};
+                        }
+
+                        try {
+                            const response = await fetch(apiHost + "/api/imu-test/start", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    test_type: getTestType(),
+                                    leg: getLeg(),
+                                    user_id: currentUser.id || "",
+                                    username: currentUser.username || "",
+                                    email: currentUser.email || ""
+                                })
+                            });
+                            const data = await response.json();
+                            if (!response.ok || !data.task_id) {
+                                throw new Error(data.detail || data.message || "Could not start IMU test");
+                            }
+
+                            pollImuTestStatus(data.task_id, data.duration_seconds || 0);
+                        } catch (error) {
+                            console.error("IMU test start failed:", error);
+                            setImuProgress(100, "Test failed to start: " + error.message);
+                        }
+                    }
+
+                    function pollImuTestStatus(taskId, durationSeconds) {
+                        const startedAt = Date.now();
+                        clearInterval(imuPollTimer);
+                        imuPollTimer = setInterval(() => {
+                            fetch(apiHost + "/api/imu-test/status/" + taskId)
+                            .then(res => res.json())
+                            .then(data => {
+                                const elapsedProgress = durationSeconds
+                                    ? Math.min(95, ((Date.now() - startedAt) / 1000 / durationSeconds) * 95)
+                                    : 0;
+                                const progress = data.progress !== undefined ? data.progress : elapsedProgress;
+
+                                if (data.status === "completed") {
+                                    clearInterval(imuPollTimer);
+                                    setImuProgress(100, "Test complete. Preparing results...");
+                                    setTimeout(() => redirectAfterCompletedTask(taskId), 700);
+                                } else if (data.status === "failed") {
+                                    clearInterval(imuPollTimer);
+                                    setImuProgress(100, "Test failed: " + (data.error || "Unknown error"));
+                                } else {
+                                    setImuProgress(progress, "test in progress, please use gyroscopes according to user manual for best effect");
+                                }
+                            })
+                            .catch(error => {
+                                console.warn("IMU status poll failed:", error);
+                                const elapsedProgress = durationSeconds
+                                    ? Math.min(95, ((Date.now() - startedAt) / 1000 / durationSeconds) * 95)
+                                    : 0;
+                                setImuProgress(elapsedProgress, "test in progress, please use gyroscopes according to user manual for best effect");
+                            });
+                        }, 1000);
+                    }
 
                     function initPage() {
                         const leg = getLeg();
@@ -333,7 +539,9 @@
                         } else if (testType === 'balance' || testType === 'assessment') {
                             // If it's a balance test but no leg specified, default to right leg first
                             window.location.href = `camera.html?type=${testType}&leg=right`;
+                            return false;
                         }
+                        return true;
                     }
 
                     async function initCamera() {
@@ -378,13 +586,14 @@
                     }
 
                     // Connect Auto-Recording FSM WebSockets
-                    function connectWebSocket() {
+                    function legacyConnectWebSocket() { return connectWebSocket(); }
+                    /*
                         const testType = getTestType();
                         let exerciseName = "Balance"; 
                         if (testType === 'cmj') exerciseName = "CMJ";
                         else if (testType === 'squat') exerciseName = "SLS";
 
-                        const wsUrl = `ws://127.0.0.1:8000/ws/form-check/${exerciseName}`;
+                        const wsUrl = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws/camera`;
                         ws = new WebSocket(wsUrl);
             
                         ws.onopen = () => { console.log("WebSocket connected for Auto-Recording"); };
@@ -447,14 +656,126 @@
                         ws.onerror = (err) => { console.error("WS Err:", err); };
                     }
 
+                    */
+                    function temp5PoseHint(response) {
+                        if (response.corrections && response.corrections.length) {
+                            return response.corrections[0];
+                        }
+                        if (response.state === "pose_detected") {
+                            return "Pose detected. Hold steady...";
+                        }
+                        if (response.state === "recording") {
+                            return "Pose confirmed. Complete the movement...";
+                        }
+                        return "Step into frame and adjust to the starting posture.";
+                    }
+
+                    async function startTemp5PoseCheck() {
+                        await fetch(apiHost + "/pose/reset", { method: "POST" }).catch(() => {});
+                        const url = `${apiHost}/pose/start?mode=temp3_live&record_seconds=${TEMP5_POSE_RECORD_SECONDS}&hold_seconds=${POSE_HOLD_SECONDS}`;
+                        const res = await fetch(url, { method: "POST" });
+                        if (!res.ok) {
+                            throw new Error("Temp5 pose checker failed to start");
+                        }
+                    }
+
+                    function beginActionClip() {
+                        if (liveCheckAccepted) return;
+                        liveCheckAccepted = true;
+
+                        cameraBox.classList.remove("error-glow");
+                        fsmHint.textContent = "Pose confirmed. Complete the movement...";
+                        fsmTimer.style.display = "block";
+                        fsmTimer.style.color = "#34c759";
+
+                        clearInterval(wsInterval);
+                        wsInterval = null;
+                        if (ws) ws.close();
+
+                        if (recorder && recorder.state === "recording") {
+                            isSuccessRep = false;
+                            recorder.stop();
+                        }
+
+                        const startedAt = Date.now();
+                        clearInterval(actionCountdownInterval);
+                        actionCountdownInterval = setInterval(() => {
+                            const elapsed = (Date.now() - startedAt) / 1000;
+                            const remaining = Math.max(0, ACTION_RECORD_SECONDS - elapsed);
+                            fsmTimer.textContent = remaining.toFixed(1);
+                        }, 100);
+
+                        clearTimeout(actionUploadTimer);
+                        actionUploadTimer = setTimeout(() => {
+                            clearInterval(actionCountdownInterval);
+                            fsmHint.textContent = "Movement complete. Preparing upload...";
+                            fsmTimer.textContent = "OK";
+                            isSuccessRep = true;
+                            triggerAutoUpload();
+                        }, ACTION_RECORD_SECONDS * 1000);
+                    }
+
+                    function handleTemp5PoseFrame(response) {
+                        if (!autoRecordingActive || liveCheckAccepted) return;
+
+                        const state = response.state || "waiting";
+                        fsmHint.textContent = temp5PoseHint(response);
+
+                        if (state === "waiting") {
+                            cameraBox.classList.add("error-glow");
+                            fsmTimer.style.display = "none";
+                            fsmTimer.textContent = ACTION_RECORD_SECONDS.toFixed(1);
+                        } else if (state === "pose_detected") {
+                            cameraBox.classList.remove("error-glow");
+                            fsmTimer.style.display = "block";
+                            fsmTimer.style.color = "#34c759";
+                            const remaining = Math.max(0, POSE_HOLD_SECONDS * (1 - (response.hold_progress || 0)));
+                            fsmTimer.textContent = remaining.toFixed(1);
+                        } else if (state === "recording" || state === "complete") {
+                            beginActionClip();
+                        }
+
+                        previousState = state;
+                    }
+
+                    // Connect temp5 live pose-check WebSocket.
+                    function connectWebSocket() {
+                        const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+                        const wsUrl = `${wsProtocol}//${window.location.host}/ws/camera`;
+                        ws = new WebSocket(wsUrl);
+
+                        ws.onopen = () => { console.log("WebSocket connected to temp5 live pose checker"); };
+                        ws.onmessage = (event) => {
+                            const response = JSON.parse(event.data);
+                            if (response.type === "pose_frame") {
+                                handleTemp5PoseFrame(response);
+                            }
+                        };
+                        ws.onerror = (err) => { console.error("WS Err:", err); };
+                    }
+
                     // WebM + Rolling Video Buffer
-                    function startRecording() {
+                    async function startRecording() {
                         if (!stream) {
                             alert("未能访问摄像头，请尝试上传本地文件！");
                             return;
                         }
                         autoRecordingActive = true;
+                        liveCheckAccepted = false;
+                        isSuccessRep = false;
+                        previousState = "waiting";
+                        clearTimeout(actionUploadTimer);
+                        clearInterval(actionCountdownInterval);
                         recordedChunks = [];
+
+                        try {
+                            await startTemp5PoseCheck();
+                        } catch (error) {
+                            console.error("Temp5 pose checker failed:", error);
+                            autoRecordingActive = false;
+                            alert("Live pose checking failed to start. Please confirm the backend is running.");
+                            return;
+                        }
             
                         // Prefer vp8 codec for fast inline browser recording
                         recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp8,opus" });
@@ -477,6 +798,8 @@
                             // Otherwise, it was a real completion. Handle it!
                             autoRecordingActive = false;
                             clearInterval(wsInterval);
+                            clearInterval(actionCountdownInterval);
+                            clearTimeout(actionUploadTimer);
                             if(ws) ws.close();
                 
                             // Form a clip from the action
@@ -488,7 +811,7 @@
                         // Capture chunks every 500ms to allow fine-grained rolling buffers
                         recorder.start(500); 
 
-                        // Start Broadcasting webcam frames to Backend FSM
+                        // Start broadcasting webcam frames to temp5 live pose checker
                         connectWebSocket();
                         wsInterval = setInterval(() => {
                             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -496,8 +819,8 @@
                                 canvas.width = 640;
                                 canvas.height = 480;
                                 ctx.drawImage(video, 0, 0, 640, 480);
-                                // Low-res Base64 for fast latency analysis
-                                ws.send(canvas.toDataURL('image/jpeg', 0.4)); 
+                                const frameData = canvas.toDataURL('image/jpeg', 0.4).split(',')[1];
+                                ws.send(JSON.stringify({ type: "frame", data: frameData }));
                             }
                         }, 200); // 5 FPS bounding-box check
 
@@ -510,6 +833,8 @@
                         // Manual Stop (falls back to selecting the whole buffer and asking for preview/upload)
                         autoRecordingActive = false;
                         clearInterval(wsInterval);
+                        clearInterval(actionCountdownInterval);
+                        clearTimeout(actionUploadTimer);
                         if(ws) ws.close();
 
                         if (recorder && recorder.state === 'recording') {
@@ -669,8 +994,14 @@
                         }, 3000); // Check every 3 seconds
                     }
 
-                    initCamera();
-                    initPage();
+                    const shouldContinuePageInit = initPage();
+                    if (shouldContinuePageInit !== false) {
+                        if (usesImuProgressPage()) {
+                            startImuTestFlow();
+                        } else {
+                            initCamera();
+                        }
+                    }
 
                     startButton.addEventListener('click', startRecording);
                     stopButton.addEventListener('click', stopRecording);

@@ -266,6 +266,146 @@ function syncUserDataToJsonFile(userData) {
     });
 }
 
+const CALIBRATION_API_HOST = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
+let selectedCalibrationFile = null;
+
+function setCalibrationStatus(message, progress) {
+    const statusEl = document.getElementById('calibrationStatus');
+    const progressFill = document.getElementById('calibrationProgressFill');
+    if (statusEl) statusEl.textContent = message;
+    if (progressFill && progress !== undefined) {
+        progressFill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+    }
+}
+
+function hasCalibrationData(user) {
+    if (!user) return false;
+    const directLengths = user.limb_lengths;
+    const calibrationLengths = user.limb_length_calibration && user.limb_length_calibration.limb_lengths;
+    const backendLengths = user.backend_video_data && user.backend_video_data.limb_lengths;
+    return Boolean(
+        (directLengths && Object.keys(directLengths).length > 0) ||
+        (calibrationLengths && Object.keys(calibrationLengths).length > 0) ||
+        (backendLengths && Object.keys(backendLengths).length > 0)
+    );
+}
+
+function updateUserAfterCalibration(updatedUser) {
+    if (!updatedUser) return;
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const mergedUser = {
+        ...currentUser,
+        ...updatedUser,
+        personal_info: currentUser.personal_info || updatedUser.personal_info || {}
+    };
+
+    const userData = JSON.parse(localStorage.getItem('userData') || '{"users": []}');
+    if (!Array.isArray(userData.users)) userData.users = [];
+
+    const userIndex = userData.users.findIndex(u =>
+        (mergedUser.id && u.id === mergedUser.id) ||
+        (mergedUser.email && u.email === mergedUser.email)
+    );
+
+    if (userIndex !== -1) {
+        userData.users[userIndex] = mergedUser;
+    } else {
+        userData.users.push(mergedUser);
+    }
+
+    userData.last_updated = new Date().toISOString();
+    localStorage.setItem('userData', JSON.stringify(userData));
+    localStorage.setItem('currentUser', JSON.stringify(mergedUser));
+}
+
+function setupCalibrationUpload() {
+    const chooseBtn = document.getElementById('chooseCalibrationBtn');
+    const uploadBtn = document.getElementById('uploadCalibrationBtn');
+    const fileInput = document.getElementById('calibrationFileInput');
+    const preview = document.getElementById('calibrationPreview');
+    const uploadBox = document.getElementById('calibrationUploadBox');
+
+    if (!chooseBtn || !uploadBtn || !fileInput || !preview || !uploadBox) return;
+
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    if (hasCalibrationData(currentUser)) {
+        setCalibrationStatus('当前已保存校准数据。可选择新视频重新校准。', 0);
+    }
+
+    chooseBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', event => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) {
+            selectedCalibrationFile = null;
+            uploadBtn.disabled = true;
+            uploadBox.style.display = 'block';
+            uploadBox.textContent = '尚未选择校准视频。';
+            preview.style.display = 'none';
+            preview.removeAttribute('src');
+            setCalibrationStatus('可选：选择视频后上传，系统会重新计算并保存肢体长度。', 0);
+            return;
+        }
+
+        selectedCalibrationFile = file;
+        uploadBtn.disabled = false;
+        uploadBox.style.display = 'none';
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+        setCalibrationStatus('视频已选择。点击上传后将发送到后端进行 GVHMR 校准。', 0);
+    });
+
+    uploadBtn.addEventListener('click', async () => {
+        if (!selectedCalibrationFile) {
+            setCalibrationStatus('请先选择一个校准视频。', 0);
+            return;
+        }
+
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const formData = new FormData();
+        formData.append('video', selectedCalibrationFile, selectedCalibrationFile.name || 'full_body_calibration_video.mp4');
+        formData.append('user_id', currentUser.id || '');
+        formData.append('username', currentUser.username || '');
+        formData.append('email', currentUser.email || '');
+
+        try {
+            uploadBtn.disabled = true;
+            chooseBtn.disabled = true;
+            setCalibrationStatus('正在上传并等待 GVHMR 处理，请稍候...', 100);
+
+            const response = await fetch(`${CALIBRATION_API_HOST}/api/calibrate_limb_lengths`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok || data.status !== 'ok') {
+                throw new Error(data.detail || data.message || '校准失败');
+            }
+
+            const updatedUser = data.user || {
+                ...currentUser,
+                limb_lengths: data.limb_lengths,
+                limb_length_calibration: {
+                    limb_lengths: data.limb_lengths,
+                    calibrated_at: new Date().toISOString(),
+                    source: 'full_body_video'
+                },
+                calibration_video_done: true,
+                updated_at: new Date().toISOString()
+            };
+
+            updateUserAfterCalibration(updatedUser);
+            setCalibrationStatus('校准完成，新的肢体长度已保存。', 100);
+        } catch (error) {
+            console.error('Calibration upload failed:', error);
+            setCalibrationStatus('校准失败：' + error.message, 100);
+            uploadBtn.disabled = false;
+        } finally {
+            chooseBtn.disabled = false;
+        }
+    });
+}
+
 // 提交表单
 async function submitForm() {
     if (validateStep(currentStep)) {
@@ -314,6 +454,7 @@ window.addEventListener('DOMContentLoaded', function() {
     // 初始化进度条和步骤指示器
     updateProgress();
     updateStepIndicators();
+    setupCalibrationUpload();
     
     // 预填个人信息
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));

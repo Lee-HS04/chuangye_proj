@@ -1,25 +1,65 @@
 import paramiko
 import scp
 import os
+import socket
 import torch
 import numpy as np
 import time
-from ssh_config import SSH_KEY_PATH, REMOTE_IP, REMOTE_PORT, USERNAME
+from ssh_config import SSH_KEY_PATH, SSH_PASSWORD, REMOTE_IP, REMOTE_PORT, USERNAME
 
-# REMOTE_IP = "101.6.162.37"
-# REMOTE_PORT = 62222
-# USERNAME = "ai"
-# SSH_KEY_PATH = r"C:\Users\GanJX\.ssh\id_ed25519" #Change this to your own SSH key path
-if not os.path.exists(SSH_KEY_PATH):
-    # Fallback to the WSL path if the script is running inside WSL (Linux)
-    SSH_KEY_PATH = "/mnt/c/Users/LeeHS/.ssh/id_ed25519" #Change this to your own SSH key path
+
+def _keyboard_interactive_client(password):
+    sock = socket.create_connection((REMOTE_IP, REMOTE_PORT), timeout=30)
+    transport = paramiko.Transport(sock)
+    transport.start_client(timeout=30)
+
+    def handler(_title, _instructions, prompts):
+        return [password for _prompt, _echo in prompts]
+
+    transport.auth_interactive(USERNAME, handler)
+    if not transport.is_authenticated():
+        transport.close()
+        raise paramiko.AuthenticationException("keyboard-interactive authentication failed")
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh._transport = transport
+    return ssh
 
 
 def get_ssh_client():
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(REMOTE_IP, port=REMOTE_PORT, username=USERNAME, key_filename=SSH_KEY_PATH)
-    return ssh
+    password = os.environ.get("R2P_SSH_PASSWORD") or SSH_PASSWORD
+
+    if password:
+        try:
+            ssh.connect(
+                REMOTE_IP,
+                port=REMOTE_PORT,
+                username=USERNAME,
+                password=password,
+                look_for_keys=False,
+                allow_agent=False,
+            )
+            return ssh
+        except paramiko.BadAuthenticationType as exc:
+            ssh.close()
+            if "keyboard-interactive" in getattr(exc, "allowed_types", []):
+                return _keyboard_interactive_client(password)
+            raise
+
+    try:
+        ssh.connect(REMOTE_IP, port=REMOTE_PORT, username=USERNAME, key_filename=SSH_KEY_PATH)
+        return ssh
+    except paramiko.BadAuthenticationType as exc:
+        if "keyboard-interactive" in getattr(exc, "allowed_types", []):
+            raise RuntimeError(
+                "GVHMR SSH server rejected key authentication and only allows "
+                "keyboard-interactive login. Set R2P_SSH_PASSWORD in the same "
+                "terminal before starting the backend."
+            ) from exc
+        raise
 
 def process_video_on_remote(video_path, output_dir="temp_gvhmr_output", f_mm=None):
     os.makedirs(output_dir, exist_ok=True)
@@ -36,7 +76,7 @@ def process_video_on_remote(video_path, output_dir="temp_gvhmr_output", f_mm=Non
         ssh = get_ssh_client()
     except Exception as e:
         print(f"Failed to connect: {e}")
-        return None
+        raise RuntimeError(f"Failed to connect to GVHMR server: {e}") from e
 
     print(f"Uploading video {video_filename} to remote...")
     upload_start = time.time()

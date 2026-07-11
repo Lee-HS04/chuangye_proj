@@ -1124,7 +1124,7 @@
 
     <!-- Polling Logic script -->
     <script>
-        const apiHost = "http://127.0.0.1:8000";
+        const apiHost = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : window.location.origin;
 
         const taskResults = {
             rightLeg: null,
@@ -1143,8 +1143,13 @@
                         progressEl.style.color = '#34c759';
                         textEl.innerText = "✅ 分析完成！";
                         if (spinnerEl) spinnerEl.style.display = 'none';
-                        videoEl.style.display = 'block';
-                        videoEl.src = apiHost + data.result_video;
+                        if (data.result_video) {
+                            videoEl.style.display = 'block';
+                            videoEl.src = apiHost + data.result_video;
+                        } else {
+                            videoEl.style.display = 'none';
+                            videoEl.removeAttribute('src');
+                        }
                         
                         taskResults[taskKey] = data;
                         checkAllTasksCompleted();

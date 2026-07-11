@@ -67,20 +67,25 @@ def run_calibration_video(video_path: str) -> Optional[dict]:
         result = process_video_on_remote(video_path, f_mm=24)
     except Exception as exc:
         print(f"GVHMR calibration failed: {exc}")
-        return None
+        raise RuntimeError(f"GVHMR calibration failed: {exc}") from exc
 
     if result is None:
-        return None
+        raise RuntimeError(
+            "GVHMR remote processing returned no result. Check the backend terminal "
+            "for the SSH/GVHMR error printed above."
+        )
 
     joints_3d = result.get("joints_3d_global")  # shape (T, 44, 3)
     if joints_3d is None:
-        return None
+        raise RuntimeError("GVHMR result did not include decoded joints_3d_global data.")
 
     if isinstance(joints_3d, torch.Tensor):
         joints_3d = joints_3d.numpy()
 
     # Use the median frame (most stable posture) for length extraction
     T = joints_3d.shape[0]
+    if T == 0:
+        raise RuntimeError("GVHMR returned zero frames for calibration.")
     mid = T // 2
     # Average over a 1-second window around the middle
     fps_approx = 30

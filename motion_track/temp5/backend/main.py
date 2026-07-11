@@ -70,18 +70,23 @@ sway metric, and update_root_translation already composes dy.
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
+import shutil
+import sys
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from functools import partial
 from pathlib import Path
 
 import cv2
 import numpy as np
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException, Query
+from fastapi import BackgroundTasks, FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from typing import Optional
 
 from ble_receiver import BLEReceiver, SensorPacket
@@ -95,6 +100,13 @@ from sports.running import RunningEngine
 from test_protocols import PROTOCOLS, get_protocol, can_run, get_missing_sensors
 from gvhmr_calibration import run_calibration_video, run_annotated_video
 from profile_manager import ProfileManager
+
+TEMP3_DIR = Path(__file__).resolve().parents[2] / "temp3"
+if str(TEMP3_DIR) not in sys.path:
+    sys.path.insert(0, str(TEMP3_DIR))
+
+from body_tracking import get_yolo26_keypoints as temp3_get_yolo26_keypoints
+from core.state_machine import StateMachineFSM
 
 # Global profile manager — loads last active profile on startup
 profile_mgr = ProfileManager()
@@ -117,12 +129,14 @@ class AppState:
         self.active_test_id: Optional[str]  = None
         self.session_id: Optional[str]  = None
         self.session_frames: list[dict]  = []
+        self.vertical_events: list[dict] = []
         self.recording: bool             = False
         self.connected_sensors: set[str] = set()
 
         self.pose_detector: Optional[PoseDetector] = None
         self.camera_manager: CameraManager       = CameraManager()
         self.calibration_done: bool              = False
+        self.pose_mode: str                      = "calibration"
 
 
 app_state = AppState()
@@ -193,6 +207,9 @@ def _on_vertical_event(ev: dict):
     coaching feed / HUD can react. A consumer that honours "squat_cancelled"
     nets to the correct squat count (a jump's load-phase crouch is retracted).
     """
+    if app_state.recording:
+        app_state.vertical_events.append(dict(ev))
+
     if _event_loop is not None:
         asyncio.run_coroutine_threadsafe(
             imu_ws.broadcast({"type": "motion_event", "event": ev}),
@@ -419,7 +436,7 @@ async def _camera_loop():
             "frame_b64":      annotated_b64,
         })
 
-        if result.is_complete and not app_state.calibration_done:
+        if result.is_complete and not app_state.calibration_done and app_state.pose_mode == "calibration":
             app_state.calibration_done = True
             imu_zeroed_broadcast = False
             asyncio.create_task(
@@ -480,8 +497,444 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 OUTPUTS_DIR  = Path(__file__).parent.parent / "outputs"
+TEMP3_FRONTEND_DIR = Path(__file__).resolve().parents[3] / "Fronted_newest" / "Fronted"
+TEMP3_UPLOAD_DIR = TEMP3_DIR / "uploads"
+TEMP3_OUTPUT_DIR = TEMP3_DIR / "outputs"
+TEMP3_USER_DATA_PATHS = (
+    TEMP3_FRONTEND_DIR / "111" / "personaldata_storage" / "user_data.json",
+    TEMP3_FRONTEND_DIR / "personaldata_storage" / "user_data.json",
+)
 OUTPUTS_DIR.mkdir(exist_ok=True)
+TEMP3_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+TEMP3_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+app.mount("/videos", StaticFiles(directory=str(TEMP3_OUTPUT_DIR)), name="temp3_videos")
+
+
+# Temp3 frontend compatibility: upload jobs, account JSON, and form-check FSM.
+temp3_gpu_semaphore = asyncio.Semaphore(1)
+temp3_jobs: dict[str, dict] = {}
+temp3_imu_jobs: dict[str, dict] = {}
+temp3_imu_job_lock = asyncio.Lock()
+_temp3_run_analysis = None
+
+
+def _frame_to_bgr(frame: np.ndarray) -> np.ndarray:
+    if frame.ndim == 2:
+        return cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+    if frame.ndim == 3 and frame.shape[2] == 4:
+        return cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+    return frame
+
+
+def _pad_frame_to_even_dimensions(frame: np.ndarray) -> np.ndarray:
+    frame = _frame_to_bgr(frame)
+    h, w = frame.shape[:2]
+    pad_bottom = h % 2
+    pad_right = w % 2
+    if pad_bottom or pad_right:
+        frame = cv2.copyMakeBorder(
+            frame,
+            0,
+            pad_bottom,
+            0,
+            pad_right,
+            cv2.BORDER_CONSTANT,
+            value=(0, 0, 0),
+        )
+    return frame
+
+
+def _fit_frame_inside_canvas(frame: np.ndarray, canvas_w: int, canvas_h: int) -> np.ndarray:
+    frame = _frame_to_bgr(frame)
+    h, w = frame.shape[:2]
+    if w == canvas_w and h == canvas_h:
+        return frame
+
+    scale = min(canvas_w / max(1, w), canvas_h / max(1, h))
+    resized_w = max(1, min(canvas_w, int(round(w * scale))))
+    resized_h = max(1, min(canvas_h, int(round(h * scale))))
+    resized = cv2.resize(frame, (resized_w, resized_h), interpolation=cv2.INTER_AREA)
+
+    canvas = np.zeros((canvas_h, canvas_w, 3), dtype=np.uint8)
+    x = (canvas_w - resized_w) // 2
+    y = (canvas_h - resized_h) // 2
+    canvas[y:y + resized_h, x:x + resized_w] = resized
+    return canvas
+
+
+def _open_video_writer(output_path: Path, fps: float, frame_size: tuple[int, int]):
+    for codec in ("avc1", "H264", "mp4v", "XVID"):
+        fourcc = cv2.VideoWriter_fourcc(*codec)
+        writer = cv2.VideoWriter(str(output_path), fourcc, fps, frame_size)
+        if writer.isOpened():
+            return writer
+        writer.release()
+    return None
+
+
+def _normalize_calibration_video_for_gvhmr(input_path: Path, task_id: str) -> Path:
+    cap = cv2.VideoCapture(str(input_path))
+    if not cap.isOpened():
+        return input_path
+
+    if hasattr(cv2, "CAP_PROP_ORIENTATION_AUTO"):
+        cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
+
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if not fps or not np.isfinite(fps) or fps <= 0:
+        fps = 30.0
+    output_path = TEMP3_UPLOAD_DIR / f"{task_id}_calibration_normalized.mp4"
+
+    ok, first_frame = cap.read()
+    if not ok or first_frame is None:
+        cap.release()
+        return input_path
+
+    first_frame = _pad_frame_to_even_dimensions(first_frame)
+    canvas_h, canvas_w = first_frame.shape[:2]
+    writer = _open_video_writer(output_path, fps, (canvas_w, canvas_h))
+    if writer is None:
+        cap.release()
+        return input_path
+
+    writer.write(first_frame)
+    while True:
+        ok, frame = cap.read()
+        if not ok or frame is None:
+            break
+        frame = _fit_frame_inside_canvas(frame, canvas_w, canvas_h)
+        writer.write(frame)
+
+    cap.release()
+    writer.release()
+
+    if output_path.exists() and output_path.stat().st_size > 0:
+        return output_path
+    return input_path
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _temp3_user_data_path() -> Path:
+    for path in TEMP3_USER_DATA_PATHS:
+        if path.exists():
+            return path
+    return TEMP3_USER_DATA_PATHS[0]
+
+
+def _read_temp3_user_data() -> dict:
+    path = _temp3_user_data_path()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        data = {"users": []}
+    except json.JSONDecodeError:
+        data = {"users": []}
+    if not isinstance(data, dict):
+        data = {"users": []}
+    data.setdefault("users", [])
+    return data
+
+
+def _write_temp3_user_data(data: dict) -> None:
+    path = _temp3_user_data_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data["last_updated"] = _now_iso()
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _find_temp3_user(
+    data: dict,
+    user_id: Optional[str] = None,
+    username: Optional[str] = None,
+    email: Optional[str] = None,
+) -> Optional[dict]:
+    users = data.get("users") or []
+    for user in users:
+        if user_id and str(user.get("id")) == str(user_id):
+            return user
+        if email and user.get("email") == email:
+            return user
+        if username and user.get("username") == username:
+            return user
+    return None
+
+
+def _extract_user_limb_lengths(user: Optional[dict]) -> Optional[dict]:
+    if not user:
+        return None
+    candidates = [
+        user.get("limb_lengths"),
+        (user.get("limb_length_calibration") or {}).get("limb_lengths"),
+        (user.get("backend_video_data") or {}).get("limb_lengths"),
+    ]
+    for value in candidates:
+        if isinstance(value, dict) and value:
+            return {k: float(v) for k, v in value.items() if v is not None}
+    return None
+
+
+def _apply_limb_lengths(limb_lengths: Optional[dict]) -> None:
+    if not limb_lengths:
+        return
+    app_state.limb_lengths = limb_lengths
+    if app_state.skeleton_engine:
+        app_state.skeleton_engine.set_limb_lengths(limb_lengths)
+
+
+def _apply_temp3_user_limb_lengths(
+    user_id: Optional[str] = None,
+    username: Optional[str] = None,
+    email: Optional[str] = None,
+) -> Optional[dict]:
+    data = _read_temp3_user_data()
+    user = _find_temp3_user(data, user_id=user_id, username=username, email=email)
+    limb_lengths = _extract_user_limb_lengths(user)
+    _apply_limb_lengths(limb_lengths)
+    return limb_lengths
+
+
+def _save_temp3_user_calibration(
+    limb_lengths: dict,
+    user_id: Optional[str] = None,
+    username: Optional[str] = None,
+    email: Optional[str] = None,
+) -> Optional[dict]:
+    data = _read_temp3_user_data()
+    user = _find_temp3_user(data, user_id=user_id, username=username, email=email)
+    if user is None:
+        user = {
+            "id": user_id or str(uuid.uuid4()),
+            "username": username or "",
+            "email": email or "",
+            "personal_info": {},
+            "upload_records": [],
+            "backend_video_data": {},
+            "created_at": _now_iso(),
+        }
+        data["users"].append(user)
+
+    calibrated_at = _now_iso()
+    user["limb_lengths"] = limb_lengths
+    user["limb_length_calibration"] = {
+        "limb_lengths": limb_lengths,
+        "calibrated_at": calibrated_at,
+        "source": "full_body_video",
+    }
+    backend_video_data = user.setdefault("backend_video_data", {})
+    backend_video_data["limb_lengths"] = limb_lengths
+    backend_video_data["limb_lengths_calibrated_at"] = calibrated_at
+    user["calibration_video_done"] = True
+    user["updated_at"] = calibrated_at
+
+    _write_temp3_user_data(data)
+    return user
+
+
+def _temp3_protocol_for_test(test_type: str) -> str:
+    value = (test_type or "").strip().lower()
+    if value in {"cmj", "jump", "countermovement-jump", "countermovement_jump"}:
+        return "cmj"
+    if value in {"sls", "single-leg-stand", "single_leg_stand", "squat", "balance", "assessment"}:
+        return "stability"
+    return "stability"
+
+
+def _summarize_temp3_imu_result(task_id: str, protocol_id: str, summary: dict) -> dict:
+    result = {
+        "status": "completed",
+        "task_id": task_id,
+        "session_id": task_id,
+        "exercise_name": "CMJ" if protocol_id == "cmj" else "Balance",
+        "test_id": protocol_id,
+        "progress": 100,
+        "result_video": "",
+        "summary": summary,
+        "limb_lengths_used": app_state.limb_lengths,
+    }
+
+    if protocol_id == "cmj":
+        jumps = [ev for ev in app_state.vertical_events if ev.get("type") == "jump"]
+        flight_times = [float(ev.get("flight_time", 0) or 0) for ev in jumps]
+        heights_m = [float(ev.get("est_height", 0) or 0) for ev in jumps]
+        flight_time = max(flight_times) if flight_times else 0.0
+        jump_height_m = max(heights_m) if heights_m else 0.0
+        contact_time = max(0.001, float(summary.get("duration_s") or 0) / max(1, len(jumps))) if jumps else 0.001
+        result.update({
+            "flight_time": round(flight_time, 3),
+            "jump_height_cm": round(jump_height_m * 100, 1),
+            "rsi": round(jump_height_m / contact_time, 2) if jump_height_m else 0.0,
+            "jump_count": len(jumps),
+        })
+    else:
+        sway = summary.get("sway") or {}
+        result.update({
+            "cv": float(sway.get("cv_pct") or 0.0),
+            "stability_score": float(sway.get("stability_score") or 0.0),
+        })
+
+    return result
+
+
+async def _prepare_temp3_imu_session(task_id: str, protocol_id: str) -> None:
+    proto = get_protocol(protocol_id)
+    app_state.session_id = task_id
+    app_state.session_frames = []
+    app_state.vertical_events = []
+    app_state.active_test_id = protocol_id
+    app_state.recording = True
+
+    if app_state.bio_engine:
+        app_state.bio_engine.test_id = protocol_id
+        app_state.bio_engine.reset()
+    if app_state.running_engine:
+        app_state.running_engine.reset()
+    if app_state.root_integrator:
+        app_state.root_integrator.reset()
+    if app_state.action_classifier:
+        app_state.action_classifier.reset()
+    if app_state.skeleton_engine:
+        app_state.skeleton_engine.reset_root_translation()
+
+    await imu_ws.broadcast({
+        "type": "session_started",
+        "session_id": task_id,
+        "test_id": protocol_id,
+        "protocol": {
+            "name": proto.name,
+            "instructions": proto.instructions,
+            "duration": proto.record_duration,
+        },
+    })
+
+
+async def _finish_temp3_imu_session(task_id: str, protocol_id: str) -> dict:
+    app_state.recording = False
+    summary = (
+        app_state.running_engine.get_summary()
+        if protocol_id == "running" and app_state.running_engine
+        else app_state.bio_engine.get_summary()
+        if app_state.bio_engine
+        else {}
+    )
+    summary["test_id"] = protocol_id
+    summary["session_id"] = task_id
+    summary["vertical_events"] = app_state.vertical_events
+
+    (OUTPUTS_DIR / f"{task_id}_session.json").write_text(
+        json.dumps({
+            "session_id": task_id,
+            "test_id": protocol_id,
+            "frames": app_state.session_frames,
+            "summary": summary,
+        }, default=_json_default)
+    )
+    profile_mgr.save_test_result(task_id, protocol_id, summary)
+    await imu_ws.broadcast({"type": "session_stopped", "session_id": task_id})
+
+    app_state.active_test_id = None
+    app_state.pose_detector = None
+    return _summarize_temp3_imu_result(task_id, protocol_id, summary)
+
+
+async def _run_temp3_imu_test_job(task_id: str, protocol_id: str, duration_seconds: float):
+    async with temp3_imu_job_lock:
+        try:
+            temp3_imu_jobs[task_id].update({
+                "status": "processing",
+                "progress": 0,
+            })
+            await _prepare_temp3_imu_session(task_id, protocol_id)
+            loop = asyncio.get_running_loop()
+            started = loop.time()
+            while True:
+                elapsed = loop.time() - started
+                progress = min(95, int((elapsed / max(duration_seconds, 1.0)) * 95))
+                temp3_imu_jobs[task_id]["progress"] = progress
+                if elapsed >= duration_seconds:
+                    break
+                await asyncio.sleep(1)
+
+            temp3_imu_jobs[task_id] = await _finish_temp3_imu_session(task_id, protocol_id)
+        except Exception as exc:
+            print(f"Error processing temp3 IMU task {task_id}: {exc}")
+            temp3_imu_jobs[task_id] = {
+                "status": "failed",
+                "task_id": task_id,
+                "test_id": protocol_id,
+                "progress": 100,
+                "error": str(exc),
+            }
+        finally:
+            if app_state.session_id == task_id:
+                app_state.recording = False
+                app_state.active_test_id = None
+                app_state.pose_detector = None
+
+
+def _get_temp3_run_analysis():
+    global _temp3_run_analysis
+    if _temp3_run_analysis is None:
+        try:
+            from engine import run_analysis
+        except ModuleNotFoundError as exc:
+            if exc.name in {"paramiko", "scp"}:
+                raise RuntimeError(
+                    "Temp3 GVHMR upload processing needs the SSH dependencies "
+                    "from motion_track/temp5/backend/requirements.txt "
+                    f"({exc.name} is missing)."
+                ) from exc
+            raise
+        _temp3_run_analysis = run_analysis
+    return _temp3_run_analysis
+
+
+async def _analyze_temp3_upload(task_id: str, file_path: str, exercise_name: str, f_mm: Optional[int]):
+    async with temp3_gpu_semaphore:
+        try:
+            run_analysis = _get_temp3_run_analysis()
+            temp3_jobs[task_id] = {
+                "status": "processing",
+                "exercise_name": exercise_name,
+            }
+            loop = asyncio.get_running_loop()
+            out_path = await loop.run_in_executor(
+                None,
+                partial(run_analysis, file_path, task_id, exercise_name, f_mm=f_mm),
+            )
+
+            metrics_path = TEMP3_OUTPUT_DIR / f"{task_id}_metrics.csv"
+            result_data = {
+                "status": "completed",
+                "exercise_name": exercise_name,
+                "result_video": f"/videos/{task_id}_annotated.webm",
+                "output_path": str(out_path),
+            }
+
+            if metrics_path.exists():
+                import csv
+
+                with metrics_path.open("r", newline="") as f:
+                    reader = csv.reader(f)
+                    header = next(reader, [])
+                    row = next(reader, [])
+                if "rsi" in header and len(row) >= 3:
+                    result_data["rsi"] = float(row[1])
+                    result_data["flight_time"] = float(row[2])
+                elif "cv" in header and len(row) >= 2:
+                    result_data["cv"] = float(row[1])
+
+            temp3_jobs[task_id] = result_data
+        except Exception as exc:
+            print(f"Error processing temp3 frontend task {task_id}: {exc}")
+            temp3_jobs[task_id] = {
+                "status": "failed",
+                "exercise_name": exercise_name,
+                "error": str(exc),
+            }
 
 
 # ─────────────────────────────────────────────
@@ -489,7 +942,7 @@ app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 # ─────────────────────────────────────────────
 
 @app.get("/")
-async def root():            return FileResponse(str(FRONTEND_DIR / "calibrate.html"))
+async def root():            return RedirectResponse(url="/111/auth/app_login_register.html")
 @app.get("/select")
 async def select_page():     return FileResponse(str(FRONTEND_DIR / "select.html"))
 @app.get("/test")
@@ -498,6 +951,247 @@ async def test_page():       return FileResponse(str(FRONTEND_DIR / "index.html"
 async def review_page():     return FileResponse(str(FRONTEND_DIR / "review.html"))
 @app.get("/settings")
 async def settings_page():   return FileResponse(str(FRONTEND_DIR / "settings.html"))
+
+
+# Temp3 frontend compatibility routes.
+@app.post("/upload")
+async def upload_video_for_temp3_frontend(
+    background_tasks: BackgroundTasks,
+    video: UploadFile = File(...),
+    exercise_name: str = Form("Balance"),
+    leg: Optional[str] = Form(None),
+    f_mm: Optional[int] = Form(None),
+):
+    task_id = str(uuid.uuid4())
+    safe_name = Path(video.filename or "user_recording.mp4").name
+    file_path = TEMP3_UPLOAD_DIR / f"{task_id}_{safe_name}"
+
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(video.file, buffer)
+
+    temp3_jobs[task_id] = {
+        "status": "queued",
+        "exercise_name": exercise_name,
+        "leg": leg,
+    }
+    background_tasks.add_task(
+        _analyze_temp3_upload,
+        task_id,
+        str(file_path),
+        exercise_name,
+        f_mm,
+    )
+
+    return {
+        "task_id": task_id,
+        "message": "Video uploaded successfully. Processing in background.",
+    }
+
+
+@app.post("/api/calibrate_limb_lengths")
+async def calibrate_limb_lengths_for_temp3_frontend(
+    video: UploadFile = File(...),
+    user_id: Optional[str] = Form(None),
+    username: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+):
+    task_id = str(uuid.uuid4())
+    safe_name = Path(video.filename or "full_body_calibration.webm").name
+    file_path = TEMP3_UPLOAD_DIR / f"{task_id}_calibration_{safe_name}"
+
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(video.file, buffer)
+
+    try:
+        normalized_path = await asyncio.to_thread(
+            _normalize_calibration_video_for_gvhmr,
+            file_path,
+            task_id,
+        )
+        limb_lengths = await asyncio.to_thread(run_calibration_video, str(normalized_path))
+    except Exception as exc:
+        raise HTTPException(500, f"GVHMR calibration failed: {exc}") from exc
+
+    if not limb_lengths:
+        raise HTTPException(502, "GVHMR returned no limb lengths.")
+
+    limb_lengths = {k: float(v) for k, v in limb_lengths.items() if v is not None}
+    _apply_limb_lengths(limb_lengths)
+    profile_mgr.save_calibration(limb_lengths)
+    updated_user = _save_temp3_user_calibration(
+        limb_lengths,
+        user_id=user_id,
+        username=username,
+        email=email,
+    )
+
+    await imu_ws.broadcast({
+        "type": "calibrated",
+        "limb_lengths": limb_lengths,
+        "profile": _profile_summary(),
+    })
+
+    return {
+        "status": "ok",
+        "task_id": task_id,
+        "limb_lengths": limb_lengths,
+        "user": updated_user,
+        "profile": _profile_summary(),
+    }
+
+
+@app.post("/api/imu-test/start")
+async def start_temp3_imu_test(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    test_type: str = Query("assessment"),
+    leg: Optional[str] = Query(None),
+    user_id: Optional[str] = Query(None),
+    username: Optional[str] = Query(None),
+    email: Optional[str] = Query(None),
+    duration_seconds: Optional[float] = Query(None),
+):
+    payload = {}
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+
+    test_type = payload.get("test_type") or test_type
+    leg = payload.get("leg") or leg
+    user_id = payload.get("user_id") or user_id
+    username = payload.get("username") or username
+    email = payload.get("email") or email
+    duration_seconds = payload.get("duration_seconds") or duration_seconds
+
+    protocol_id = _temp3_protocol_for_test(test_type)
+    proto = get_protocol(protocol_id)
+    duration = float(duration_seconds or proto.record_duration)
+    task_id = str(uuid.uuid4())
+    limb_lengths = _apply_temp3_user_limb_lengths(
+        user_id=user_id,
+        username=username,
+        email=email,
+    )
+
+    temp3_imu_jobs[task_id] = {
+        "status": "queued",
+        "task_id": task_id,
+        "test_id": protocol_id,
+        "test_type": test_type,
+        "leg": leg,
+        "duration_seconds": duration,
+        "progress": 0,
+        "limb_lengths_used": limb_lengths,
+    }
+    background_tasks.add_task(_run_temp3_imu_test_job, task_id, protocol_id, duration)
+    return {
+        "status": "queued",
+        "task_id": task_id,
+        "test_id": protocol_id,
+        "duration_seconds": duration,
+        "limb_lengths_used": limb_lengths,
+    }
+
+
+@app.get("/api/imu-test/status/{task_id}")
+async def get_temp3_imu_test_status(task_id: str):
+    return temp3_imu_jobs.get(task_id, {"status": "not_found"})
+
+
+@app.get("/status/{task_id}")
+async def get_temp3_upload_status(task_id: str):
+    if task_id in temp3_jobs:
+        return temp3_jobs[task_id]
+    if task_id in temp3_imu_jobs:
+        return temp3_imu_jobs[task_id]
+    return {"status": "not_found"}
+
+
+@app.get("/batch_status")
+async def get_temp3_batch_status(task_ids: str):
+    ids = [tid for tid in task_ids.split(",") if tid]
+    results = {
+        tid: temp3_jobs.get(tid) or temp3_imu_jobs.get(tid) or {"status": "not_found"}
+        for tid in ids
+    }
+    return {
+        "all_completed": all(v.get("status") == "completed" for v in results.values()),
+        "any_failed": any(v.get("status") == "failed" for v in results.values()),
+        "tasks": results,
+    }
+
+
+@app.get("/api/get_user_data")
+async def get_temp3_user_data():
+    path = _temp3_user_data_path()
+    try:
+        return JSONResponse(content=json.loads(path.read_text(encoding="utf-8")))
+    except FileNotFoundError:
+        return {"users": []}
+
+
+@app.post("/api/update_user_data")
+async def update_temp3_user_data(request: Request):
+    data = await request.json()
+    path = _temp3_user_data_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"success": True, "message": "data updated"}
+
+
+@app.get("/api/user-videos")
+async def get_temp3_user_videos():
+    completed = [
+        (task_id, job) for task_id, job in temp3_jobs.items()
+        if job.get("status") == "completed"
+    ]
+    completed.reverse()
+    videos = {}
+    for task_id, job in completed:
+        item = {
+            "url": job.get("result_video"),
+            "timestamp": task_id,
+            "exercise_name": job.get("exercise_name"),
+        }
+        exercise = (job.get("exercise_name") or "").lower()
+        if exercise == "cmj" and "verticalJump" not in videos:
+            videos["verticalJump"] = item
+        elif exercise in {"balance", "sls"} and "singleLegSquat" not in videos:
+            videos["singleLegSquat"] = item
+    return videos
+
+
+@app.websocket("/ws/form-check/{exercise}")
+async def websocket_temp3_form_check(websocket: WebSocket, exercise: str):
+    await websocket.accept()
+    fsm = StateMachineFSM(exercise)
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            try:
+                encoded = data.split(",", 1)[1] if "," in data else data
+                nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
+                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                if frame is None:
+                    continue
+
+                keypoints_2d_raw = temp3_get_yolo26_keypoints(frame)
+                keypoints = [(pt[0], pt[1]) if pt else None for pt in keypoints_2d_raw]
+                status, message, current_state = fsm.process_frame(keypoints)
+
+                await websocket.send_json({
+                    "status": status,
+                    "state": current_state,
+                    "hint": message,
+                })
+            except Exception as exc:
+                print(f"Temp3 form-check frame failed: {exc}")
+    except WebSocketDisconnect:
+        print("Temp3 form-check WebSocket client disconnected")
 
 
 # ─────────────────────────────────────────────
@@ -555,6 +1249,7 @@ async def start_pose(
         hold_seconds   = proto.hold_duration
 
     app_state.calibration_done = False
+    app_state.pose_mode = mode
     imu_zero_cb = app_state.skeleton_engine.calibrate_tpose if mode == "calibration" else None
 
     app_state.pose_detector = PoseDetector(
@@ -595,11 +1290,14 @@ async def start_session(test_id: str = Query(...)):
 
     app_state.session_id     = str(uuid.uuid4())
     app_state.session_frames = []
+    app_state.vertical_events = []
     app_state.active_test_id = test_id
     app_state.recording      = True
 
     # Reset both engines and the root integrator so each session starts
     # at the origin with zero velocity
+    if app_state.bio_engine:
+        app_state.bio_engine.test_id = test_id
     (app_state.running_engine if test_id == "running" else app_state.bio_engine).reset()
     if app_state.root_integrator:
         app_state.root_integrator.reset()                    # ← resets velocity/gait too
@@ -657,6 +1355,7 @@ async def stop_session():
     )
     summary["test_id"]    = app_state.active_test_id
     summary["session_id"] = sid
+    summary["vertical_events"] = app_state.vertical_events
     if sid:
         (OUTPUTS_DIR / f"{sid}_session.json").write_text(
             json.dumps({
@@ -1143,5 +1842,8 @@ async def integrator_state():
     return ri.get_debug_info()
 
 
+app.mount("/", StaticFiles(directory=str(TEMP3_FRONTEND_DIR), html=True), name="temp3_frontend")
+
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)

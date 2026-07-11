@@ -29,6 +29,27 @@
             </div>
         </div>
 
+        <div class="calibration-card">
+            <div class="calibration-header">
+                <h2>身体校准视频</h2>
+                <p>如需重新校准肢体长度，请上传一段已录好的 5 秒全身站立静止视频。</p>
+            </div>
+            <div class="calibration-note">
+                注意：请剪掉视频中任何移动的片段，例如开启录制后走向摄像头、或录制结束前走离摄像头去关机的部分，只保留站立静止的 5 秒。
+            </div>
+            <div class="calibration-upload-box" id="calibrationUploadBox">尚未选择校准视频。</div>
+            <video id="calibrationPreview" class="calibration-preview" controls playsinline></video>
+            <input type="file" id="calibrationFileInput" accept="video/*" style="display: none;">
+            <div class="calibration-progress">
+                <div class="calibration-progress-fill" id="calibrationProgressFill"></div>
+            </div>
+            <div class="calibration-status" id="calibrationStatus">可选：选择视频后上传，系统会重新计算并保存肢体长度。</div>
+            <div class="calibration-actions">
+                <button class="btn btn-secondary" type="button" id="chooseCalibrationBtn">选择视频</button>
+                <button class="btn btn-primary" type="button" id="uploadCalibrationBtn" disabled>上传校准视频</button>
+            </div>
+        </div>
+
         <!-- 步骤 1: 基础身份信息 -->
         <div class="form-step active" id="step1">
             <div class="step-header">

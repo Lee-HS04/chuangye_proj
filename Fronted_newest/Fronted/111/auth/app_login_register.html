@@ -162,6 +162,115 @@
             margin-top: 4px;
             display: none;
         }
+
+        .calibration-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.72);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .calibration-card {
+            width: min(720px, 100%);
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+        }
+
+        .calibration-card h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-align: center;
+            color: #333;
+        }
+
+        .calibration-card p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .calibration-note {
+            background: #fff7e6;
+            border: 1px solid #ffd591;
+            border-radius: 8px;
+            color: #7a4b00;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .calibration-video {
+            width: 100%;
+            max-height: 460px;
+            background: #000;
+            border-radius: 8px;
+            display: none;
+            margin-bottom: 16px;
+            object-fit: contain;
+        }
+
+        .calibration-upload-box {
+            border: 1px dashed #c7c7cc;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 16px;
+            background: #fbfbfd;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .calibration-progress {
+            width: 100%;
+            height: 8px;
+            background: #e5e5ea;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .calibration-progress-fill {
+            width: 0%;
+            height: 100%;
+            background: #007AFF;
+            transition: width 0.2s ease;
+        }
+
+        .calibration-status {
+            min-height: 20px;
+            color: #333;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .calibration-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .calibration-actions button {
+            flex: 1;
+        }
+
+        .calibration-secondary {
+            background: #f2f2f7;
+            color: #333;
+        }
+
+        .calibration-secondary:hover {
+            background: #e5e5ea;
+        }
     </style>
 </head>
 <body>
@@ -237,11 +346,179 @@
         </div>
     </div>
 
+    <div class="calibration-modal" id="calibrationModal">
+        <div class="calibration-card">
+            <h2>Full-body calibration</h2>
+            <p>Please upload a pre-recorded 5-second video of you standing still with your whole body visible in the frame.</p>
+            <div class="calibration-note">
+                Note: please cut any part of the video where you are moving, such as moving towards or away from the camera after turning it on or before turning it off after recording.
+            </div>
+            <div class="calibration-upload-box" id="calibrationUploadBox">No calibration video selected.</div>
+            <video id="calibrationVideo" class="calibration-video" controls playsinline></video>
+            <input type="file" id="calibrationFileInput" accept="video/*" style="display: none;">
+            <div class="calibration-progress">
+                <div class="calibration-progress-fill" id="calibrationProgressFill"></div>
+            </div>
+            <div class="calibration-status" id="calibrationStatus">Choose a 5-second standing-still calibration video.</div>
+            <div class="calibration-actions">
+                <button type="button" id="calibrationSelectBtn" class="calibration-secondary">Choose video</button>
+                <button type="button" id="calibrationUploadBtn" disabled>Upload calibration video</button>
+                <button type="button" id="calibrationRetryBtn" class="calibration-secondary" style="display: none;">Retry</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let generatedCode = '';
         let currentEmail = '';
         let emailVerified = false;
         const EMAIL_API_HOST = 'http://127.0.0.1:8001';
+        const BACKEND_API_HOST = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
+        let pendingRegisteredUser = null;
+        let selectedCalibrationFile = null;
+        let calibrationRedirectUrl = '../personal_info/app_personal_info.html';
+
+        function setCalibrationStatus(message, progress) {
+            const statusEl = document.getElementById('calibrationStatus');
+            const progressFill = document.getElementById('calibrationProgressFill');
+            if (statusEl) statusEl.textContent = message;
+            if (progressFill && progress !== undefined) {
+                progressFill.style.width = Math.max(0, Math.min(100, progress)) + '%';
+            }
+        }
+
+        function updateStoredCurrentUser(updatedUser) {
+            if (!updatedUser) return;
+            const userData = getUserData();
+            const existingIndex = userData.users.findIndex(u =>
+                (updatedUser.id && u.id === updatedUser.id) ||
+                (updatedUser.email && u.email === updatedUser.email)
+            );
+
+            if (existingIndex >= 0) {
+                userData.users[existingIndex] = updatedUser;
+            } else {
+                userData.users.push(updatedUser);
+            }
+
+            saveUserData(userData);
+            localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        }
+
+        function userHasLimbLengthCalibration(user) {
+            if (!user) return false;
+            const directLengths = user.limb_lengths;
+            const calibrationLengths = user.limb_length_calibration && user.limb_length_calibration.limb_lengths;
+            const backendLengths = user.backend_video_data && user.backend_video_data.limb_lengths;
+            return Boolean(
+                (directLengths && Object.keys(directLengths).length > 0) ||
+                (calibrationLengths && Object.keys(calibrationLengths).length > 0) ||
+                (backendLengths && Object.keys(backendLengths).length > 0)
+            );
+        }
+
+        function finishRegistrationFlow() {
+            window.location.href = calibrationRedirectUrl;
+        }
+
+        async function openCalibrationStep(user, redirectUrl = '../personal_info/app_personal_info.html') {
+            pendingRegisteredUser = user;
+            calibrationRedirectUrl = redirectUrl;
+            const modal = document.getElementById('calibrationModal');
+            const uploadBtn = document.getElementById('calibrationUploadBtn');
+            const retryBtn = document.getElementById('calibrationRetryBtn');
+            const videoEl = document.getElementById('calibrationVideo');
+            const uploadBox = document.getElementById('calibrationUploadBox');
+            const fileInput = document.getElementById('calibrationFileInput');
+
+            modal.style.display = 'flex';
+            selectedCalibrationFile = null;
+            fileInput.value = '';
+            uploadBtn.disabled = true;
+            retryBtn.style.display = 'none';
+            uploadBox.style.display = 'block';
+            uploadBox.textContent = 'No calibration video selected.';
+            videoEl.pause();
+            videoEl.removeAttribute('src');
+            videoEl.load();
+            videoEl.style.display = 'none';
+            setCalibrationStatus('Choose a 5-second standing-still calibration video.', 0);
+        }
+
+        function handleCalibrationFileSelected(event) {
+            const file = event.target.files && event.target.files[0];
+            const uploadBtn = document.getElementById('calibrationUploadBtn');
+            const retryBtn = document.getElementById('calibrationRetryBtn');
+            const videoEl = document.getElementById('calibrationVideo');
+            const uploadBox = document.getElementById('calibrationUploadBox');
+
+            if (!file) {
+                selectedCalibrationFile = null;
+                uploadBtn.disabled = true;
+                setCalibrationStatus('Choose a 5-second standing-still calibration video.', 0);
+                return;
+            }
+
+            selectedCalibrationFile = file;
+            uploadBtn.disabled = false;
+            retryBtn.style.display = 'none';
+            uploadBox.style.display = 'none';
+            videoEl.src = URL.createObjectURL(file);
+            videoEl.style.display = 'block';
+            setCalibrationStatus('Video selected. Upload when ready.', 0);
+        }
+
+        function uploadSelectedCalibrationVideo() {
+            if (!selectedCalibrationFile || !pendingRegisteredUser) {
+                setCalibrationStatus('Please choose a calibration video first.', 0);
+                return;
+            }
+            uploadCalibrationVideo(selectedCalibrationFile);
+        }
+
+        async function uploadCalibrationVideo(file) {
+            const uploadBtn = document.getElementById('calibrationUploadBtn');
+            const retryBtn = document.getElementById('calibrationRetryBtn');
+            const formData = new FormData();
+            formData.append('video', file, file.name || 'full_body_calibration_video.mp4');
+            formData.append('user_id', pendingRegisteredUser.id || '');
+            formData.append('username', pendingRegisteredUser.username || '');
+            formData.append('email', pendingRegisteredUser.email || '');
+
+            try {
+                uploadBtn.disabled = true;
+                retryBtn.style.display = 'none';
+                setCalibrationStatus('GVHMR is processing calibration. Please wait...', 100);
+                const response = await fetch(BACKEND_API_HOST + '/api/calibrate_limb_lengths', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (!response.ok || data.status !== 'ok') {
+                    throw new Error(data.detail || data.message || 'Calibration failed');
+                }
+
+                const updatedUser = data.user || {
+                    ...pendingRegisteredUser,
+                    limb_lengths: data.limb_lengths,
+                    limb_length_calibration: {
+                        limb_lengths: data.limb_lengths,
+                        calibrated_at: new Date().toISOString(),
+                        source: 'full_body_video'
+                    },
+                    calibration_video_done: true,
+                    updated_at: new Date().toISOString()
+                };
+                updateStoredCurrentUser(updatedUser);
+                setCalibrationStatus('Calibration complete. Continuing...', 100);
+                setTimeout(finishRegistrationFlow, 700);
+            } catch (error) {
+                console.error('Calibration upload failed:', error);
+                setCalibrationStatus('Calibration failed: ' + error.message, 100);
+                uploadBtn.disabled = false;
+                retryBtn.style.display = 'block';
+            }
+        }
 
         // 表单切换功能
         function toggleForm(formId) {
@@ -401,7 +678,7 @@
             saveUserData(userData);
             
             // 尝试同步到JSON文件
-            syncUserDataToJsonFile();
+            return syncUserDataToJsonFile();
         }
 
         // 同步更新user_data.json文件
@@ -409,7 +686,7 @@
             const userData = getUserData();
             
             // 发送请求到后端API，将数据同步到JSON文件
-            fetch('/api/update_user_data', {
+            return fetch('/api/update_user_data', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -472,8 +749,12 @@
                         alert('登录成功！');
                         // 存储当前登录用户信息
                         localStorage.setItem('currentUser', JSON.stringify(user));
-                        // 无论是否填写了个人信息，直接跳转到主页面
-                        window.location.href = '../main_features/main.html';
+                        if (!userHasLimbLengthCalibration(user)) {
+                            openCalibrationStep(user, '../main_features/main.html');
+                        } else {
+                            // 无论是否填写了个人信息，直接跳转到主页面
+                            window.location.href = '../main_features/main.html';
+                        }
                     } else {
                         console.warn('Login failed: Incorrect username or password');
                         document.getElementById('loginPasswordError').textContent = '用户名或密码错误';
@@ -573,14 +854,13 @@
                         saveUserData(userData);
 
                         // 同时保存到JSON文件（用于备份）
-                        saveUserToJsonFile(newUser);
+                        const savePromise = saveUserToJsonFile(newUser);
 
                         // 存储当前登录用户信息
                         localStorage.setItem('currentUser', JSON.stringify(newUser));
 
                         alert('注册成功！');
-                        // 跳转到个人信息收集页面
-                        window.location.href = '../personal_info/app_personal_info.html';
+                        Promise.resolve(savePromise).finally(() => openCalibrationStep(newUser));
                     } else {
                         document.getElementById('registerCodeError').textContent = data.message || '验证码错误';
                         document.getElementById('registerCodeError').style.display = 'block';
@@ -595,6 +875,15 @@
         });
 
         // 页面加载时自动初始化
+        document.getElementById('calibrationSelectBtn').addEventListener('click', function() {
+            document.getElementById('calibrationFileInput').click();
+        });
+        document.getElementById('calibrationFileInput').addEventListener('change', handleCalibrationFileSelected);
+        document.getElementById('calibrationUploadBtn').addEventListener('click', uploadSelectedCalibrationVideo);
+        document.getElementById('calibrationRetryBtn').addEventListener('click', function() {
+            openCalibrationStep(pendingRegisteredUser);
+        });
+
         window.addEventListener('DOMContentLoaded', initUserData);
     </script>
 </body>
